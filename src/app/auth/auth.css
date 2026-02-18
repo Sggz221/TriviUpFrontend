@@ -1,0 +1,84 @@
+/* Auth form transitions */
+.auth-card {
+    animation: fadeSlideUp 0.5s ease-out;
+}
+
+@keyframes fadeSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Form section transition */
+.form-section {
+    animation: fadeIn 0.35s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Input focus glow */
+.auth-input:focus {
+    box-shadow: 0 0 0 3px oklch(86.133% 0.141 139.549 / 0.25);
+}
+
+/* Tab active indicator */
+.tab-active {
+    position: relative;
+}
+
+.tab-active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+    background-color: var(--primary);
+    animation: tabSlide 0.3s ease-out;
+}
+
+@keyframes tabSlide {
+    from {
+        transform: scaleX(0);
+    }
+
+    to {
+        transform: scaleX(1);
+    }
+}
+
+/* Submit button pulse on hover */
+.auth-submit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px -5px oklch(86.133% 0.141 139.549 / 0.35);
+}
+
+.auth-submit:active {
+    transform: translateY(0);
+}
+
+/* Back link hover effect */
+.back-link:hover svg {
+    transform: translateX(-3px);
+}
+
+.back-link svg {
+    transition: transform 0.2s ease;
+}
