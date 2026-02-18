@@ -1,7 +1,8 @@
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
+import { AuthService } from './auth.service';
 
 @Component({
   selector: 'app-auth',
@@ -12,20 +13,27 @@ import { RouterLink } from '@angular/router';
 })
 export class Auth {
   isLoginMode = signal(true);
+  isLoading = signal(false);
+  errorMessage = signal<string | null>(null);
+  successMessage = signal<string | null>(null);
 
   loginForm: FormGroup;
   registerForm: FormGroup;
 
-  constructor(private fb: FormBuilder) {
+  constructor(
+    private fb: FormBuilder,
+    private authService: AuthService,
+    private router: Router
+  ) {
     this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]]
+      username: ['', [Validators.required, Validators.minLength(3)]],
+      password: ['', [Validators.required, Validators.minLength(4)]]
     });
 
     this.registerForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(20)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
+      password: ['', [Validators.required, Validators.minLength(4)]],
       confirmPassword: ['', [Validators.required]]
     }, { validators: this.passwordMatchValidator });
   }
@@ -41,12 +49,29 @@ export class Auth {
 
   switchMode(login: boolean): void {
     this.isLoginMode.set(login);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
   }
 
   onLogin(): void {
     if (this.loginForm.valid) {
-      console.log('Login data:', this.loginForm.value);
-      // TODO: Conectar con servicio de autenticación
+      this.isLoading.set(true);
+      this.errorMessage.set(null);
+
+      const { username, password } = this.loginForm.value;
+      this.authService.signIn({ username, password }).subscribe({
+        next: (response) => {
+          this.isLoading.set(false);
+          this.successMessage.set(`¡Bienvenido, ${response.user.username}!`);
+          setTimeout(() => this.router.navigate(['/']), 1000);
+        },
+        error: (err) => {
+          this.isLoading.set(false);
+          this.errorMessage.set(
+            err.error?.message || 'Usuario o contraseña incorrectos. Inténtalo de nuevo.'
+          );
+        }
+      });
     } else {
       this.loginForm.markAllAsTouched();
     }
@@ -54,8 +79,23 @@ export class Auth {
 
   onRegister(): void {
     if (this.registerForm.valid) {
-      console.log('Register data:', this.registerForm.value);
-      // TODO: Conectar con servicio de registro
+      this.isLoading.set(true);
+      this.errorMessage.set(null);
+
+      const { username, email, password } = this.registerForm.value;
+      this.authService.signUp({ username, email, password }).subscribe({
+        next: (response) => {
+          this.isLoading.set(false);
+          this.successMessage.set(`¡Cuenta creada con éxito! Bienvenido, ${response.user.username}.`);
+          setTimeout(() => this.router.navigate(['/']), 1000);
+        },
+        error: (err) => {
+          this.isLoading.set(false);
+          this.errorMessage.set(
+            err.error?.message || 'Error al crear la cuenta. Inténtalo de nuevo.'
+          );
+        }
+      });
     } else {
       this.registerForm.markAllAsTouched();
     }
