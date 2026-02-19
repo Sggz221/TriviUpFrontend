@@ -2,7 +2,7 @@
 <nav class="shadow-lg py-4" style="background-color: var(--base-200);">
   <div class="container mx-auto px-4">
     <div class="flex justify-between items-center">
-      <a href="#" class="text-2xl font-bold" style="color: var(--primary);">TriviUp</a>
+      <a href="#" class="triviup text-4xl font-bold text-white">TriviUp</a>
       <ul class="flex gap-6 items-center">
         <li><a href="#info" class="hover:opacity-80 transition-opacity"
             style="color: var(--base-content);">Información</a></li>
@@ -23,10 +23,21 @@
 <section class="min-h-screen flex items-center justify-center bg-gradient-to-br"
   style="background: linear-gradient(to bottom right, var(--base-100), var(--base-200), var(--base-300));">
   <div class="text-center max-w-3xl px-4">
-    <!-- Logo grande -->
-    <h1 class="text-8xl font-black mb-8 tracking-tight" style="color: var(--secondary);">
-      TriviUp
-    </h1>
+    <!-- Logo grande con hover-gallery en la U -->
+    <div class="logo-container flex items-end justify-center mb-8">
+      <span class="triviup text-8xl md:text-9xl lg:text-[10rem] font-black tracking-wide text-white leading-none">Trivi</span>
+      <figure class="u-gallery-custom logo-u-gallery">
+        <!-- Base Image (0) - Always visible foundation -->
+        <img src="images/LogoHover0.webp" alt="U" class="base-img" />
+        
+        <!-- Variant Images (1-4) - Fade in/out based on active index -->
+        <img src="images/LogoHover1.webp" alt="U" [class.active]="activeImageIndex === 1" />
+        <img src="images/LogoHover2.webp" alt="U" [class.active]="activeImageIndex === 2" />
+        <img src="images/LogoHover3.webp" alt="U" [class.active]="activeImageIndex === 3" />
+        <img src="images/LogoHover4.webp" alt="U" [class.active]="activeImageIndex === 4" />
+      </figure>
+      <span class="triviup text-8xl md:text-9xl lg:text-[10rem] font-black tracking-tight text-white leading-none">p</span>
+    </div>
 
     <!-- Descripción -->
     <span class="text-rotate mb-5 duration-6000 text-6xl">

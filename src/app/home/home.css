@@ -1,0 +1,51 @@
+/* 
+  Automatic Random Animation Logic
+  - Base image (0) is always visible.
+  - Variant images (1-4) fade in/out on top based on .active class.
+*/
+.logo-u-gallery {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  aspect-ratio: 1 / 1;
+  height: 8.25rem;
+  width: auto;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.logo-u-gallery img {
+  grid-row: 1;
+  grid-column: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: fill; 
+  opacity: 0;
+  /* Ensure positioning allows z-index to work */
+  position: relative;
+  /* Smooth ease-in-out transition */
+  transition: opacity 1s ease-in-out;
+  pointer-events: none;
+  
+  /* CRITICAL: Variants are ALWAYS above base (10). 
+     This prevents jumpy layering changes. 
+     Opacity handles the rest. */
+  z-index: 20;
+}
+
+/* Base image (0) is ALWAYS visible at the bottom */
+.logo-u-gallery img.base-img {
+  opacity: 1;
+  z-index: 10;
+}
+
+/* Active variant image fades in on top */
+.logo-u-gallery img.active {
+  opacity: 1 !important;
+  /* No z-index change needed - already 20 > 10 */
+}
+
+/* Responsive sizes */
+@media (min-width: 768px) { .logo-u-gallery { height: 10rem; } }
+@media (min-width: 1024px) { .logo-u-gallery { height: 12rem; } }

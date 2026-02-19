@@ -1,6 +1,6 @@
 /* Import Google Font - Outfit */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Odibee+Sans&display=swap');
 /* Import Tailwind CSS */
 @import "tailwindcss";
 
@@ -46,4 +46,8 @@
 /* Apply custom font globally */
 body {
     font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+}
+
+.triviup {
+    font-family: 'Odibee Sans', system-ui, -apple-system, sans-serif;
 }
