@@ -46,9 +46,12 @@ export class AuthService {
         );
     }
 
-    private saveSession(response: AuthResponse): void {
+    saveSession(response: AuthResponse): void {
+        console.log('[AuthService] saveSession called with:', response);
         localStorage.setItem('token', response.token);
         localStorage.setItem('user', JSON.stringify(response.user));
+        console.log('[AuthService] localStorage set - token:', !!response.token, 'user:', response.user);
+        console.log('[AuthService] localStorage.getItem("user"):', localStorage.getItem('user'));
     }
 
     getToken(): string | null {

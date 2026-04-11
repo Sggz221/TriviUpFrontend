@@ -8,12 +8,32 @@
             style="color: var(--base-content);">Información</a></li>
         <li><a href="#contacto" class="hover:opacity-80 transition-opacity"
             style="color: var(--base-content);">Contacto</a></li>
-        <li>
-          <a routerLink="/auth" class="px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition-opacity"
-            style="background-color: var(--primary); color: var(--primary-content);">
-            Iniciar Sesión
-          </a>
-        </li>
+        @if (isLoggedIn()) {
+          <!-- User dropdown -->
+          <li class="relative">
+            <button (click)="toggleDropdown()" class="flex items-center gap-2 px-4 py-2 rounded-lg hover:opacity-90 transition-opacity" style="background-color: var(--primary); color: var(--primary-content);">
+              <span class="font-semibold">{{ currentUser()?.username }}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            @if (isDropdownOpen()) {
+              <div class="absolute right-0 mt-2 w-48 rounded-lg shadow-xl z-50" style="background-color: var(--base-200);">
+                <button (click)="logout()" class="block w-full text-left px-4 py-3 hover:opacity-80 transition-opacity rounded-t-lg"
+                  style="color: var(--base-content);">
+                  Cerrar Sesión
+                </button>
+              </div>
+            }
+          </li>
+        } @else {
+          <li>
+            <a routerLink="/auth" class="px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition-opacity"
+              style="background-color: var(--primary); color: var(--primary-content);">
+              Iniciar Sesión
+            </a>
+          </li>
+        }
       </ul>
     </div>
   </div>
@@ -63,14 +83,16 @@
         </svg>
         Unirse a una Sala
       </button>
-      <button
-        class="px-8 py-4 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2"
-        style="background-color: var(--secondary); color: var(--secondary-content);">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        Crear Concurso
-      </button>
+      @if (isLoggedIn()) {
+        <button
+          class="px-8 py-4 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2"
+          style="background-color: var(--secondary); color: var(--secondary-content);">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Crear Concurso
+        </button>
+      }
     </div>
 
     <!-- Features -->

@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
@@ -11,7 +11,7 @@ import { AuthService } from './auth.service';
   templateUrl: './auth.html',
   styleUrls: ['./auth.css']
 })
-export class Auth {
+export class Auth implements OnInit {
   isLoginMode = signal(true);
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
@@ -36,6 +36,12 @@ export class Auth {
       password: ['', [Validators.required, Validators.minLength(4)]],
       confirmPassword: ['', [Validators.required]]
     }, { validators: this.passwordMatchValidator });
+  }
+
+  ngOnInit(): void {
+    if (this.authService.isLoggedIn()) {
+      this.router.navigate(['/']);
+    }
   }
 
   passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
@@ -99,5 +105,9 @@ export class Auth {
     } else {
       this.registerForm.markAllAsTouched();
     }
+  }
+
+  signInWithGoogle(): void {
+    window.location.href = 'http://localhost:5164/auth/google';
   }
 }
