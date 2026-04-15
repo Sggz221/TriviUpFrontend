@@ -8,7 +8,7 @@
             style="color: var(--base-content);">Información</a></li>
         <li><a href="#contacto" class="hover:opacity-80 transition-opacity"
             style="color: var(--base-content);">Contacto</a></li>
-        @if (isLoggedIn()) {
+@if (isLoggedIn()) {
           <!-- User dropdown -->
           <li class="relative">
             <button (click)="toggleDropdown()" class="flex items-center gap-2 px-4 py-2 rounded-lg hover:opacity-90 transition-opacity" style="background-color: var(--primary); color: var(--primary-content);">
@@ -19,7 +19,11 @@
             </button>
             @if (isDropdownOpen()) {
               <div class="absolute right-0 mt-2 w-48 rounded-lg shadow-xl z-50" style="background-color: var(--base-200);">
-                <button (click)="logout()" class="block w-full text-left px-4 py-3 hover:opacity-80 transition-opacity rounded-t-lg"
+                <a routerLink="/cuestionarios/mis-cuestionarios" (click)="closeDropdown()" class="block w-full text-left px-4 py-3 hover:opacity-80 transition-opacity rounded-t-lg"
+                  style="color: var(--base-content);">
+                  Mis Cuestionarios
+                </a>
+                <button (click)="logout()" class="block w-full text-left px-4 py-3 hover:opacity-80 transition-opacity"
                   style="color: var(--base-content);">
                   Cerrar Sesión
                 </button>
@@ -85,6 +89,7 @@
       </button>
       @if (isLoggedIn()) {
         <button
+          (click)="crearConcurso()"
           class="px-8 py-4 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2"
           style="background-color: var(--secondary); color: var(--secondary-content);">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

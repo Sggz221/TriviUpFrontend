@@ -1,0 +1,21 @@
+/* quiz-detail specific styles */
+
+/* Question number badge - AZUL (info) sin borde blanco */
+.badge {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* "Copiar GameCode" button - MORADO (accent) */
+.btn-copy-custom {
+  background-color: var(--accent) !important;
+  color: var(--accent-content) !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.btn-copy-custom:hover {
+  opacity: 0.85;
+}

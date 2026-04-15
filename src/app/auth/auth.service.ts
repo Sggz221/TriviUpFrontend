@@ -15,14 +15,14 @@ export interface AuthResponse {
     user: AuthUser;
 }
 
-export interface SignUpPayload {
+export interface SignInPayload {
     username: string;
-    email: string;
     password: string;
 }
 
-export interface SignInPayload {
+export interface SignUpPayload {
     username: string;
+    email: string;
     password: string;
 }
 
@@ -34,14 +34,14 @@ export class AuthService {
 
     constructor(private http: HttpClient) { }
 
-    signUp(payload: SignUpPayload): Observable<AuthResponse> {
-        return this.http.post<AuthResponse>(`${this.API_URL}/signup`, payload).pipe(
+    signIn(payload: SignInPayload): Observable<AuthResponse> {
+        return this.http.post<AuthResponse>(`${this.API_URL}/signin`, payload).pipe(
             tap(response => this.saveSession(response))
         );
     }
 
-    signIn(payload: SignInPayload): Observable<AuthResponse> {
-        return this.http.post<AuthResponse>(`${this.API_URL}/signin`, payload).pipe(
+    signUp(payload: SignUpPayload): Observable<AuthResponse> {
+        return this.http.post<AuthResponse>(`${this.API_URL}/signup`, payload).pipe(
             tap(response => this.saveSession(response))
         );
     }
@@ -55,7 +55,9 @@ export class AuthService {
     }
 
     getToken(): string | null {
-        return localStorage.getItem('token');
+        const token = localStorage.getItem('token');
+        console.log('[AuthService] getToken called, token exists:', !!token);
+        return token;
     }
 
     getUser(): AuthUser | null {

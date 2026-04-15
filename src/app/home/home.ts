@@ -57,6 +57,10 @@ export class Home implements OnInit, OnDestroy {
     this.router.navigate(['/']);
   }
 
+  crearConcurso(): void {
+    this.router.navigate(['/cuestionarios/crear']);
+  }
+
   private startAnimationLoop() {
     this.intervalId = setInterval(() => {
       if (this.activeImageIndex === 0) {
