@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 
@@ -8,6 +8,7 @@ export interface AuthUser {
     email: string;
     role: string;
     createdAt: string;
+    profilePhotoUrl: string | null;
 }
 
 export interface AuthResponse {
@@ -15,14 +16,14 @@ export interface AuthResponse {
     user: AuthUser;
 }
 
-export interface SignUpPayload {
+export interface SignInPayload {
     username: string;
-    email: string;
     password: string;
 }
 
-export interface SignInPayload {
+export interface SignUpPayload {
     username: string;
+    email: string;
     password: string;
 }
 
@@ -34,14 +35,14 @@ export class AuthService {
 
     constructor(private http: HttpClient) { }
 
-    signUp(payload: SignUpPayload): Observable<AuthResponse> {
-        return this.http.post<AuthResponse>(`${this.API_URL}/signup`, payload).pipe(
+    signIn(payload: SignInPayload): Observable<AuthResponse> {
+        return this.http.post<AuthResponse>(`${this.API_URL}/signin`, payload).pipe(
             tap(response => this.saveSession(response))
         );
     }
 
-    signIn(payload: SignInPayload): Observable<AuthResponse> {
-        return this.http.post<AuthResponse>(`${this.API_URL}/signin`, payload).pipe(
+    signUp(payload: SignUpPayload): Observable<AuthResponse> {
+        return this.http.post<AuthResponse>(`${this.API_URL}/signup`, payload).pipe(
             tap(response => this.saveSession(response))
         );
     }
@@ -55,7 +56,9 @@ export class AuthService {
     }
 
     getToken(): string | null {
-        return localStorage.getItem('token');
+        const token = localStorage.getItem('token');
+        console.log('[AuthService] getToken called, token exists:', !!token);
+        return token;
     }
 
     getUser(): AuthUser | null {
@@ -70,5 +73,13 @@ export class AuthService {
     logout(): void {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+    }
+
+    updateStoredUser(updatedUser: AuthUser): void {
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+
+    getUserSignal() {
+        return signal(this.getUser());
     }
 }

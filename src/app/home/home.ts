@@ -2,11 +2,12 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef, signal, inject } from 
 import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService, AuthUser } from '../auth/auth.service';
+import { ProfilePhotoComponent } from '../shared/components/profile-photo/profile-photo';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink, CommonModule],
+  imports: [RouterLink, CommonModule, ProfilePhotoComponent],
   templateUrl: './home.html',
   styleUrls: ['./home.css']
 })
@@ -19,7 +20,6 @@ export class Home implements OnInit, OnDestroy {
 
   isLoggedIn = signal(this.authService.isLoggedIn());
   currentUser = signal<AuthUser | null>(this.authService.getUser());
-  isDropdownOpen = signal(false);
 
   constructor(private cdr: ChangeDetectorRef) { }
 
@@ -41,20 +41,15 @@ export class Home implements OnInit, OnDestroy {
     }
   }
 
-  toggleDropdown(): void {
-    this.isDropdownOpen.update(v => !v);
-  }
-
-  closeDropdown(): void {
-    this.isDropdownOpen.set(false);
-  }
-
   logout(): void {
     this.authService.logout();
     this.isLoggedIn.set(false);
     this.currentUser.set(null);
-    this.closeDropdown();
     this.router.navigate(['/']);
+  }
+
+  crearConcurso(): void {
+    this.router.navigate(['/cuestionarios/crear']);
   }
 
   private startAnimationLoop() {

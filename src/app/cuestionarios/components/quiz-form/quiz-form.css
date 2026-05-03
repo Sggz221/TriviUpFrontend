@@ -1,0 +1,19 @@
+/* quiz-form specific styles */
+
+/* Fix: Remove white ring/outline from question number badge */
+.badge {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Fix: Remove white background on hover for "Agregar respuesta" button */
+.btn-ghost:hover,
+.btn-ghost:focus,
+.btn-ghost:active {
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  opacity: 0.8;
+}
