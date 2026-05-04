@@ -12,6 +12,7 @@ export interface Pregunta {
     numeroPregunta: number;
     enunciado: string;
     respuestas: Respuesta[];
+    imagenUrl?: string | null;
 }
 
 export interface Cuestionario {
@@ -30,5 +31,6 @@ export interface CreateQuizRequest {
         numeroPregunta: number;
         enunciado: string;
         respuestas: { texto: string; esCorrecta: boolean }[];
+        imagenUrl?: string;
     }[];
 }

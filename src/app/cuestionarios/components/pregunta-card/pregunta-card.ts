@@ -15,4 +15,8 @@ export class PreguntaCardComponent {
     obtenerRespuestaCorrecta(pregunta: Pregunta): Respuesta | undefined {
         return pregunta.respuestas.find(r => r.esCorrecta);
     }
+
+    getImageUrl(): string | null {
+        return this.pregunta.imagenUrl ?? null;
+    }
 }

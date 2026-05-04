@@ -107,4 +107,14 @@ export class QuizDetailComponent implements OnInit {
         // Usar window.location.origin para obtener el dominio actual
         return `${window.location.origin}/cuestionarios/${gameCode}`;
     }
+
+    obtenerImagenPreguntaUrl(path: string | null | undefined): string | null {
+        if (!path) return null;
+        // Si ya es una URL completa, devolverla tal cual
+        if (path.startsWith('http://') || path.startsWith('https://')) {
+            return path;
+        }
+        // Usar la URL completa del backend con el puerto
+        return `http://localhost:5164${path}`;
+    }
 }

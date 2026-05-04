@@ -101,7 +101,7 @@
                         <div class="rounded-xl shadow-md p-6" style="background-color: var(--base-200);">
                             <!-- Question Header -->
                             <div class="flex items-start gap-4 mb-4">
-                                <div class="badge badge-lg font-bold text-xl w-10 h-10 flex items-center justify-center shrink-0" 
+                                <div class="badge badge-lg font-bold text-xl w-10 h-10 flex items-center justify-center shrink-0"
                                      style="background-color: var(--info); color: var(--info-content);">
                                     {{ $index + 1 }}
                                 </div>
@@ -109,7 +109,16 @@
                                     {{ pregunta.enunciado }}
                                 </p>
                             </div>
-                            
+
+                            <!-- Question Image -->
+                            @if (obtenerImagenPreguntaUrl(pregunta.imagenUrl)) {
+                                <div class="mb-4 pl-14">
+                                    <img [src]="obtenerImagenPreguntaUrl(pregunta.imagenUrl)"
+                                         alt="Imagen de la pregunta"
+                                         class="rounded-lg max-w-[300px] max-h-[200px] object-cover shadow-md" />
+                                </div>
+                            }
+
                             <!-- Answers -->
                             <div class="space-y-2 pl-14">
                                 @for (respuesta of pregunta.respuestas; track respuesta.id) {

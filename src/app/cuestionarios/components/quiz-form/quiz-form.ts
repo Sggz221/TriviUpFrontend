@@ -13,6 +13,7 @@ interface RespuestaFormValue {
 interface PreguntaFormValue {
     enunciado: string;
     respuestas: RespuestaFormValue[];
+    imagenUrl?: string;
 }
 
 @Component({
@@ -30,6 +31,10 @@ export class QuizFormComponent {
     isLoading = signal(false);
     errorMessage = signal<string | null>(null);
     successMessage = signal<string | null>(null);
+
+    // Track image uploads per question
+    questionImages = signal<Map<number, { uploading: boolean; url: string | null; preview: string | null }>>(new Map());
+    uploadingQuestionIndex = signal<number | null>(null);
 
     quizForm: FormGroup;
 
@@ -53,7 +58,8 @@ export class QuizFormComponent {
             respuestas: this.fb.array([
                 this.fb.group({ texto: ['', Validators.required], esCorrecta: [false] }),
                 this.fb.group({ texto: ['', Validators.required], esCorrecta: [false] })
-            ])
+            ]),
+            imagenUrl: [null as string | null]
         });
         this.preguntasArray.push(preguntaGroup);
     }
@@ -108,6 +114,72 @@ export class QuizFormComponent {
     obtenerRespuestasFormArray(preguntaIndex: number): FormArray {
         const pregunta = this.preguntasArray.at(preguntaIndex);
         return pregunta.get('respuestas') as FormArray;
+    }
+
+    // Image handling
+    onImageSelected(event: Event, preguntaIndex: number): void {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0];
+        if (!file) return;
+
+        // Validate
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            this.errorMessage.set('Por favor, selecciona una imagen válida (JPG, PNG, GIF o WebP)');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            this.errorMessage.set('La imagen debe ser menor de 5MB');
+            return;
+        }
+
+        // Create preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const preview = e.target?.result as string;
+
+            // Update local state with preview
+            const newMap = new Map(this.questionImages());
+            newMap.set(preguntaIndex, { uploading: true, url: null, preview });
+            this.questionImages.set(newMap);
+            this.uploadingQuestionIndex.set(preguntaIndex);
+
+            // Upload immediately
+            this.cuestionarioService.subirImagenPregunta(file).subscribe({
+                next: (response) => {
+                    const updatedMap = new Map(this.questionImages());
+                    updatedMap.set(preguntaIndex, { uploading: false, url: response.url, preview: null });
+                    this.questionImages.set(updatedMap);
+                    this.uploadingQuestionIndex.set(null);
+
+                    // Store the path (relative URL) in the form
+                    this.preguntasArray.at(preguntaIndex).patchValue({ imagenUrl: response.path });
+                },
+                error: (err) => {
+                    const updatedMap = new Map(this.questionImages());
+                    updatedMap.delete(preguntaIndex);
+                    this.questionImages.set(updatedMap);
+                    this.uploadingQuestionIndex.set(null);
+                    this.errorMessage.set('No se pudo subir la imagen. Inténtalo de nuevo.');
+                }
+            });
+        };
+        reader.readAsDataURL(file);
+    }
+
+    removeImage(preguntaIndex: number): void {
+        const newMap = new Map(this.questionImages());
+        newMap.delete(preguntaIndex);
+        this.questionImages.set(newMap);
+        this.preguntasArray.at(preguntaIndex).patchValue({ imagenUrl: null });
+    }
+
+    getQuestionImageData(preguntaIndex: number) {
+        return this.questionImages().get(preguntaIndex);
+    }
+
+    isUploadingImageFor(preguntaIndex: number): boolean {
+        return this.uploadingQuestionIndex() === preguntaIndex;
     }
 
     validarFormulario(): boolean {
@@ -165,7 +237,8 @@ export class QuizFormComponent {
                 respuestas: pregunta.respuestas.map((r: RespuestaFormValue) => ({
                     texto: r.texto,
                     esCorrecta: r.esCorrecta
-                }))
+                })),
+                imagenUrl: pregunta.imagenUrl || undefined
             }))
         };
 

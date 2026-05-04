@@ -1,19 +1,27 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Cuestionario, CreateQuizRequest } from '../models/cuestionario.model';
 import { AuthService } from '../../auth/auth.service';
+
+export interface UploadQuestionImageResponse {
+    imagenUrl: string;
+}
+
+export interface UploadQuizImageResponse {
+    path: string;
+    url: string;
+}
 
 @Injectable({
     providedIn: 'root'
 })
 export class CuestionarioService {
     private readonly API_URL = 'http://localhost:5164/api/cuestionarios';
+    private readonly PREGUNTAS_API_URL = 'http://localhost:5164/cuestionarios/preguntas';
 
-    constructor(
-        private http: HttpClient,
-        private authService: AuthService
-    ) { }
+    private http = inject(HttpClient);
+    private authService = inject(AuthService);
 
     private getHeaders(): HttpHeaders {
         const token = this.authService.getToken();
@@ -51,5 +59,46 @@ export class CuestionarioService {
         return this.http.delete<void>(`${this.API_URL}/${id}`, {
             headers: this.getHeaders()
         });
+    }
+
+    subirImagenPregunta(file: File): Observable<UploadQuizImageResponse> {
+        console.log('[CuestionarioService] subirImagenPregunta - file:', file.name);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        return this.http.post<UploadQuizImageResponse>(
+            `${this.API_URL}/imagenes`,
+            formData,
+            {
+                headers: this.getHeaders()
+            }
+        );
+    }
+
+    actualizarImagenPregunta(preguntaId: number, file: File): Observable<UploadQuestionImageResponse> {
+        console.log('[CuestionarioService] actualizarImagenPregunta - preguntaId:', preguntaId, 'file:', file.name);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        return this.http.post<UploadQuestionImageResponse>(
+            `${this.PREGUNTAS_API_URL}/${preguntaId}/imagen`,
+            formData,
+            {
+                headers: this.getHeaders()
+            }
+        );
+    }
+
+    eliminarImagenPregunta(preguntaId: number): Observable<void> {
+        console.log('[CuestionarioService] eliminarImagenPregunta - preguntaId:', preguntaId);
+
+        return this.http.delete<void>(
+            `${this.PREGUNTAS_API_URL}/${preguntaId}/imagen`,
+            {
+                headers: this.getHeaders()
+            }
+        );
     }
 }
