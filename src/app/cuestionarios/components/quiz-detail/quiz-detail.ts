@@ -114,7 +114,10 @@ export class QuizDetailComponent implements OnInit {
         if (path.startsWith('http://') || path.startsWith('https://')) {
             return path;
         }
-        // Usar la URL completa del backend con el puerto
-        return `http://localhost:5164${path}`;
+        // Transformar /uploads/... a /storage/... para usar el endpoint del StorageController
+        const normalizedPath = path.startsWith('/uploads')
+            ? path.replace('/uploads', '/storage')
+            : path;
+        return `http://localhost:5164${normalizedPath}`;
     }
 }

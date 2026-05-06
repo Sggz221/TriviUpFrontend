@@ -1,13 +1,13 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef, signal, inject } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService, AuthUser } from '../auth/auth.service';
-import { ProfilePhotoComponent } from '../shared/components/profile-photo/profile-photo';
+import { AuthService } from '../auth/auth.service';
+import { NavbarComponent } from '../shared/components/navbar/navbar.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [RouterLink, CommonModule, ProfilePhotoComponent],
+  imports: [RouterLink, CommonModule, NavbarComponent],
   templateUrl: './home.html',
   styleUrls: ['./home.css']
 })
@@ -19,19 +19,15 @@ export class Home implements OnInit, OnDestroy {
   private router = inject(Router);
 
   isLoggedIn = signal(this.authService.isLoggedIn());
-  currentUser = signal<AuthUser | null>(this.authService.getUser());
 
   constructor(private cdr: ChangeDetectorRef) { }
 
   ngOnInit() {
     console.log('[Home] ngOnInit - checking auth state');
     const isLogged = this.authService.isLoggedIn();
-    const user = this.authService.getUser();
     console.log('[Home] isLoggedIn:', isLogged);
-    console.log('[Home] getUser():', user);
     console.log('[Home] localStorage.getItem("user"):', localStorage.getItem('user'));
     this.isLoggedIn.set(isLogged);
-    this.currentUser.set(user);
     this.startAnimationLoop();
   }
 
@@ -39,13 +35,6 @@ export class Home implements OnInit, OnDestroy {
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }
-  }
-
-  logout(): void {
-    this.authService.logout();
-    this.isLoggedIn.set(false);
-    this.currentUser.set(null);
-    this.router.navigate(['/']);
   }
 
   crearConcurso(): void {

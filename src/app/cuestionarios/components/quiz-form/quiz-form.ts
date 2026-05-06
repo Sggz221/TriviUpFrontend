@@ -41,6 +41,7 @@ export class QuizFormComponent {
     constructor() {
         this.quizForm = this.fb.group({
             nombre: ['', [Validators.required, Validators.minLength(3)]],
+            esPublico: [false],
             preguntas: this.fb.array([])
         });
 
@@ -226,11 +227,13 @@ export class QuizFormComponent {
 
         const formValue = this.quizForm.value as {
             nombre: string;
+            esPublico: boolean;
             preguntas: PreguntaFormValue[];
         };
 
         const request: CreateQuizRequest = {
             nombre: formValue.nombre,
+            esPublico: formValue.esPublico ?? false,
             preguntas: formValue.preguntas.map((pregunta: PreguntaFormValue, index: number) => ({
                 numeroPregunta: index + 1,
                 enunciado: pregunta.enunciado,

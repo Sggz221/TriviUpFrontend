@@ -53,6 +53,25 @@
                     }
                 </div>
 
+                <!-- Toggle Público/Privado -->
+                <div class="mb-8">
+                    <div class="flex items-center gap-4 p-4 rounded-lg" style="background-color: var(--base-300);">
+                        <input type="checkbox"
+                               formControlName="esPublico"
+                               id="esPublico"
+                               class="toggle toggle-lg"
+                               style="accent-color: var(--primary);">
+                        <label for="esPublico" class="cursor-pointer flex flex-col">
+                            <span class="text-lg font-medium" style="color: var(--base-content);">
+                                Cuestionario público
+                            </span>
+                            <span class="text-sm opacity-70" style="color: var(--base-content);">
+                                Si está activo, otros usuarios podrán ver y jugar este cuestionario
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
                 <div formArrayName="preguntas" class="space-y-6">
                     @for (pregunta of preguntasArray.controls; track $index; let preguntaIndex = $index) {
                         <div class="rounded-xl shadow-md p-6" style="background-color: var(--base-100);" [formGroupName]="preguntaIndex">

@@ -18,6 +18,7 @@ export interface Pregunta {
 export interface Cuestionario {
     id: number;
     nombre: string;
+    esPublico: boolean;
     gameCode: string;
     preguntas: Pregunta[];
     creatorId: number;
@@ -27,6 +28,7 @@ export interface Cuestionario {
 
 export interface CreateQuizRequest {
     nombre: string;
+    esPublico: boolean;
     preguntas: {
         numeroPregunta: number;
         enunciado: string;
