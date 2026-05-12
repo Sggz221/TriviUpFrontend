@@ -1,0 +1,246 @@
+.game-room-container {
+    min-height: 100vh;
+    background: linear-gradient(to bottom right, var(--base-100), var(--base-200), var(--base-300));
+}
+
+.error-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 2rem;
+    text-align: center;
+}
+
+// ============ Game Board Styles ============
+
+.game-board {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    gap: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.question-card {
+    width: 100%;
+    background: var(--base-100);
+    border-radius: 1rem;
+    padding: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+    .question-image {
+        width: 100%;
+        max-height: 300px;
+        object-fit: contain;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .question-text {
+        font-size: 1.5rem;
+        font-weight: 600;
+        text-align: center;
+        color: var(--base-content);
+        line-height: 1.4;
+    }
+}
+
+.answer-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    width: 100%;
+
+    @media (max-width: 640px) {
+        grid-template-columns: 1fr;
+    }
+
+    .answer-btn {
+        min-height: 60px;
+        font-size: 1.1rem;
+        transition: all 0.2s ease;
+
+        &.selected {
+            transform: scale(1.02);
+            box-shadow: 0 0 0 3px var(--primary);
+        }
+
+        &:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+    }
+}
+
+.turn-info {
+    text-align: center;
+    padding: 1rem;
+
+    .your-turn {
+        color: var(--success);
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .waiting {
+        color: var(--base-content);
+        opacity: 0.7;
+        font-size: 1.1rem;
+    }
+}
+
+.turn-result-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    animation: fadeIn 0.3s ease;
+
+    .result-correct {
+        background: var(--success);
+        color: white;
+        padding: 2rem 3rem;
+        border-radius: 1rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+        animation: popIn 0.3s ease;
+    }
+
+    .result-incorrect {
+        background: var(--error);
+        color: white;
+        padding: 2rem 3rem;
+        border-radius: 1rem;
+        font-size: 1.5rem;
+        font-weight: 700;
+        animation: popIn 0.3s ease;
+    }
+}
+
+// ============ Game Results Styles ============
+
+.game-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    max-width: 600px;
+    margin: 0 auto;
+
+    .results-list {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .result-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--base-200);
+        border-radius: 0.75rem;
+        transition: transform 0.2s ease;
+
+        &.winner {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+
+            .rank {
+                background: rgba(255, 255, 255, 0.2);
+            }
+        }
+
+        .rank {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--base-300);
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .player-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+
+            .username {
+                font-weight: 600;
+                font-size: 1.1rem;
+            }
+
+            .score {
+                font-size: 0.9rem;
+                opacity: 0.8;
+            }
+        }
+
+        .stats {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-size: 0.9rem;
+
+            .correct {
+                color: var(--success);
+            }
+
+            .percentage {
+                opacity: 0.7;
+            }
+        }
+    }
+
+    .game-info {
+        font-size: 0.9rem;
+    }
+}
+
+// ============ Waiting Screen ============
+
+.waiting-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+}
+
+// ============ Animations ============
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes popIn {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    70% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}

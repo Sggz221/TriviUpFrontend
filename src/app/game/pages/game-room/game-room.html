@@ -1,0 +1,164 @@
+<div class="game-room-container">
+    @if (showJoinForm()) {
+        <!-- Formulario para unirse como anónimo -->
+        <div class="join-form-container">
+            <div class="join-form-card">
+                <h1 class="text-3xl font-bold mb-4" style="color: var(--primary);">Unirse a la partida</h1>
+                <p class="mb-6" style="color: var(--base-content); opacity: 0.7;">
+                    Código de sala: <strong>{{ roomCode() }}</strong>
+                </p>
+
+                <div class="form-group">
+                    <label class="label">
+                        <span class="label-text" style="color: var(--base-content);">¿Cómo te llamas?</span>
+                    </label>
+                    <input
+                        type="text"
+                        class="input input-bordered w-full max-w-xs"
+                        style="background-color: var(--base-300); color: var(--base-content);"
+                        placeholder="Tu nombre"
+                        [(ngModel)]="anonymousUsername"
+                        (keyup.enter)="joinAsAnonymous()"
+                        minlength="2"
+                        required />
+                </div>
+
+                @if (errorMessage()) {
+                    <div class="alert alert-error mt-4">
+                        <span>{{ errorMessage() }}</span>
+                    </div>
+                }
+
+                <div class="flex gap-4 mt-6">
+                    <button
+                        class="btn btn-primary flex-1"
+                        [disabled]="!anonymousUsername || anonymousUsername.length < 2"
+                        (click)="joinAsAnonymous()">
+                        Unirme
+                    </button>
+                    <button class="btn btn-ghost" routerLink="/">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    } @else if (errorMessage()) {
+        <div class="error-banner">
+            <div class="alert alert-error">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{{ errorMessage() }}</span>
+            </div>
+            <button class="btn btn-primary" routerLink="/">
+                Volver al inicio
+            </button>
+        </div>
+    } @else if (gameResults()) {
+        <!-- Game Over - Show Results -->
+        <div class="game-results">
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h2 class="card-title text-3xl text-center" style="color: var(--primary);">¡Partida Terminada!</h2>
+                    <h3 class="text-xl text-center mb-6">{{ gameResults()!.quizTitle }}</h3>
+
+                    <div class="results-list">
+                        @for (player of gameResults()!.playerResults; track player.userId) {
+                            <div class="result-item" [class.winner]="$index === 0">
+                                <div class="rank">#{{ player.rank }}</div>
+                                <div class="player-info">
+                                    <span class="username">{{ player.username }}</span>
+                                    <span class="score">{{ player.finalScore }} pts</span>
+                                </div>
+                                <div class="stats">
+                                    <span class="correct">{{ player.correctAnswers }} correctas</span>
+                                    <span class="percentage">{{ player.correctPercentage }}%</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="game-info mt-6 text-center opacity-70">
+                        <p>{{ gameResults()!.totalQuestions }} preguntas • {{ gameResults()!.gameDuration }}</p>
+                    </div>
+
+                    <div class="card-actions justify-center mt-6">
+                        <button class="btn btn-primary" (click)="onLeaveGame()">
+                            Volver al inicio
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    } @else if (currentQuestion()) {
+        <!-- Game Playing -->
+        <div class="game-board">
+            <div class="question-card">
+                @if (currentQuestion()!.imageUrl) {
+                    <img [src]="getImageUrl(currentQuestion()!.imageUrl)" alt="Question image" class="question-image" />
+                }
+                <h3 class="question-text">{{ currentQuestion()!.text }}</h3>
+            </div>
+
+            <div class="answer-options">
+                @for (option of currentQuestion()!.options; track option; let i = $index) {
+                    <button
+                        class="btn answer-btn"
+                        [class.btn-success]="showTurnResult() && lastTurnResult()!.correctAnswerIndex === i"
+                        [class.btn-error]="showTurnResult() && selectedAnswer() === i && lastTurnResult()!.correctAnswerIndex !== i"
+                        [class.selected]="selectedAnswer() === i"
+                        [disabled]="!isMyTurn() || showTurnResult()"
+                        (click)="submitAnswer(i)">
+                        {{ option }}
+                    </button>
+                }
+            </div>
+
+            <div class="turn-info">
+                @if (isMyTurn()) {
+                    <span class="your-turn">¡Es tu turno!</span>
+                } @else {
+                    <span class="waiting">Esperando a {{ getCurrentTurnPlayerName() }}...</span>
+                }
+            </div>
+
+            @if (showTurnResult()) {
+                <div class="turn-result-overlay">
+                    @if (lastTurnResult()!.isCorrect) {
+                        <div class="result-correct">¡Correcto! +{{ lastTurnResult()!.pointsEarned }} puntos</div>
+                    } @else {
+                        <div class="result-incorrect">Incorrecto</div>
+                    }
+                </div>
+            }
+
+            <div class="card-actions mt-6">
+                <button class="btn btn-outline btn-sm" (click)="onLeaveGame()">
+                    Salir de la Sala
+                </button>
+            </div>
+        </div>
+    } @else if (gameState() === 'playing') {
+        <div class="waiting-screen">
+            <div class="card bg-base-100 shadow-xl">
+                <div class="card-body items-center text-center">
+                    <span class="loading loading-spinner loading-lg"></span>
+                    <p class="text-lg opacity-70 mt-4">Esperando a que el juego comience...</p>
+                    <p class="text-sm opacity-50 mt-2">Sala: {{ roomCode() }}</p>
+                </div>
+            </div>
+        </div>
+    } @else {
+        <app-game-lobby
+            [roomCode]="roomCode()"
+            [players]="players()"
+            [isOwner]="isOwner()"
+            [myUserId]="myUserId()"
+            [myUsername]="myUsername()"
+            [quizTitle]="quizTitle()"
+            [isStarting]="isStarting()"
+            (startGame)="onStartGame()"
+            (leaveGame)="onLeaveGame()">
+        </app-game-lobby>
+    }
+</div>

@@ -1,9 +1,11 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CuestionarioService } from '../../services/cuestionario.service';
 import { Cuestionario, Pregunta, Respuesta } from '../../models/cuestionario.model';
 import { QrDisplayComponent } from '../qr-display/qr-display';
+import { GameSignalrService } from '../../../game/services/game-signalr.service';
+import { AuthService } from '../../../auth/auth.service';
 
 @Component({
     selector: 'app-quiz-detail',
@@ -14,12 +16,16 @@ import { QrDisplayComponent } from '../qr-display/qr-display';
 })
 export class QuizDetailComponent implements OnInit {
     private route = inject(ActivatedRoute);
+    private router = inject(Router);
     private cuestionarioService = inject(CuestionarioService);
+    private gameSignalrService = inject(GameSignalrService);
+    private authService = inject(AuthService);
 
     cuestionario = signal<Cuestionario | null>(null);
     isLoading = signal(true);
     errorMessage = signal<string | null>(null);
     copied = signal(false);
+    creandoSala = signal(false);
 
     ngOnInit(): void {
         const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -119,5 +125,33 @@ export class QuizDetailComponent implements OnInit {
             ? path.replace('/uploads', '/storage')
             : path;
         return `http://localhost:5164${normalizedPath}`;
+    }
+
+    crearSalaJuego(): void {
+        const quiz = this.cuestionario();
+        if (!quiz) return;
+
+        this.creandoSala.set(true);
+
+        // Conectar al GameHub con el token JWT
+        const token = this.authService.getToken();
+        if (!token) {
+            this.errorMessage.set('Debes iniciar sesión para crear una sala');
+            this.creandoSala.set(false);
+            return;
+        }
+
+        this.gameSignalrService.connect(token).then(() => {
+            // Invocar CreateGame en el hub
+            return this.gameSignalrService.createGame(quiz.id);
+        }).then((roomCode) => {
+            console.log('[QuizDetail] Sala creada:', roomCode);
+            // Navegar a la página de la sala
+            this.router.navigate(['/game', roomCode]);
+        }).catch((error) => {
+            console.error('[QuizDetail] Error al crear sala:', error);
+            this.errorMessage.set('Error al crear la sala de juego');
+            this.creandoSala.set(false);
+        });
     }
 }

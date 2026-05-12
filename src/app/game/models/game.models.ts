@@ -58,3 +58,12 @@ export interface TurnStartedDto {
     question: Question;
     timeLimit: number;
 }
+
+export interface GameLobbyState {
+    roomCode: string;
+    quizId: number;
+    players: Player[];
+    isOwner: boolean;
+    myUserId: number;
+    myUsername: string;
+}

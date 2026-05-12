@@ -1,0 +1,23 @@
+.qr-code-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.qr-code-image {
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.error-message {
+    color: error;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.no-url {
+    color: base-content;
+    opacity: 0.6;
+    font-size: 0.875rem;
+}
