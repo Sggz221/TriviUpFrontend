@@ -7,11 +7,13 @@ import { AuthService } from '../../../auth/auth.service';
 import { GameLobbyComponent } from '../../components/game-lobby/game-lobby.component';
 import { Player, Question, TurnResult, GameResult } from '../../models/game.models';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
+import { AudioService } from '../../../shared/services/audio.service';
+import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 
 @Component({
     selector: 'app-game-room',
     standalone: true,
-    imports: [CommonModule, FormsModule, GameLobbyComponent],
+    imports: [CommonModule, FormsModule, GameLobbyComponent, AnswerShapeComponent],
     templateUrl: './game-room.html',
     styleUrls: ['./game-room.scss']
 })
@@ -20,6 +22,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     private router = inject(Router);
     private gameSignalrService = inject(GameSignalrService);
     private authService = inject(AuthService);
+    private audioService = inject(AudioService);
 
     roomCode = signal<string>('');
     players = signal<Player[]>([]);
@@ -41,8 +44,22 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     showTurnResult = signal<boolean>(false);
     lastTurnResult = signal<TurnResult | null>(null);
     gameResults = signal<GameResult | null>(null);
+    isMuted = signal<boolean>(false);
+
+    // Shape colors: triangle=red, square=yellow, circle=blue, pentagon=green
+    getShapeType(index: number): ShapeType {
+        const shapes: ShapeType[] = ['triangle', 'square', 'circle', 'pentagon'];
+        return shapes[index % 4];
+    }
+
+    getShapeClass(index: number): string {
+        return `shape-${this.getShapeType(index)}`;
+    }
 
     ngOnInit(): void {
+        // Load muted state from localStorage
+        this.isMuted.set(this.audioService.muted());
+
         const code = this.route.snapshot.paramMap.get('roomCode');
         if (!code) {
             this.errorMessage.set('Código de sala no válido');
@@ -155,6 +172,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             console.log('[GameRoom] ★ PlayerJoined event received:', player);
             console.log('[GameRoom] ★ Current players list before update:', this.players());
             this.players.update(current => {
+                // Check if player already exists to prevent duplicates
+                if (current.some(p => p.userId === player.userId)) {
+                    console.log('[GameRoom] ★ Player already exists, skipping duplicate:', player.userId);
+                    return current;
+                }
                 const updated = [...current, player];
                 console.log('[GameRoom] ★ Players list after join:', updated);
                 return updated;
@@ -175,6 +197,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.gameSignalrService.onGameStarted.subscribe((gameStateDto) => {
             console.log('[GameRoom] Partida iniciada:', gameStateDto);
             this.gameState.set('playing');
+            this.audioService.playTurnStart();
         });
 
         // Turn started
@@ -185,6 +208,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.isMyTurn.set(data.currentPlayerId === this.myUserId());
             this.selectedAnswer.set(null);
             this.showTurnResult.set(false);
+            if (data.isMyTurn) {
+                this.audioService.playTurnStart();
+            }
         });
 
         // Turn result
@@ -192,6 +218,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             console.log('[GameRoom] Turn result:', result);
             this.lastTurnResult.set(result);
             this.showTurnResult.set(true);
+            if (result.isCorrect) {
+                this.audioService.playCorrect();
+            } else {
+                this.audioService.playWrong();
+            }
         });
 
         // Turn timeout
@@ -203,6 +234,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.gameSignalrService.onGameFinished.subscribe((results) => {
             console.log('[GameRoom] Game finished:', results);
             this.gameResults.set(results);
+            this.audioService.playGameOver();
         });
 
         // Errores
@@ -257,5 +289,10 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
     getImageUrl(url: string | null | undefined): string {
         return imageUrl(url);
+    }
+
+    toggleMute(): void {
+        this.audioService.toggleMute();
+        this.isMuted.set(this.audioService.muted());
     }
 }

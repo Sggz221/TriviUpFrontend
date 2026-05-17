@@ -156,9 +156,7 @@
                                 <div class="mt-4 space-y-3 pl-14" formArrayName="respuestas">
                                     @for (respuesta of obtenerRespuestasFormArray(preguntaIndex).controls; track $index; let respuestaIndex = $index) {
                                         <div class="flex items-center gap-3" [formGroupName]="respuestaIndex">
-                                            <span class="font-bold text-lg w-6" style="color: var(--primary);">
-                                                {{ obtenerNumeroRespuesta(preguntaIndex, respuestaIndex) }}
-                                            </span>
+                                            <app-answer-shape [shape]="obtenerShapeRespuesta(respuestaIndex)" [selected]="false" />
                                             <input type="text"
                                                    formControlName="texto"
                                                    placeholder="Respuesta..."

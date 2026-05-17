@@ -14,12 +14,12 @@
 .room-title {
     font-size: 1.75rem;
     font-weight: 700;
-    color: primary;
+    color: var(--primary);
     margin: 0;
 }
 
 .quiz-title {
-    color: base-content;
+    color: var(--base-content);
     opacity: 0.8;
     margin: 0.25rem 0 0;
 }
@@ -31,19 +31,19 @@
     align-items: center;
     gap: 0.75rem;
     padding: 1.5rem;
-    background: base-200;
+    background: var(--base-200);
     border-radius: 1rem;
 
     h3 {
         margin: 0;
-        color: primary;
+        color: var(--primary);
     }
 }
 
 .qr-instructions {
     margin: 0;
     font-size: 0.875rem;
-    color: base-content;
+    color: var(--base-content);
     opacity: 0.7;
 }
 
@@ -57,9 +57,9 @@
 .room-url {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
-    background: base-300;
+    background: var(--base-300);
     border-radius: 0.25rem;
-    color: base-content;
+    color: var(--base-content);
 }
 
 .copy-btn {
@@ -69,7 +69,7 @@
 
 // Players Section
 .players-section {
-    background: base-200;
+    background: var(--base-200);
     border-radius: 1rem;
     padding: 1rem;
 }
@@ -82,11 +82,12 @@
 
     h3 {
         margin: 0;
+        color: var(--base-content);
     }
 }
 
 .player-count {
-    color: base-content;
+    color: var(--base-content);
     opacity: 0.6;
     font-size: 0.875rem;
 }
@@ -105,16 +106,16 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem;
-    background: base-100;
+    background: var(--base-100);
     border-radius: 0.5rem;
     transition: background-color 0.2s;
 
     &.is-owner {
-        border: 2px solid primary;
+        border: 2px solid var(--primary);
     }
 
     &.is-me {
-        background: primary/10;
+        background: rgba(var(--primary-rgb, 225, 29, 72), 0.1);
     }
 }
 
@@ -126,16 +127,17 @@
 
 .player-name {
     font-weight: 500;
+    color: var(--base-content);
 }
 
 .you-badge {
     font-size: 0.75rem;
-    color: primary;
+    color: var(--primary);
 }
 
 .owner-badge {
     font-size: 0.75rem;
-    color: secondary;
+    color: var(--secondary);
 }
 
 .player-status {
@@ -147,7 +149,7 @@
 .empty-message {
     text-align: center;
     padding: 1rem;
-    color: base-content;
+    color: var(--base-content);
     opacity: 0.6;
     font-style: italic;
 }
@@ -166,12 +168,12 @@
 }
 
 .btn-leave {
-    color: error;
+    color: var(--error);
 }
 
 .hint {
     font-size: 0.75rem;
-    color: base-content;
+    color: var(--base-content);
     opacity: 0.6;
     margin: 0;
 }
