@@ -115,6 +115,7 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
 .waiting-screen {
     position: relative;
     z-index: 1;
+    padding: 5rem 2rem 2rem;
 }
 
 // ============ Game Board Styles ============
@@ -122,7 +123,7 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 2rem;
+    padding: 5rem 2rem 2rem;
     gap: 2rem;
     max-width: 800px;
     margin: 0 auto;
