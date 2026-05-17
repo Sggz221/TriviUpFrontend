@@ -57,13 +57,27 @@
     } @else if (gameResults()) {
         <!-- Game Over - Show Results -->
         <div class="game-results">
+            <div class="sound-toggle results-sound-toggle">
+                <button class="btn btn-circle btn-ghost" (click)="toggleMute()">
+                    @if (isMuted()) {
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                        </svg>
+                    } @else {
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                    }
+                </button>
+            </div>
             <div class="card bg-base-100 shadow-xl">
                 <div class="card-body">
                     <h2 class="card-title text-3xl text-center" style="color: var(--primary);">¡Partida Terminada!</h2>
                     <h3 class="text-xl text-center mb-6">{{ gameResults()!.quizTitle }}</h3>
 
                     <div class="results-list">
-                        @for (player of gameResults()!.playerResults; track player.userId) {
+                        @for (player of gameResults()!.playerResults; track player.userId; let i = $index) {
                             <div class="result-item" [class.winner]="$index === 0">
                                 <div class="rank">#{{ player.rank }}</div>
                                 <div class="player-info">
@@ -93,23 +107,52 @@
     } @else if (currentQuestion()) {
         <!-- Game Playing -->
         <div class="game-board">
+            <div class="sound-toggle">
+                <button class="btn btn-circle btn-ghost" (click)="toggleMute()">
+                    @if (isMuted()) {
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                        </svg>
+                    } @else {
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                    }
+                </button>
+            </div>
+
             <div class="question-card">
                 @if (currentQuestion()!.imageUrl) {
                     <img [src]="getImageUrl(currentQuestion()!.imageUrl)" alt="Question image" class="question-image" />
                 }
                 <h3 class="question-text">{{ currentQuestion()!.text }}</h3>
+                @if (showTurnResult() && lastTurnResult()) {
+                    <div class="turn-result-indicator" [class.correct]="lastTurnResult()!.isCorrect" [class.incorrect]="!lastTurnResult()!.isCorrect">
+                        @if (lastTurnResult()!.isCorrect) {
+                            <span class="result-icon">✓</span>
+                            <span class="result-label">¡Correcta!</span>
+                        } @else {
+                            <span class="result-icon">✗</span>
+                            <span class="result-label">Incorrecta</span>
+                        }
+                    </div>
+                }
             </div>
 
             <div class="answer-options">
                 @for (option of currentQuestion()!.options; track option; let i = $index) {
                     <button
                         class="btn answer-btn"
+                        [class]="getShapeClass(i)"
                         [class.btn-success]="showTurnResult() && lastTurnResult()!.correctAnswerIndex === i"
                         [class.btn-error]="showTurnResult() && selectedAnswer() === i && lastTurnResult()!.correctAnswerIndex !== i"
                         [class.selected]="selectedAnswer() === i"
+                        [class.my-turn-active]="isMyTurn() && !showTurnResult()"
                         [disabled]="!isMyTurn() || showTurnResult()"
                         (click)="submitAnswer(i)">
-                        {{ option }}
+                        <app-answer-shape [shape]="getShapeType(i)" [selected]="selectedAnswer() === i" />
+                        <span class="answer-text">{{ option }}</span>
                     </button>
                 }
             </div>
@@ -140,6 +183,20 @@
         </div>
     } @else if (gameState() === 'playing') {
         <div class="waiting-screen">
+            <div class="sound-toggle waiting-sound-toggle">
+                <button class="btn btn-circle btn-ghost" (click)="toggleMute()">
+                    @if (isMuted()) {
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                        </svg>
+                    } @else {
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                    }
+                </button>
+            </div>
             <div class="card bg-base-100 shadow-xl">
                 <div class="card-body items-center text-center">
                     <span class="loading loading-spinner loading-lg"></span>
