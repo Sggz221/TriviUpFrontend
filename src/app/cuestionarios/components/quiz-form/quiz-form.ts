@@ -4,6 +4,7 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators, Abs
 import { Router, RouterLink } from '@angular/router';
 import { CuestionarioService } from '../../services/cuestionario.service';
 import { CreateQuizRequest } from '../../models/cuestionario.model';
+import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 
 interface RespuestaFormValue {
     texto: string;
@@ -19,7 +20,7 @@ interface PreguntaFormValue {
 @Component({
     selector: 'app-quiz-form',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, RouterLink],
+    imports: [CommonModule, ReactiveFormsModule, RouterLink, AnswerShapeComponent],
     templateUrl: './quiz-form.html',
     styleUrls: ['./quiz-form.css']
 })
@@ -110,6 +111,11 @@ export class QuizFormComponent {
 
     obtenerNumeroRespuesta(preguntaIndex: number, index: number): string {
         return String.fromCharCode(65 + index); // A, B, C, D...
+    }
+
+    obtenerShapeRespuesta(index: number): ShapeType {
+        const shapes: ShapeType[] = ['triangle', 'square', 'circle', 'pentagon'];
+        return shapes[index] || 'triangle';
     }
 
     obtenerRespuestasFormArray(preguntaIndex: number): FormArray {

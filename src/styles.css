@@ -51,3 +51,11 @@ body {
 .triviup {
     font-family: 'Odibee Sans', system-ui, -apple-system, sans-serif;
 }
+
+/* Answer Shape Colors - Using DaisyUI semantic colors */
+:root {
+    --answer-triangle: #f43f5e;    /* danger - rose/red */
+    --answer-square: #eab308;      /* warning - yellow */
+    --answer-circle: #0ea5e9;      /* info - sky blue */
+    --answer-pentagon: #22c55e;    /* success - green */
+}

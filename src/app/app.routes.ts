@@ -9,6 +9,8 @@ import { QuizzesPublicComponent } from './cuestionarios/components/quizzes-publi
 import { Profile } from './user/pages/profile/profile';
 import { ProfileEdit } from './user/pages/profile-edit/profile-edit';
 import { GameRoomComponent } from './game/pages/game-room/game-room';
+import { GameHistoryComponent } from './game/pages/game-history/game-history';
+import { GameDetailsComponent } from './game/pages/game-details/game-details';
 
 export const routes: Routes = [
     { path: '', component: Home },
@@ -20,6 +22,8 @@ export const routes: Routes = [
     { path: 'cuestionarios/mis-cuestionarios', component: QuizListComponent },
     { path: 'quizzes/public', component: QuizzesPublicComponent },
     { path: 'cuestionarios/:id', component: QuizDetailComponent },
+    { path: 'game/history', component: GameHistoryComponent },
+    { path: 'game/history/:gameId', component: GameDetailsComponent },
     { path: 'game/:roomCode', component: GameRoomComponent },
     { path: '**', redirectTo: '' }
 ];

@@ -3,14 +3,14 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CuestionarioService } from '../../services/cuestionario.service';
 import { Cuestionario, Pregunta, Respuesta } from '../../models/cuestionario.model';
-import { QrDisplayComponent } from '../qr-display/qr-display';
 import { GameSignalrService } from '../../../game/services/game-signalr.service';
 import { AuthService } from '../../../auth/auth.service';
+import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 
 @Component({
     selector: 'app-quiz-detail',
     standalone: true,
-    imports: [CommonModule, RouterLink, QrDisplayComponent],
+    imports: [CommonModule, RouterLink, AnswerShapeComponent],
     templateUrl: './quiz-detail.html',
     styleUrls: ['./quiz-detail.css']
 })
@@ -94,6 +94,11 @@ export class QuizDetailComponent implements OnInit {
 
     obtenerLetraRespuesta(index: number): string {
         return String.fromCharCode(65 + index); // A, B, C, D...
+    }
+
+    obtenerShapeRespuesta(index: number): ShapeType {
+        const shapes: ShapeType[] = ['triangle', 'square', 'circle', 'pentagon'];
+        return shapes[index] || 'triangle';
     }
 
     formatearFecha(fecha: string): string {
