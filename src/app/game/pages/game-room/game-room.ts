@@ -155,6 +155,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             console.log('[GameRoom] ★ PlayerJoined event received:', player);
             console.log('[GameRoom] ★ Current players list before update:', this.players());
             this.players.update(current => {
+                // Check if player already exists to prevent duplicates
+                if (current.some(p => p.userId === player.userId)) {
+                    console.log('[GameRoom] ★ Player already exists, skipping duplicate:', player.userId);
+                    return current;
+                }
                 const updated = [...current, player];
                 console.log('[GameRoom] ★ Players list after join:', updated);
                 return updated;
