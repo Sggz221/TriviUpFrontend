@@ -79,6 +79,8 @@ import { DatePipe } from '@angular/common';
       max-width: 800px;
       margin: 0 auto;
       padding: 2rem;
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--base-100) 0%, var(--base-200) 50%, var(--base-300) 100%);
     }
 
     .details-header {
