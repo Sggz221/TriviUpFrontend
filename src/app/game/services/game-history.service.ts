@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { AuthService } from '../../auth/auth.service';
 
 export interface HistoryPlayerResultDto {
   userId: number;
@@ -24,13 +25,25 @@ export interface GameHistoryDto {
 @Injectable({ providedIn: 'root' })
 export class GameHistoryService {
   private http = inject(HttpClient);
+  private authService = inject(AuthService);
   private apiUrl = '/api/game';
 
+  private getHeaders(): HttpHeaders {
+    const token = this.authService.getToken();
+    return new HttpHeaders({
+      'Authorization': token ? `Bearer ${token}` : ''
+    });
+  }
+
   getHistory(): Observable<GameHistoryDto[]> {
-    return this.http.get<GameHistoryDto[]>(`${this.apiUrl}/history`);
+    return this.http.get<GameHistoryDto[]>(`${this.apiUrl}/history`, {
+      headers: this.getHeaders()
+    });
   }
 
   getGameDetails(gameId: number): Observable<GameHistoryDto> {
-    return this.http.get<GameHistoryDto>(`${this.apiUrl}/${gameId}`);
+    return this.http.get<GameHistoryDto>(`${this.apiUrl}/${gameId}`, {
+      headers: this.getHeaders()
+    });
   }
 }
