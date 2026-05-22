@@ -141,8 +141,23 @@
 }
 
 .player-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
     .status {
         font-size: 0.875rem;
+    }
+}
+
+.kick-btn {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.player-item {
+    &:hover .kick-btn {
+        opacity: 1;
     }
 }
 

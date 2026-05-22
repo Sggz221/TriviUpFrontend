@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, tap, catchError, throwError } from 'rxjs';
+import { Observable, tap, map, catchError, throwError } from 'rxjs';
 import { AuthService, AuthUser } from '../auth/auth.service';
 
 export interface UpdateProfilePhotoResponse {
@@ -38,7 +38,8 @@ export class UserService {
     }
 
     updateProfile(data: { username?: string; email?: string; password?: string }): Observable<AuthUser> {
-        return this.http.put<UpdateProfileResponse>(
+        console.log('[UserService] updateProfile - data sent:', data);
+        return this.http.put<{ user: UpdateProfileResponse; message: string }>(
             `${this.API_URL}/me`,
             data,
             {
@@ -46,16 +47,20 @@ export class UserService {
             }
         ).pipe(
             tap(response => {
+                console.log('[UserService] updateProfile - response received:', response);
+                const userResponse = response.user;
                 const updatedUser: AuthUser = {
-                    id: response.id,
-                    username: response.username,
-                    email: response.email,
-                    role: response.role,
-                    createdAt: response.createdAt,
-                    profilePhotoUrl: response.profilePhotoUrl
+                    id: userResponse.id,
+                    username: userResponse.username,
+                    email: userResponse.email,
+                    role: userResponse.role,
+                    createdAt: userResponse.createdAt,
+                    profilePhotoUrl: userResponse.profilePhotoUrl
                 };
+                console.log('[UserService] updateProfile - updatedUser:', updatedUser);
                 this.authService.updateStoredUser(updatedUser);
             }),
+            map(response => response.user),
             catchError(error => {
                 console.error('[UserService] Error updating profile:', error);
                 return throwError(() => error);

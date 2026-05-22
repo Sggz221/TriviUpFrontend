@@ -35,6 +35,7 @@ export class GameLobbyComponent {
 
     @Output() startGame = new EventEmitter<void>();
     @Output() leaveGame = new EventEmitter<void>();
+    @Output() kickPlayer = new EventEmitter<number>();
 
     roomCodeSignal = signal<string>('');
     playersSignal = signal<Player[]>([]);
@@ -80,5 +81,9 @@ export class GameLobbyComponent {
 
     onLeaveGame(): void {
         this.leaveGame.emit();
+    }
+
+    onKickPlayer(playerId: number): void {
+        this.kickPlayer.emit(playerId);
     }
 }

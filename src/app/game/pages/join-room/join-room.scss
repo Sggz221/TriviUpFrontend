@@ -1,0 +1,88 @@
+.join-room-card {
+    width: 100%;
+    max-width: 420px;
+}
+
+// Room code input styling
+.room-code-input {
+    letter-spacing: 0.25em;
+    font-size: 1.5rem;
+    text-transform: uppercase;
+
+    &::placeholder {
+        text-transform: none;
+        letter-spacing: normal;
+        font-size: 1rem;
+        opacity: 0.4;
+    }
+
+    &:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+}
+
+// Username input styling
+.username-input {
+    &::placeholder {
+        opacity: 0.5;
+    }
+
+    &:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+    }
+}
+
+// Join button styling
+.join-button {
+    transition: all 0.2s ease;
+
+    &:hover:not(:disabled) {
+        filter: brightness(1.1);
+        transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+}
+
+// Back link styling
+.back-link {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+
+    &:hover {
+        color: var(--primary);
+    }
+}
+
+// Animations
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.join-room-card {
+    animation: fadeIn 0.3s ease-out;
+}

@@ -40,4 +40,9 @@ export class NavbarComponent implements OnInit {
     refreshAuth(): void {
         this.checkAuthState();
     }
+
+    isAdmin(): boolean {
+        const user = this.currentUser();
+        return user !== null && user.role === 'ADMIN';
+    }
 }

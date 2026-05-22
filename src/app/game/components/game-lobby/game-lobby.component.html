@@ -55,6 +55,16 @@
                             <span class="status disconnected">🔴</span>
                         }
                     </div>
+                    @if (isOwnerSignal() && !player.isOwner && player.userId !== myUserIdSignal()) {
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-circle btn-error kick-btn"
+                            (click)="onKickPlayer(player.userId)"
+                            title="Expulsar jugador"
+                        >
+                            ✕
+                        </button>
+                    }
                 </li>
             } @empty {
                 <li class="empty-message">Esperando jugadores...</li>

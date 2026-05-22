@@ -297,8 +297,8 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
             }
 
             &.shape-pentagon {
-                background: linear-gradient(135deg, rgba(#22c55e, 0.85), rgba(#22c55e, 0.65));
-                border-color: #22c55e;
+                background: linear-gradient(135deg, rgba(170, 24, 181, 0.85), rgba(170, 24, 181, 0.65));
+                border-color: rgb(170, 24, 181);
             }
         }
 
@@ -348,6 +348,94 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
         color: var(--base-content);
         opacity: 0.7;
         font-size: 1.1rem;
+    }
+}
+
+// ============ Turn Timer ============
+.turn-timer {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    max-width: 400px;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 2px solid var(--success);
+    border-radius: 1rem;
+    animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &.time-warning {
+        border-color: var(--warning);
+
+        .timer-bar {
+            .timer-progress {
+                background: linear-gradient(90deg, var(--warning), #f59e0b);
+            }
+        }
+
+        .timer-text {
+            color: var(--warning);
+        }
+    }
+
+    &.time-danger {
+        border-color: var(--error);
+        animation: pulse-danger 0.5s infinite;
+
+        .timer-bar {
+            .timer-progress {
+                background: linear-gradient(90deg, var(--error), #dc2626);
+            }
+        }
+
+        .timer-text {
+            color: var(--error);
+            font-weight: 700;
+        }
+    }
+
+    .timer-bar {
+        flex: 1;
+        height: 12px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        overflow: hidden;
+
+        .timer-progress {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), #22c55e);
+            border-radius: 6px;
+            transition: width 0.3s linear;
+        }
+    }
+
+    .timer-text {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--success);
+        min-width: 50px;
+        text-align: right;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse-danger {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
     }
 }
 
@@ -451,6 +539,81 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
     position: absolute;
     top: 1rem;
     right: 1rem;
+}
+
+// ============ Pause Button ============
+.pause-btn {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+// ============ Pause Modal ============
+.pause-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.pause-modal-content {
+    background: var(--base-100);
+    border-radius: 1rem;
+    padding: 2rem;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    max-width: 90%;
+    width: 320px;
+}
+
+.pause-icon {
+    color: var(--primary);
+    margin-bottom: 1rem;
+}
+
+.pause-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--base-content);
+    margin-bottom: 0.5rem;
+}
+
+.pause-subtitle {
+    color: var(--base-content);
+    opacity: 0.7;
+    margin-bottom: 1rem;
+}
+
+.pause-waiting {
+    color: var(--primary);
+    font-weight: 500;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
 }
 
 // ============ Game Results Styles ============

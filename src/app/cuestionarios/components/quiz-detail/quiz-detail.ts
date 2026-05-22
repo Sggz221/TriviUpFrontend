@@ -150,7 +150,11 @@ export class QuizDetailComponent implements OnInit {
             // Invocar CreateGame en el hub
             return this.gameSignalrService.createGame(quiz.id);
         }).then((roomCode) => {
-            console.log('[QuizDetail] Sala creada:', roomCode);
+            console.log('[QuizDetail] ★★★ Sala creada:', roomCode);
+            // Indicar que este usuario es el owner
+            console.log('[QuizDetail] ★★★ Calling setIsOwner(true)');
+            this.gameSignalrService.setIsOwner(true);
+            console.log('[QuizDetail] ★★★ After setIsOwner, service.isOwner():', this.gameSignalrService.isOwner());
             // Navegar a la página de la sala
             this.router.navigate(['/game', roomCode]);
         }).catch((error) => {

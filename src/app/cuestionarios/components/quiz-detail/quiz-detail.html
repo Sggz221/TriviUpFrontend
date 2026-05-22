@@ -53,40 +53,6 @@
                     </div>
                 </div>
 
-                <!-- Game Code Prominent Display -->
-                <div class="rounded-xl shadow-xl p-6" style="background-color: var(--base-100);">
-                    <div class="flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-8">
-                        <!-- Game Code Section -->
-                        <div class="text-center lg:text-left">
-                            <p class="text-sm font-medium mb-1" style="color: var(--base-content); opacity: 0.7;">
-                                Comparte este código con tus jugadores
-                            </p>
-                            <p class="text-4xl font-bold font-mono tracking-wider" style="color: var(--primary);">
-                                {{ cuestionario()!.gameCode }}
-                            </p>
-                        </div>
-
-                        <!-- Copy Button -->
-                        <button
-                            class="btn btn-copy-custom px-6"
-                            style="min-width: 120px;"
-                            (click)="copiarGameCode(cuestionario()!.gameCode)">
-                            @if (copied()) {
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                                </svg>
-                                ¡Copiado!
-                            } @else {
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-                                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-                                </svg>
-                                Copiar
-                            }
-                        </button>
-                    </div>
-                </div>
-
                 <!-- Create Game Room Button -->
                 <div class="flex justify-center">
                     <button
@@ -132,31 +98,37 @@
                                 </div>
                             }
 
-                            <!-- Answers -->
-                            <div class="space-y-2 pl-14">
-                                @for (respuesta of pregunta.respuestas; track respuesta.id) {
-                                    <div class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all"
-                                         [style.background-color]="respuesta.esCorrecta ? 'color-mix(in srgb, var(--success) 15%, transparent)' : 'var(--base-100)'"
-                                         [style.border]="respuesta.esCorrecta ? '2px solid var(--success)' : '2px solid transparent'">
-                                        <app-answer-shape [shape]="obtenerShapeRespuesta($index)" [selected]="respuesta.esCorrecta" />
-                                        <span class="flex-1" style="color: var(--base-content);">
-                                            {{ respuesta.texto }}
-                                        </span>
-                                        @if (respuesta.esCorrecta) {
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" style="color: var(--success);" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                            </svg>
-                                        }
-                                    </div>
-                                }
-                            </div>
+                            <!-- Answers (Collapsible) -->
+                            <details class="pl-14">
+                                <summary class="cursor-pointer font-medium text-sm hover:opacity-80"
+                                         style="color: var(--primary);">
+                                    Ver respuestas ({{ pregunta.respuestas.length }})
+                                </summary>
+                                <div class="space-y-2 mt-3">
+                                    @for (respuesta of pregunta.respuestas; track respuesta.id) {
+                                        <div class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all"
+                                             [style.background-color]="respuesta.esCorrecta ? 'color-mix(in srgb, var(--success) 15%, transparent)' : 'var(--base-100)'"
+                                             [style.border]="respuesta.esCorrecta ? '2px solid var(--success)' : '2px solid transparent'">
+                                            <app-answer-shape [shape]="obtenerShapeRespuesta($index)" [selected]="respuesta.esCorrecta" />
+                                            <span class="flex-1" style="color: var(--base-content);">
+                                                {{ respuesta.texto }}
+                                            </span>
+                                            @if (respuesta.esCorrecta) {
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" style="color: var(--success);" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                                </svg>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </details>
                         </div>
                     }
                 </div>
 
                 <!-- Back Link -->
                 <div class="text-center pt-4">
-                    <a routerLink="/cuestionarios/mis-cuestionarios" 
+                    <a routerLink="/cuestionarios/mis-cuestionarios"
                        class="text-sm hover:opacity-80 transition-opacity"
                        style="color: var(--accent);">
                         ← Volver a mis cuestionarios
