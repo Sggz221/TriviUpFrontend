@@ -16,6 +16,8 @@ export class Auth implements OnInit {
   errorMessage = signal<string | null>(null);
   successMessage = signal<string | null>(null);
   activeTab = signal<'login' | 'register'>('login');
+  showLoginPassword = signal(false);
+  showRegisterPassword = signal(false);
 
   loginForm: FormGroup;
   registerForm: FormGroup;
@@ -33,7 +35,8 @@ export class Auth implements OnInit {
     this.registerForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(50), Validators.pattern(/^[a-zA-Z0-9_]+$/)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(4)]]
+      password: ['', [Validators.required, Validators.minLength(4)]],
+      confirmPassword: ['', [Validators.required]]
     });
   }
 
@@ -77,13 +80,27 @@ export class Auth implements OnInit {
     this.successMessage.set(null);
   }
 
+  toggleLoginPassword(): void {
+    this.showLoginPassword.set(!this.showLoginPassword());
+  }
+
+  toggleRegisterPassword(): void {
+    this.showRegisterPassword.set(!this.showRegisterPassword());
+  }
+
   onRegister(): void {
     if (this.registerForm.valid) {
+      const { password, confirmPassword } = this.registerForm.value;
+      if (password !== confirmPassword) {
+        this.errorMessage.set('Las contraseñas no coinciden');
+        return;
+      }
+
       this.isLoading.set(true);
       this.errorMessage.set(null);
       this.successMessage.set(null);
 
-      const { username, email, password } = this.registerForm.value;
+      const { username, email } = this.registerForm.value;
       this.authService.signUp({ username, email, password }).subscribe({
         next: (response) => {
           this.isLoading.set(false);

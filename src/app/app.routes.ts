@@ -11,6 +11,9 @@ import { ProfileEdit } from './user/pages/profile-edit/profile-edit';
 import { GameRoomComponent } from './game/pages/game-room/game-room';
 import { GameHistoryComponent } from './game/pages/game-history/game-history';
 import { GameDetailsComponent } from './game/pages/game-details/game-details';
+import { JoinRoomComponent } from './game/pages/join-room/join-room';
+import { AdminDashboardComponent } from './admin/pages/admin-dashboard/admin-dashboard';
+import { isAdminGuard } from './admin/guards/is-admin.guard';
 
 export const routes: Routes = [
     { path: '', component: Home },
@@ -24,6 +27,8 @@ export const routes: Routes = [
     { path: 'cuestionarios/:id', component: QuizDetailComponent },
     { path: 'game/history', component: GameHistoryComponent },
     { path: 'game/history/:gameId', component: GameDetailsComponent },
+    { path: 'unirse', component: JoinRoomComponent },
     { path: 'game/:roomCode', component: GameRoomComponent },
+    { path: 'admin', component: AdminDashboardComponent, canActivate: [isAdminGuard] },
     { path: '**', redirectTo: '' }
 ];

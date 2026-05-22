@@ -13,6 +13,7 @@ export type GamePageState =
     | 'turn-waiting'
     | 'turn-active'
     | 'turn-result'
+    | 'paused'
     | 'game-over'
     | 'error';
 
@@ -38,6 +39,7 @@ export class GameSignalrService {
     private gameCreated$ = new Subject<GameLobbyState>();
     private playerJoined$ = new Subject<Player>();
     private playerLeft$ = new Subject<number>();
+    private playerKicked$ = new Subject<number>();
     private gameStarting$ = new Subject<number>();
     private gameStarted$ = new Subject<GameStateDto>();
     private turnStarted$ = new Subject<TurnStartedDto>();
@@ -47,6 +49,8 @@ export class GameSignalrService {
     private playerScoresUpdated$ = new Subject<Player[]>();
     private gameFinished$ = new Subject<GameResult>();
     private playersList$ = new Subject<Player[]>();
+    private gamePaused$ = new Subject<{ roomCode: string }>();
+    private gameResumed$ = new Subject<{ roomCode: string; timeRemaining: number }>();
     private error$ = new Subject<{ code: string; message: string }>();
 
     // State signals
@@ -59,11 +63,17 @@ export class GameSignalrService {
     isMyTurn = signal<boolean>(false);
     quizTitle = signal<string>('');
     gameResults = signal<GameResult | null>(null);
+    isPaused = signal<boolean>(false);
+    isOwner = signal<boolean>(false);
+    players = signal<Player[]>([]);
+    currentUserId = signal<number | null>(null);
+    currentUsername = signal<string | null>(null);
 
     // Observable getters for components
     onGameCreated = this.gameCreated$.asObservable();
     onPlayerJoined = this.playerJoined$.asObservable();
     onPlayerLeft = this.playerLeft$.asObservable();
+    onPlayerKicked = this.playerKicked$.asObservable();
     onGameStarting = this.gameStarting$.asObservable();
     onGameStarted = this.gameStarted$.asObservable();
     onTurnStarted = this.turnStarted$.asObservable();
@@ -73,6 +83,8 @@ export class GameSignalrService {
     onPlayerScoresUpdated = this.playerScoresUpdated$.asObservable();
     onGameFinished = this.gameFinished$.asObservable();
     onPlayersList = this.playersList$.asObservable();
+    onGamePaused = this.gamePaused$.asObservable();
+    onGameResumed = this.gameResumed$.asObservable();
     onError = this.error$.asObservable();
 
     /**
@@ -171,15 +183,30 @@ export class GameSignalrService {
 
         this.hubConnection.on('GameCreated', (data: GameLobbyState) => {
             console.log('[GameSignalr] Event: GameCreated', data);
+            this.players.set(data.players || []);
+            this.currentUserId.set(data.myUserId);
+            this.currentUsername.set(data.myUsername);
             this.gameCreated$.next(data);
         });
         this.hubConnection.on('PlayerJoined', (data: Player) => {
-            console.log('[GameSignalr] Event: PlayerJoined', data);
+            console.log('[GameSignalr] ★★★ Event: PlayerJoined received!', JSON.stringify(data));
+            console.log('[GameSignalr] ★★★ PlayerJoined data.userId:', data.userId);
+            console.log('[GameSignalr] ★★★ PlayerJoined data.username:', data.username);
+            // Add to players list if not already present
+            const current = this.players();
+            if (!current.find(p => p.userId === data.userId)) {
+                this.players.set([...current, data]);
+            }
             this.playerJoined$.next(data);
+            console.log('[GameSignalr] ★★★ PlayerJoined event emitted to subscribers');
         });
         this.hubConnection.on('PlayerLeft', (data: number) => {
             console.log('[GameSignalr] Event: PlayerLeft', data);
             this.playerLeft$.next(data);
+        });
+        this.hubConnection.on('PlayerKicked', (data: number) => {
+            console.log('[GameSignalr] Event: PlayerKicked', data);
+            this.playerKicked$.next(data);
         });
         this.hubConnection.on('GameStarting', (data: number) => {
             console.log('[GameSignalr] Event: GameStarting', data);
@@ -219,8 +246,22 @@ export class GameSignalrService {
             this.gameFinished$.next(data);
         });
         this.hubConnection.on('PlayersList', (data: Player[]) => {
-            console.log('[GameSignalr] Event: PlayersList', data);
+            console.log('[GameSignalr] ★★★ Event: PlayersList received!', JSON.stringify(data));
+            console.log('[GameSignalr] ★★★ PlayersList count:', data?.length);
+            this.players.set(data);  // Store in service signal for persistence
             this.playersList$.next(data);
+            console.log('[GameSignalr] ★★★ PlayersList event emitted to subscribers');
+        });
+        this.hubConnection.on('GamePaused', (data: { roomCode: string }) => {
+            console.log('[GameSignalr] Event: GamePaused', data);
+            this.isPaused.set(true);
+            this.gamePaused$.next(data);
+        });
+        this.hubConnection.on('GameResumed', (data: { roomCode: string; timeRemaining: number }) => {
+            console.log('[GameSignalr] Event: GameResumed', data);
+            this.isPaused.set(false);
+            this.timeRemaining.set(data.timeRemaining);
+            this.gameResumed$.next(data);
         });
         this.hubConnection.on('Error', (data: { code: string; message: string }) => {
             console.log('[GameSignalr] Event: Error', data);
@@ -239,14 +280,27 @@ export class GameSignalrService {
     }
 
     /**
-     * Join a game room (anonymous - passes userId and username as parameters)
+     * Join a game room
+     * @param roomCode The room code to join
+     * @param userId Optional user ID (for logged-in users). If not provided, uses anonymousUserId
+     * @param username Optional username (for logged-in users). If not provided, uses anonymousUsername
      */
-    async joinGame(roomCode: string): Promise<void> {
+    async joinGame(roomCode: string, userId?: number, username?: string): Promise<void> {
         if (!this.hubConnection) throw new Error('Hub not connected');
-        if (this.anonymousUserId === null || this.anonymousUsername === null) {
-            throw new Error('Anonymous user not configured');
+
+        // Use provided values for logged-in users, or fall back to anonymous values
+        const effectiveUserId = userId ?? this.anonymousUserId;
+        const effectiveUsername = username ?? this.anonymousUsername;
+
+        if (effectiveUserId === null || effectiveUsername === null) {
+            throw new Error('User not configured: provide userId/username or use connectAnonymously() first');
         }
-        return this.hubConnection.invoke('JoinGame', roomCode, this.anonymousUserId, this.anonymousUsername);
+
+        // Store user info in service signals for persistence across navigation
+        this.currentUserId.set(effectiveUserId);
+        this.currentUsername.set(effectiveUsername);
+
+        return this.hubConnection.invoke('JoinGame', roomCode, effectiveUserId, effectiveUsername);
     }
 
     /**
@@ -277,5 +331,62 @@ export class GameSignalrService {
             throw new Error('Anonymous user not configured');
         }
         return this.hubConnection.invoke('SubmitAnswer', roomCode, this.anonymousUserId, questionId, answerIndex, timeRemaining);
+    }
+
+    /**
+     * Pause the game (requires owner)
+     */
+    async pauseGame(roomCode: string): Promise<void> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        return this.hubConnection.invoke('PauseGame', roomCode);
+    }
+
+    /**
+     * Resume the game (requires owner)
+     */
+    async resumeGame(roomCode: string): Promise<void> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        return this.hubConnection.invoke('ResumeGame', roomCode);
+    }
+
+    /**
+     * Kick a player from the game room (requires owner)
+     */
+    async kickPlayer(roomCode: string, playerId: number): Promise<void> {
+        console.log('[GameSignalr] kickPlayer called - roomCode:', roomCode, 'playerId:', playerId);
+        if (!this.hubConnection) {
+            console.error('[GameSignalr] Hub not connected!');
+            throw new Error('Hub not connected');
+        }
+        console.log('[GameSignalr] Invoking KickPlayer hub method...');
+        return this.hubConnection.invoke('KickPlayer', roomCode, playerId);
+    }
+
+    /**
+     * Set whether the current user is the owner of the room
+     */
+    setIsOwner(value: boolean): void {
+        console.log('[GameSignalr] ★★★ setIsOwner called with:', value);
+        console.log('[GameSignalr] ★★★ isOwner signal BEFORE set:', this.isOwner());
+        this.isOwner.set(value);
+        console.log('[GameSignalr] ★★★ isOwner signal AFTER set:', this.isOwner());
+    }
+
+    /**
+     * Clear all game state (used when leaving a game)
+     */
+    clearGameState(): void {
+        this.isOwner.set(false);
+        this.currentRoomCode.set(null);
+        this.quizTitle.set('');
+        this.currentQuestion.set(null);
+        this.currentTurnPlayerId.set(null);
+        this.timeRemaining.set(0);
+        this.isMyTurn.set(false);
+        this.gameResults.set(null);
+        this.isPaused.set(false);
+        this.players.set([]);
+        this.currentUserId.set(null);
+        this.currentUsername.set(null);
     }
 }

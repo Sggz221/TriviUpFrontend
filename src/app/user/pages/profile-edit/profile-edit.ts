@@ -298,12 +298,18 @@ export class ProfileEdit implements OnInit {
 
         this.userService.updateProfile(updateData).subscribe({
             next: (updatedUser) => {
+                console.log('[ProfileEdit] API Response:', updatedUser);
+                console.log('[ProfileEdit] currentUser before update:', this.currentUser());
+                console.log('[ProfileEdit] formData before clearing:', this.formData);
+
                 this.isLoading.set(false);
                 this.successMessage.set('¡Perfil actualizado correctamente!');
 
                 // Clear password fields
                 this.formData.password = '';
                 this.formData.confirmPassword = '';
+
+                console.log('[ProfileEdit] Navigating to /perfil');
 
                 setTimeout(() => {
                     this.router.navigate(['/perfil']);

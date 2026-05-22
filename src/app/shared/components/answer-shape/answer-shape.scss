@@ -2,7 +2,7 @@
 $answer-triangle: #e11d48;    // rose-600 / primary
 $answer-square: #eab308;      // yellow-500 / warning
 $answer-circle: #0ea5e9;     // sky-500 / info
-$answer-pentagon: #22c55e;    // green-500 / success
+$answer-pentagon: rgb(170, 24, 181);    // purple
 
 // New gradient: blue to purple to pink
 $new-gradient: linear-gradient(90deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 186, 1) 50%, rgba(237, 83, 129, 1) 100%);
@@ -59,7 +59,7 @@ $new-gradient: linear-gradient(90deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 18
     }
 }
 
-// Pentagon - green
+// Pentagon - purple
 .answer-shape.shape-pentagon {
     background-color: $answer-pentagon;
     border: 3px solid $answer-pentagon;
