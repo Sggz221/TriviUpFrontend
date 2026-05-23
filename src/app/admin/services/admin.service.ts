@@ -8,7 +8,7 @@ import { AuthService } from '../../auth/auth.service';
     providedIn: 'root'
 })
 export class AdminService {
-    private readonly API_URL = 'http://localhost:5164';
+    private readonly API_URL = '';
     private readonly USERS_URL = `${this.API_URL}/users`;
     private readonly ADMIN_URL = `${this.API_URL}/api/admin`;
 

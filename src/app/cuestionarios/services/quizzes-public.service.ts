@@ -7,7 +7,7 @@ import { CuestionarioPublico, PaginatedQuizzesResponse } from '../models/cuestio
     providedIn: 'root'
 })
 export class QuizzesPublicService {
-    private readonly API_URL = 'http://localhost:5164/api/quizzes';
+    private readonly API_URL = '/api/quizzes';
 
     private http = inject(HttpClient);
 

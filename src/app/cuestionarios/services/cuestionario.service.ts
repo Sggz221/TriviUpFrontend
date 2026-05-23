@@ -17,8 +17,8 @@ export interface UploadQuizImageResponse {
     providedIn: 'root'
 })
 export class CuestionarioService {
-    private readonly API_URL = 'http://localhost:5164/api/cuestionarios';
-    private readonly PREGUNTAS_API_URL = 'http://localhost:5164/cuestionarios/preguntas';
+    private readonly API_URL = '/api/cuestionarios';
+    private readonly PREGUNTAS_API_URL = '/cuestionarios/preguntas';
 
     private http = inject(HttpClient);
     private authService = inject(AuthService);

@@ -25,7 +25,7 @@ export interface UpdateProfileResponse {
     providedIn: 'root'
 })
 export class UserService {
-    private readonly API_URL = 'http://localhost:5164/users';
+    private readonly API_URL = '/users';
 
     private http = inject(HttpClient);
     private authService = inject(AuthService);
