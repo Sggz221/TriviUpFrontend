@@ -1,0 +1,18 @@
+<div class="qr-code-container">
+    @if (urlSignal()) {
+        <img
+            [src]="qrCodeUrl()"
+            [alt]="'QR Code for ' + urlSignal()"
+            [width]="size"
+            [height]="size"
+            class="qr-code-image"
+            (error)="onImageError()"
+            (load)="onImageLoad()"
+        />
+        @if (errorMessage()) {
+            <p class="error-message">{{ errorMessage() }}</p>
+        }
+    } @else {
+        <p class="no-url">No URL provided</p>
+    }
+</div>

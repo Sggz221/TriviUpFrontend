@@ -1,0 +1,767 @@
+// ============ Variables ============
+$new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 186, 1) 50%, rgba(237, 83, 129, 1) 100%);
+
+// ============ Game Room Container ============
+.game-room-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--base-100) 0%, var(--base-200) 50%, var(--base-300) 100%);
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+
+    // Animated background gradient
+    &::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle at 30% 30%, rgba(42, 114, 155, 0.15) 0%, transparent 50%),
+                    radial-gradient(circle at 70% 70%, rgba(199, 87, 186, 0.1) 0%, transparent 50%);
+        animation: bgFloat 20s ease-in-out infinite;
+        z-index: -1;
+    }
+}
+
+@keyframes bgFloat {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    33% { transform: translate(2%, 2%) rotate(1deg); }
+    66% { transform: translate(-1%, 1%) rotate(-1deg); }
+}
+
+// ============ Error Banner ============
+.error-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 2rem;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+}
+
+// ============ Join Form Container ============
+.join-form-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+    position: relative;
+    z-index: 1;
+}
+
+.join-form-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 1.5rem;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+    h1 {
+        text-align: center;
+        background: $new-gradient;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+
+        .label-text {
+            font-weight: 500;
+            color: var(--base-content);
+        }
+    }
+
+    .input {
+        border-radius: 0.75rem;
+        border: 2px solid transparent;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--base-content);
+        transition: all 0.3s ease;
+
+        &::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        &:focus {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 0 4px rgba(225, 29, 72, 0.2);
+        }
+    }
+
+    .btn-primary {
+        border-radius: 0.75rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+
+        &:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(225, 29, 72, 0.3);
+        }
+    }
+}
+
+// ============ Waiting Screen ============
+.waiting-screen {
+    position: relative;
+    z-index: 1;
+    padding: 5rem 2rem 2rem;
+}
+
+// ============ Game Board Styles ============
+.game-board {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 5rem 2rem 2rem;
+    gap: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+}
+
+// ============ Question Card ============
+.question-card {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: $new-gradient;
+    }
+
+    // Remove special styling when it's player's turn - keep normal appearance
+    // The shape colors are only for answer buttons, not the question card
+
+    .question-image {
+        width: 100%;
+        max-height: 300px;
+        object-fit: contain;
+        border-radius: 1rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .question-text {
+        font-size: 1.5rem;
+        font-weight: 600;
+        text-align: center;
+        color: var(--base-content);
+        line-height: 1.5;
+        margin: 0;
+    }
+}
+
+// ============ Turn Result Indicator ============
+.turn-result-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 2rem;
+    font-weight: 600;
+    animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &.correct {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.1));
+        border: 2px solid var(--success);
+        color: var(--success);
+
+        .result-icon {
+            background: var(--success);
+            color: white;
+        }
+    }
+
+    &.incorrect {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+        border: 2px solid var(--error);
+        color: var(--error);
+
+        .result-icon {
+            background: var(--error);
+            color: white;
+        }
+    }
+
+    .result-icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 0.9rem;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+// ============ Answer Options ============
+.answer-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    width: 100%;
+
+    @media (max-width: 640px) {
+        grid-template-columns: 1fr;
+    }
+
+    .answer-btn {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        min-height: 70px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 1rem;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden;
+
+        &:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        &:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+
+            .answer-text {
+                color: white;
+            }
+        }
+
+        &.selected {
+            transform: scale(1.02);
+            box-shadow: 0 0 0 4px var(--primary), 0 10px 30px rgba(225, 29, 72, 0.3);
+            border-color: var(--primary);
+        }
+
+        // When it's my turn and option is enabled, color the background
+        &.my-turn-active {
+            &.shape-triangle {
+                background: linear-gradient(135deg, rgba(#e11d48, 0.85), rgba(#e11d48, 0.65));
+                border-color: #e11d48;
+            }
+
+            &.shape-square {
+                background: linear-gradient(135deg, rgba(#eab308, 0.85), rgba(#eab308, 0.65));
+                border-color: #eab308;
+            }
+
+            &.shape-circle {
+                background: linear-gradient(135deg, rgba(#0ea5e9, 0.85), rgba(#0ea5e9, 0.65));
+                border-color: #0ea5e9;
+            }
+
+            &.shape-pentagon {
+                background: linear-gradient(135deg, rgba(170, 24, 181, 0.85), rgba(170, 24, 181, 0.65));
+                border-color: rgb(170, 24, 181);
+            }
+        }
+
+        &.btn-success {
+            background: linear-gradient(135deg, var(--success), #16a34a);
+            border-color: var(--success);
+            color: white;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+
+            .answer-text {
+                color: white;
+            }
+        }
+
+        &.btn-error {
+            background: linear-gradient(135deg, var(--error), #dc2626);
+            border-color: var(--error);
+            color: white;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+
+            .answer-text {
+                color: white;
+            }
+        }
+
+        .answer-text {
+            flex: 1;
+            text-align: left;
+            font-weight: 500;
+            color: white;
+        }
+    }
+}
+
+// ============ Turn Info ============
+.turn-info {
+    text-align: center;
+    padding: 1rem;
+
+    .your-turn {
+        color: var(--success);
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .waiting {
+        color: var(--base-content);
+        opacity: 0.7;
+        font-size: 1.1rem;
+    }
+}
+
+// ============ Turn Timer ============
+.turn-timer {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    max-width: 400px;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 2px solid var(--success);
+    border-radius: 1rem;
+    animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &.time-warning {
+        border-color: var(--warning);
+
+        .timer-bar {
+            .timer-progress {
+                background: linear-gradient(90deg, var(--warning), #f59e0b);
+            }
+        }
+
+        .timer-text {
+            color: var(--warning);
+        }
+    }
+
+    &.time-danger {
+        border-color: var(--error);
+        animation: pulse-danger 0.5s infinite;
+
+        .timer-bar {
+            .timer-progress {
+                background: linear-gradient(90deg, var(--error), #dc2626);
+            }
+        }
+
+        .timer-text {
+            color: var(--error);
+            font-weight: 700;
+        }
+    }
+
+    .timer-bar {
+        flex: 1;
+        height: 12px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        overflow: hidden;
+
+        .timer-progress {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), #22c55e);
+            border-radius: 6px;
+            transition: width 0.3s linear;
+        }
+    }
+
+    .timer-text {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--success);
+        min-width: 50px;
+        text-align: right;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse-danger {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    }
+}
+
+// ============ Turn Result Overlay ============
+.turn-result-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    animation: fadeIn 0.3s ease;
+
+    .result-correct {
+        background: linear-gradient(135deg, var(--success), #16a34a);
+        color: white;
+        padding: 2.5rem 4rem;
+        border-radius: 1.5rem;
+        font-size: 2rem;
+        font-weight: 700;
+        text-align: center;
+        box-shadow: 0 25px 50px rgba(34, 197, 94, 0.4);
+        animation: popIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+        .points {
+            display: block;
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-top: 0.5rem;
+        }
+    }
+
+    .result-incorrect {
+        background: linear-gradient(135deg, var(--error), #dc2626);
+        color: white;
+        padding: 2.5rem 4rem;
+        border-radius: 1.5rem;
+        font-size: 2rem;
+        font-weight: 700;
+        text-align: center;
+        box-shadow: 0 25px 50px rgba(239, 68, 68, 0.4);
+        animation: popIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes popIn {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    70% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+// ============ Sound Toggle ============
+.sound-toggle {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+
+    .btn-circle {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        svg {
+            width: 24px;
+            height: 24px;
+            color: var(--base-content);
+        }
+    }
+}
+
+.results-sound-toggle {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+}
+
+.waiting-sound-toggle {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+}
+
+// ============ Pause Button ============
+.pause-btn {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+// ============ Pause Modal ============
+.pause-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.pause-modal-content {
+    background: var(--base-100);
+    border-radius: 1rem;
+    padding: 2rem;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    max-width: 90%;
+    width: 320px;
+}
+
+.pause-icon {
+    color: var(--primary);
+    margin-bottom: 1rem;
+}
+
+.pause-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--base-content);
+    margin-bottom: 0.5rem;
+}
+
+.pause-subtitle {
+    color: var(--base-content);
+    opacity: 0.7;
+    margin-bottom: 1rem;
+}
+
+.pause-waiting {
+    color: var(--primary);
+    font-weight: 500;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+// ============ Game Results Styles ============
+.game-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 5rem 2rem 2rem;
+    max-width: 600px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+
+    .card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 1.5rem;
+        overflow: hidden;
+    }
+
+    .card-body {
+        padding: 2rem;
+
+        h3 {
+            color: var(--base-content);
+        }
+    }
+
+    .card-title {
+        background: $new-gradient;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    .results-list {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .result-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+
+        &:hover {
+            transform: translateX(4px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        &.winner {
+            background: linear-gradient(135deg, rgba(42, 114, 155, 0.2), rgba(199, 87, 186, 0.2), rgba(237, 83, 129, 0.2));
+            border: 2px solid;
+            border-image: $new-gradient 1;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 30px rgba(42, 114, 155, 0.2);
+
+            .rank {
+                background: $new-gradient;
+                color: white;
+            }
+        }
+
+        .rank {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            color: var(--base-content);
+        }
+
+        .player-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+
+            .username {
+                font-weight: 600;
+                font-size: 1.1rem;
+                color: var(--base-content);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .score {
+                font-size: 0.9rem;
+                color: var(--base-content);
+                opacity: 0.8;
+            }
+        }
+
+        .stats {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+
+            .correct {
+                color: var(--success);
+                font-weight: 600;
+            }
+
+            .percentage {
+                color: var(--base-content);
+                opacity: 0.7;
+                font-size: 0.8rem;
+            }
+        }
+    }
+
+    .game-info {
+        font-size: 0.9rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 0.75rem;
+        color: var(--base-content);
+    }
+
+    .card-actions {
+        .btn-primary {
+            border-radius: 1rem;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+
+            &:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 20px rgba(225, 29, 72, 0.3);
+            }
+        }
+    }
+}

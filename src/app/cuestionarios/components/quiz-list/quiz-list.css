@@ -1,0 +1,36 @@
+/* quiz-list specific styles */
+
+/* "Nuevo Cuestionario" button - MORADO (accent) */
+.btn-accent-custom {
+  background-color: var(--accent) !important;
+  color: var(--accent-content) !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.btn-accent-custom:hover {
+  opacity: 0.85;
+}
+
+/* "Ver" button - AMARILLO (warning) */
+.btn-warning-custom {
+  background-color: var(--warning) !important;
+  color: var(--warning-content) !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.btn-warning-custom:hover {
+  opacity: 0.85;
+}
+
+/* "Borrar" button - ROJO (error) sin borde */
+.btn-error-custom {
+  background-color: var(--error) !important;
+  color: var(--error-content) !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}

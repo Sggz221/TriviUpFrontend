@@ -1,0 +1,140 @@
+<section class="min-h-screen px-4 py-12"
+    style="background: linear-gradient(to bottom right, var(--base-100), var(--base-200), var(--base-300));">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Back link -->
+        <a routerLink="/cuestionarios/mis-cuestionarios"
+            class="inline-flex items-center gap-2 mb-6 text-sm opacity-70 hover:opacity-100 transition-opacity"
+            style="color: var(--base-content);">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            Volver a mis cuestionarios
+        </a>
+
+        @if (errorMessage()) {
+            <div class="alert alert-error mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{{ errorMessage() }}</span>
+            </div>
+        }
+
+        @if (isLoading()) {
+            <div class="flex justify-center items-center py-12">
+                <span class="loading loading-spinner loading-lg text-primary"></span>
+            </div>
+        } @else if (cuestionario()) {
+            <div class="space-y-6">
+                <!-- Header Card -->
+                <div class="rounded-xl shadow-xl p-8" style="background-color: var(--base-200);">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                        <div class="flex-1">
+                            <h1 class="text-3xl font-bold mb-3" style="color: var(--secondary);">
+                                {{ cuestionario()!.nombre }}
+                            </h1>
+                            <div class="flex flex-wrap gap-4 text-sm" style="color: var(--base-content);">
+                                <div class="flex items-center gap-1 opacity-70">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span>Creado: {{ formatearFecha(cuestionario()!.fechaCreacion) }}</span>
+                                </div>
+                                <div class="flex items-center gap-1 opacity-70">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span>{{ cuestionario()!.preguntas.length }} preguntas</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create Game Room Button -->
+                <div class="flex justify-center">
+                    <button
+                        class="btn btn-lg gap-2"
+                        style="background-color: var(--primary); color: var(--primary-content);"
+                        (click)="crearSalaJuego()"
+                        [disabled]="creandoSala()">
+                        @if (creandoSala()) {
+                            <span class="loading loading-spinner loading-sm"></span>
+                            Creando sala...
+                        } @else {
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Crear Sala de Juego
+                        }
+                    </button>
+                </div>
+
+                <!-- Questions Section -->
+                <div class="space-y-4">
+                    <h2 class="text-xl font-bold" style="color: var(--secondary);">Preguntas</h2>
+                    @for (pregunta of cuestionario()!.preguntas; track pregunta.id) {
+                        <div class="rounded-xl shadow-md p-6" style="background-color: var(--base-200);">
+                            <!-- Question Header -->
+                            <div class="flex items-start gap-4 mb-4">
+                                <div class="badge badge-lg font-bold text-xl w-10 h-10 flex items-center justify-center shrink-0"
+                                     style="background-color: var(--info); color: var(--info-content);">
+                                    {{ $index + 1 }}
+                                </div>
+                                <p class="text-lg font-medium flex-1" style="color: var(--base-content);">
+                                    {{ pregunta.enunciado }}
+                                </p>
+                            </div>
+
+                            <!-- Question Image -->
+                            @if (obtenerImagenPreguntaUrl(pregunta.imagenUrl)) {
+                                <div class="mb-4 pl-14">
+                                    <img [src]="obtenerImagenPreguntaUrl(pregunta.imagenUrl)"
+                                         alt="Imagen de la pregunta"
+                                         class="rounded-lg max-w-[300px] max-h-[200px] object-cover shadow-md" />
+                                </div>
+                            }
+
+                            <!-- Answers (Collapsible) -->
+                            <details class="pl-14">
+                                <summary class="cursor-pointer font-medium text-sm hover:opacity-80"
+                                         style="color: var(--primary);">
+                                    Ver respuestas ({{ pregunta.respuestas.length }})
+                                </summary>
+                                <div class="space-y-2 mt-3">
+                                    @for (respuesta of pregunta.respuestas; track respuesta.id) {
+                                        <div class="flex items-center gap-3 px-4 py-3 rounded-lg transition-all"
+                                             [style.background-color]="respuesta.esCorrecta ? 'color-mix(in srgb, var(--success) 15%, transparent)' : 'var(--base-100)'"
+                                             [style.border]="respuesta.esCorrecta ? '2px solid var(--success)' : '2px solid transparent'">
+                                            <app-answer-shape [shape]="obtenerShapeRespuesta($index)" [selected]="respuesta.esCorrecta" />
+                                            <span class="flex-1" style="color: var(--base-content);">
+                                                {{ respuesta.texto }}
+                                            </span>
+                                            @if (respuesta.esCorrecta) {
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" style="color: var(--success);" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                                </svg>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </details>
+                        </div>
+                    }
+                </div>
+
+                <!-- Back Link -->
+                <div class="text-center pt-4">
+                    <a routerLink="/cuestionarios/mis-cuestionarios"
+                       class="text-sm hover:opacity-80 transition-opacity"
+                       style="color: var(--accent);">
+                        ← Volver a mis cuestionarios
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+</section>

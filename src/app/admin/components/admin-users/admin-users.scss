@@ -1,0 +1,55 @@
+:host {
+    display: block;
+}
+
+.admin-users-container {
+    min-height: 100vh;
+    background: linear-gradient(to bottom right, var(--base-100), var(--base-200), var(--base-300));
+}
+
+.content-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.header-section {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.btn-edit {
+    background-color: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+
+    &:hover {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+}
+
+.btn-ban {
+    background-color: transparent;
+    border: 1px solid var(--error);
+    color: var(--error);
+
+    &:hover {
+        background-color: var(--error);
+        color: white;
+        border-color: var(--error);
+    }
+}
+
+.btn-activate {
+    background-color: transparent;
+    border: 1px solid var(--success);
+    color: var(--success);
+
+    &:hover {
+        background-color: var(--success);
+        color: white;
+        border-color: var(--success);
+    }
+}

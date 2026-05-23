@@ -1,0 +1,103 @@
+<div class="lobby-container">
+    <!-- Header Section -->
+    <div class="lobby-header">
+        <h2 class="room-title">Sala {{ roomCodeSignal() }}</h2>
+        @if (quizTitleSignal()) {
+            <p class="quiz-title">{{ quizTitleSignal() }}</p>
+        }
+    </div>
+
+    <!-- QR Code Section (Owner Only) -->
+    @if (isOwnerSignal()) {
+        <div class="qr-section">
+            <h3>Compartir Sala</h3>
+            <p class="qr-instructions">Escanea el código QR para unirte a la partida:</p>
+            <app-qr-code [url]="generateQrCodeUrl()" [size]="200" />
+            <div class="room-url-display">
+                <code class="room-url">{{ getRoomUrl() }}</code>
+                <button
+                    type="button"
+                    class="btn btn-sm btn-ghost copy-btn"
+                    (click)="copyRoomCode()"
+                    title="Copiar código"
+                >
+                    📋
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- Players Section -->
+    <div class="players-section">
+        <div class="players-header">
+            <h3>Jugadores</h3>
+            <span class="player-count">({{ playerCount() }})</span>
+        </div>
+
+        <ul class="player-list">
+            @for (player of playersSignal(); track player.userId) {
+                <li class="player-item" [class.is-owner]="player.isOwner" [class.is-me]="player.userId === myUserIdSignal()">
+                    <div class="player-info">
+                        <span class="player-name">
+                            {{ player.username }}
+                            @if (player.userId === myUserIdSignal()) {
+                                <span class="you-badge">(tú)</span>
+                            }
+                        </span>
+                        @if (player.isOwner) {
+                            <span class="owner-badge">👑 Owner</span>
+                        }
+                    </div>
+                    <div class="player-status">
+                        @if (player.isConnected) {
+                            <span class="status connected">🟢</span>
+                        } @else {
+                            <span class="status disconnected">🔴</span>
+                        }
+                    </div>
+                    @if (isOwnerSignal() && !player.isOwner && player.userId !== myUserIdSignal()) {
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-circle btn-error kick-btn"
+                            (click)="onKickPlayer(player.userId)"
+                            title="Expulsar jugador"
+                        >
+                            ✕
+                        </button>
+                    }
+                </li>
+            } @empty {
+                <li class="empty-message">Esperando jugadores...</li>
+            }
+        </ul>
+    </div>
+
+    <!-- Actions Section -->
+    <div class="actions-section">
+        @if (isOwnerSignal()) {
+            <button
+                type="button"
+                class="btn btn-primary btn-start"
+                [disabled]="playerCount() < 2 || isStartingSignal()"
+                (click)="onStartGame()"
+            >
+                @if (isStartingSignal()) {
+                    Iniciando...
+                } @else {
+                    Iniciar Partida
+                }
+            </button>
+            @if (playerCount() < 2) {
+                <p class="hint">Necesitas al menos 2 jugadores para comenzar</p>
+            }
+        }
+
+        <button
+            type="button"
+            class="btn btn-ghost btn-leave"
+            (click)="onLeaveGame()"
+        >
+            Salir de la Sala
+        </button>
+    </div>
+</div>

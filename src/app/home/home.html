@@ -1,32 +1,25 @@
 <!-- Navbar -->
-<nav class="shadow-lg py-4" style="background-color: var(--base-200);">
-  <div class="container mx-auto px-4">
-    <div class="flex justify-between items-center">
-      <a href="#" class="text-2xl font-bold" style="color: var(--primary);">TriviUp</a>
-      <ul class="flex gap-6 items-center">
-        <li><a href="#info" class="hover:opacity-80 transition-opacity"
-            style="color: var(--base-content);">Información</a></li>
-        <li><a href="#contacto" class="hover:opacity-80 transition-opacity"
-            style="color: var(--base-content);">Contacto</a></li>
-        <li>
-          <button class="px-6 py-2 rounded-lg font-semibold hover:opacity-90 transition-opacity"
-            style="background-color: var(--primary); color: var(--primary-content);">
-            Iniciar Sesión
-          </button>
-        </li>
-      </ul>
-    </div>
-  </div>
-</nav>
+<app-navbar></app-navbar>
 
 <!-- Hero Section -->
 <section class="min-h-screen flex items-center justify-center bg-gradient-to-br"
   style="background: linear-gradient(to bottom right, var(--base-100), var(--base-200), var(--base-300));">
   <div class="text-center max-w-3xl px-4">
-    <!-- Logo grande -->
-    <h1 class="text-8xl font-black mb-8 tracking-tight" style="color: var(--secondary);">
-      TriviUp
-    </h1>
+    <!-- Logo grande con hover-gallery en la U -->
+    <div class="logo-container flex items-end justify-center mb-8">
+      <span class="triviup text-8xl md:text-9xl lg:text-[10rem] font-black tracking-wide text-white leading-none">Trivi</span>
+      <figure class="u-gallery-custom logo-u-gallery">
+        <!-- Base Image (0) - Always visible foundation -->
+        <img src="images/LogoHover0.webp" alt="U" class="base-img" />
+
+        <!-- Variant Images (1-4) - Fade in/out based on active index -->
+        <img src="images/LogoHover1.webp" alt="U" [class.active]="activeImageIndex === 1" />
+        <img src="images/LogoHover2.webp" alt="U" [class.active]="activeImageIndex === 2" />
+        <img src="images/LogoHover3.webp" alt="U" [class.active]="activeImageIndex === 3" />
+        <img src="images/LogoHover4.webp" alt="U" [class.active]="activeImageIndex === 4" />
+      </figure>
+      <span class="triviup text-8xl md:text-9xl lg:text-[10rem] font-black tracking-tight text-white leading-none">p</span>
+    </div>
 
     <!-- Descripción -->
     <span class="text-rotate mb-5 duration-6000 text-6xl">
@@ -43,23 +36,34 @@
 
     <!-- Botón principal -->
     <div class="flex gap-4 justify-center flex-wrap mb-16">
-      <button
-        class="px-8 py-4 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl hover:cursor-pointer transition-shadow flex items-center gap-2"
+      <a routerLink="/unirse"
+        class="px-8 py-4 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2 no-underline"
         style="background-color: var(--primary); color: var(--primary-content);">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
         Unirse a una Sala
-      </button>
-      <button
+      </a>
+      <a routerLink="/quizzes/public"
         class="px-8 py-4 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2"
         style="background-color: var(--secondary); color: var(--secondary-content);">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
-        Crear Concurso
-      </button>
+        Ver Cuestionarios
+      </a>
+      @if (isLoggedIn()) {
+        <button
+          (click)="crearConcurso()"
+          class="px-8 py-4 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2"
+          style="background-color: var(--secondary); color: var(--secondary-content);">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Crear Concurso
+        </button>
+      }
     </div>
 
     <!-- Features -->
