@@ -1,0 +1,102 @@
+:host {
+    display: block;
+}
+
+nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+// Mobile scroll styles for nav links only
+.nav-scroll-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    max-width: calc(100vw - 180px);
+}
+
+.nav-scroll {
+    display: flex;
+    gap: 0.25rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-behavior: smooth;
+    padding: 0.25rem 1rem;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.scroll-fade-left,
+.scroll-fade-right {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1.5rem;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.scroll-fade-left {
+    left: 0;
+    background: linear-gradient(to right, var(--base-200), transparent);
+}
+
+.scroll-fade-right {
+    right: 0;
+    background: linear-gradient(to left, var(--base-200), transparent);
+}
+
+.nav-link {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    color: var(--base-content);
+    transition: opacity 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    &:hover {
+        opacity: 0.8;
+    }
+}
+
+.user-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    background-color: var(--primary);
+    color: var(--primary-content);
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+
+    &:hover {
+        opacity: 0.9;
+    }
+
+    .username-text {
+        @media (max-width: 768px) {
+            display: none;
+        }
+    }
+}
+
+.login-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    background-color: var(--primary);
+    color: var(--primary-content);
+    transition: opacity 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+
+    &:hover {
+        opacity: 0.9;
+    }
+}

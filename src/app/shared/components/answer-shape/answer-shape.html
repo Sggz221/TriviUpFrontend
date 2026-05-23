@@ -1,0 +1,24 @@
+<div class="answer-shape" [class]="'shape-' + shape" [class.selected]="selected">
+    @switch (shape) {
+        @case ('triangle') {
+            <svg viewBox="0 0 24 24" class="shape-svg triangle">
+                <polygon points="12,2 22,20 2,20" />
+            </svg>
+        }
+        @case ('square') {
+            <svg viewBox="0 0 24 24" class="shape-svg square">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+            </svg>
+        }
+        @case ('circle') {
+            <svg viewBox="0 0 24 24" class="shape-svg circle">
+                <circle cx="12" cy="12" r="10" />
+            </svg>
+        }
+        @case ('pentagon') {
+            <svg viewBox="0 0 24 24" class="shape-svg pentagon">
+                <polygon points="12,2 22,9 19,21 5,21 2,9" />
+            </svg>
+        }
+    }
+</div>

@@ -1,0 +1,46 @@
+<div class="card bg-base-200 shadow-md mb-4">
+    <div class="card-body">
+        <div class="flex items-start gap-3">
+            <div class="badge badge-info badge-lg font-bold text-lg">
+                {{ pregunta.numeroPregunta }}
+            </div>
+            <div class="flex-1">
+                <p class="text-lg font-medium">{{ pregunta.enunciado }}</p>
+            </div>
+        </div>
+
+        <!-- Question Image -->
+        @if (getImageUrl()) {
+            <div class="mt-4 flex justify-center">
+                <img
+                    [src]="getImageUrl()"
+                    alt="Imagen de la pregunta {{ pregunta.numeroPregunta }}"
+                    class="rounded-lg max-w-[300px] max-h-[200px] object-cover shadow-md"
+                />
+            </div>
+        }
+
+        <div class="mt-4 space-y-2 pl-12">
+            @for (respuesta of pregunta.respuestas; track respuesta.id) {
+                <div class="flex items-center gap-3 p-2 rounded-lg"
+                     [class.bg-success-content]="respuesta.esCorrecta"
+                     [class.bg-opacity-20]="respuesta.esCorrecta">
+                    @if (respuesta.esCorrecta) {
+                        <span class="text-success font-bold">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                    } @else {
+                        <span class="text-base-content opacity-40">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                    }
+                    <span [class.font-semibold]="respuesta.esCorrecta">{{ respuesta.texto }}</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>

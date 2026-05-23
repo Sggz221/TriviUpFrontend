@@ -1,0 +1,98 @@
+// CSS Variables for shape colors (valentine theme with custom colors)
+$answer-triangle: #e11d48;    // rose-600 / primary
+$answer-square: #eab308;      // yellow-500 / warning
+$answer-circle: #0ea5e9;     // sky-500 / info
+$answer-pentagon: rgb(170, 24, 181);    // purple
+
+// New gradient: blue to purple to pink
+$new-gradient: linear-gradient(90deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 186, 1) 50%, rgba(237, 83, 129, 1) 100%);
+
+.answer-shape {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    padding: 4px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: transparent;
+    box-sizing: border-box;
+}
+
+.shape-svg {
+    width: 100%;
+    height: 100%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// Triangle - rose/red
+.answer-shape.shape-triangle {
+    background-color: $answer-triangle;
+    border: 3px solid $answer-triangle;
+    box-shadow: 0 4px 12px rgba($answer-triangle, 0.4);
+
+    .shape-svg.triangle {
+        fill: white;
+    }
+}
+
+// Square - yellow
+.answer-shape.shape-square {
+    background-color: $answer-square;
+    border: 3px solid $answer-square;
+    box-shadow: 0 4px 12px rgba($answer-square, 0.4);
+
+    .shape-svg.square {
+        fill: white;
+    }
+}
+
+// Circle - sky/blue
+.answer-shape.shape-circle {
+    background-color: $answer-circle;
+    border: 3px solid $answer-circle;
+    box-shadow: 0 4px 12px rgba($answer-circle, 0.4);
+
+    .shape-svg.circle {
+        fill: white;
+    }
+}
+
+// Pentagon - purple
+.answer-shape.shape-pentagon {
+    background-color: $answer-pentagon;
+    border: 3px solid $answer-pentagon;
+    box-shadow: 0 4px 12px rgba($answer-pentagon, 0.4);
+
+    .shape-svg.pentagon {
+        fill: white;
+    }
+}
+
+/* Selected state - emphasis border/glow */
+.answer-shape.selected {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px currentColor, 0 0 30px currentColor;
+}
+
+.answer-shape.selected.shape-triangle {
+    box-shadow: 0 0 15px rgba($answer-triangle, 0.6), 0 0 30px rgba($answer-triangle, 0.4);
+}
+
+.answer-shape.selected.shape-square {
+    box-shadow: 0 0 15px rgba($answer-square, 0.6), 0 0 30px rgba($answer-square, 0.4);
+}
+
+.answer-shape.selected.shape-circle {
+    box-shadow: 0 0 15px rgba($answer-circle, 0.6), 0 0 30px rgba($answer-circle, 0.4);
+}
+
+.answer-shape.selected.shape-pentagon {
+    box-shadow: 0 0 15px rgba($answer-pentagon, 0.6), 0 0 30px rgba($answer-pentagon, 0.4);
+}
+
+/* Hover effect */
+.answer-shape:hover {
+    transform: scale(1.05);
+}

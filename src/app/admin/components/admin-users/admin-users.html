@@ -1,0 +1,192 @@
+<app-navbar></app-navbar>
+
+<div class="admin-users-container">
+    <div class="content-wrapper">
+        <div class="header-section">
+            <h1 class="text-3xl font-bold mb-2" style="color: var(--base-content);">Administración de Usuarios</h1>
+            <p class="mb-6" style="color: var(--base-content); opacity: 0.7;">Gestiona los usuarios de la plataforma</p>
+        </div>
+
+        @if (successMessage()) {
+            <div class="alert alert-success mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{{ successMessage() }}</span>
+            </div>
+        }
+
+        @if (error()) {
+            <div class="alert alert-error mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{{ error() }}</span>
+            </div>
+        }
+
+        @if (loading()) {
+            <div class="flex justify-center py-12">
+                <span class="loading loading-spinner loading-lg" style="color: var(--primary);"></span>
+            </div>
+        } @else {
+            <div class="overflow-x-auto rounded-xl shadow-lg" style="background-color: var(--base-200);">
+                <table class="table w-full">
+                    <thead style="background-color: var(--base-300);">
+                        <tr>
+                            <th class="text-lg font-semibold" style="color: var(--base-content);">ID</th>
+                            <th class="text-lg font-semibold" style="color: var(--base-content);">Username</th>
+                            <th class="text-lg font-semibold" style="color: var(--base-content);">Email</th>
+                            <th class="text-lg font-semibold" style="color: var(--base-content);">Rol</th>
+                            <th class="text-lg font-semibold" style="color: var(--base-content);">Fecha Creación</th>
+                            <th class="text-lg font-semibold text-center" style="color: var(--base-content);">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (user of users(); track user.id) {
+                            @if (user.isBanned) {
+                                <tr class="hover opacity-60" style="background-color: var(--base-100);">
+                                    <td class="font-mono text-sm" style="color: var(--base-content);">{{ user.id }}</td>
+                                    <td class="font-semibold" style="color: var(--base-content);">{{ user.username }}</td>
+                                    <td style="color: var(--base-content);">{{ user.email }}</td>
+                                    <td>
+                                        <span class="badge"
+                                            [class.badge-primary]="user.role === 'ADMIN'"
+                                            [class.badge-secondary]="user.role === 'USER'"
+                                            style="color: var(--base-content);">
+                                            {{ user.role }}
+                                        </span>
+                                    </td>
+                                    <td style="color: var(--base-content);">{{ formatDate(user.createdAt) }}</td>
+                                    <td class="text-center">
+                                        <div class="flex justify-center gap-2">
+                                            <span class="badge badge-error">BANEADO</span>
+                                            <button (click)="activateUser(user.id)"
+                                                class="btn btn-sm btn-activate">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                    viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Activar
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            } @else {
+                                <tr class="hover" style="background-color: var(--base-100);">
+                                    @if (isEditing(user.id)) {
+                                        <td>{{ user.id }}</td>
+                                        <td>
+                                            <input type="text" [(ngModel)]="editForm().username"
+                                                class="input input-sm input-bordered w-full max-w-xs"
+                                                style="background-color: var(--base-300); color: var(--base-content);" />
+                                        </td>
+                                        <td>
+                                            <input type="email" [(ngModel)]="editForm().email"
+                                                class="input input-sm input-bordered w-full max-w-xs"
+                                                style="background-color: var(--base-300); color: var(--base-content);" />
+                                        </td>
+                                        <td>
+                                            <select [(ngModel)]="editForm().role"
+                                                class="select select-sm select-bordered w-full max-w-xs"
+                                                style="background-color: var(--base-300); color: var(--base-content);">
+                                                <option value="USER">USER</option>
+                                                <option value="ADMIN">ADMIN</option>
+                                            </select>
+                                        </td>
+                                        <td>{{ formatDate(user.createdAt) }}</td>
+                                        <td class="text-center">
+                                            <div class="flex justify-center gap-2">
+                                                <button (click)="saveEdit(user.id)"
+                                                    class="btn btn-sm btn-primary"
+                                                    [disabled]="saving()">
+                                                    @if (saving()) {
+                                                        <span class="loading loading-spinner loading-xs"></span>
+                                                    } @else {
+                                                        Guardar
+                                                    }
+                                                </button>
+                                                <button (click)="cancelEdit()"
+                                                    class="btn btn-sm btn-ghost"
+                                                    style="color: var(--base-content);">
+                                                    Cancelar
+                                                </button>
+                                            </div>
+                                        </td>
+                                    } @else {
+                                        <td class="font-mono text-sm" style="color: var(--base-content);">{{ user.id }}</td>
+                                        <td class="font-semibold" style="color: var(--base-content);">{{ user.username }}</td>
+                                        <td style="color: var(--base-content);">{{ user.email }}</td>
+                                        <td>
+                                            <span class="badge"
+                                                [class.badge-primary]="user.role === 'ADMIN'"
+                                                [class.badge-secondary]="user.role === 'USER'"
+                                                style="color: var(--base-content);">
+                                                {{ user.role }}
+                                            </span>
+                                        </td>
+                                        <td style="color: var(--base-content);">{{ formatDate(user.createdAt) }}</td>
+                                        <td class="text-center">
+                                            <div class="flex justify-center gap-2">
+                                                <button (click)="startEdit(user)"
+                                                    class="btn btn-sm btn-edit">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                        viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                    Editar
+                                                </button>
+                                                <button (click)="confirmBan(user)"
+                                                    class="btn btn-sm btn-ban">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
+                                                        viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                    </svg>
+                                                    Banear
+                                                </button>
+                                            </div>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (showBanConfirm()) {
+            <div class="modal modal-open">
+                <div class="modal-box" style="background-color: var(--base-200);">
+                    <h3 class="font-bold text-lg" style="color: var(--base-content);">Confirmar banneo</h3>
+                    <p class="py-4" style="color: var(--base-content);">
+                        ¿Estás seguro de que quieres banear al usuario <strong>{{ banTarget()?.username }}</strong>?
+                        Esta acción impedirá que el usuario acceda a la plataforma.
+                    </p>
+                    <div class="modal-action">
+                        <button (click)="cancelBan()"
+                            class="btn btn-ghost"
+                            style="color: var(--base-content);">
+                            Cancelar
+                        </button>
+                        <button (click)="executeBan()"
+                            class="btn btn-error"
+                            [disabled]="banning()">
+                            @if (banning()) {
+                                <span class="loading loading-spinner loading-xs"></span>
+                            } @else {
+                                Banear
+                            }
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-backdrop" (click)="cancelBan()"></div>
+            </div>
+        }
+    </div>
+</div>
