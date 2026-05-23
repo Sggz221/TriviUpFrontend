@@ -31,7 +31,7 @@ export interface SignUpPayload {
     providedIn: 'root'
 })
 export class AuthService {
-    private readonly API_URL = 'http://localhost:5164/auth';
+    private readonly API_URL = '/auth';
 
     constructor(private http: HttpClient) { }
 
