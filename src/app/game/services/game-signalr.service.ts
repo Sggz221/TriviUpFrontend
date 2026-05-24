@@ -31,8 +31,8 @@ export class GameSignalrService {
         const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
         // Use window.location.hostname which will be the actual IP when accessed from mobile
         const host = window.location.hostname;
-        const port = 5164; // Backend port
-        return `${protocol}//${host}:${port}/hubs/game`;
+        // Connect through nginx proxy at /hubs/game (no port needed, nginx handles it)
+        return `${protocol}//${host}/hubs/game`;
     }
 
     // SignalR event subjects
