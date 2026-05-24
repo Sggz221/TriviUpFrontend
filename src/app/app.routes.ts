@@ -14,6 +14,8 @@ import { GameDetailsComponent } from './game/pages/game-details/game-details';
 import { JoinRoomComponent } from './game/pages/join-room/join-room';
 import { AdminDashboardComponent } from './admin/pages/admin-dashboard/admin-dashboard';
 import { isAdminGuard } from './admin/guards/is-admin.guard';
+import { InformacionComponent } from './shared/pages/informacion/informacion';
+import { ContactoComponent } from './shared/pages/contacto/contacto';
 
 export const routes: Routes = [
     { path: '', component: Home },
@@ -30,5 +32,7 @@ export const routes: Routes = [
     { path: 'unirse', component: JoinRoomComponent },
     { path: 'game/:roomCode', component: GameRoomComponent },
     { path: 'admin', component: AdminDashboardComponent, canActivate: [isAdminGuard] },
+    { path: 'informacion', component: InformacionComponent },
+    { path: 'contacto', component: ContactoComponent },
     { path: '**', redirectTo: '' }
 ];
