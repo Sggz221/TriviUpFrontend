@@ -126,10 +126,11 @@ export class QuizDetailComponent implements OnInit {
             return path;
         }
         // Transformar /uploads/... a /storage/... para usar el endpoint del StorageController
-        const normalizedPath = path.startsWith('/uploads')
-            ? path.replace('/uploads', '/storage')
-            : path;
-        return `http://localhost:5164${normalizedPath}`;
+        // Usar ruta relativa para que nginx haga proxy correctamente
+        if (path.startsWith('/uploads')) {
+            return path.replace('/uploads', '/storage');
+        }
+        return path;
     }
 
     crearSalaJuego(): void {
