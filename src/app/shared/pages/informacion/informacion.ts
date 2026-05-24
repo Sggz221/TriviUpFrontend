@@ -66,7 +66,7 @@ import { NavbarComponent } from '../../components/navbar/navbar.component';
                                     </div>
                                     <div>
                                         <h3 class="font-semibold mb-1" style="color: var(--base-content);">Juega en tiempo real</h3>
-                                        <p style="color: var(--base-content); opacity: 80%;">Compite con otros jugadores y демuestra tu conocimiento.</p>
+                                        <p style="color: var(--base-content); opacity: 80%;">Compite con otros jugadores y demuestra tu conocimiento.</p>
                                     </div>
                                 </div>
                             </div>
