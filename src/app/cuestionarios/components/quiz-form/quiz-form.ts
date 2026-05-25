@@ -75,6 +75,10 @@ export class QuizFormComponent {
     agregarRespuesta(preguntaIndex: number): void {
         const pregunta = this.preguntasArray.at(preguntaIndex);
         const respuestas = pregunta.get('respuestas') as FormArray;
+        if (respuestas.length >= 4) {
+            this.errorMessage.set('Máximo 4 respuestas por pregunta');
+            return;
+        }
         respuestas.push(this.fb.group({
             texto: ['', Validators.required],
             esCorrecta: [false]
@@ -105,6 +109,9 @@ export class QuizFormComponent {
                 console.log('[eliminarRespuesta] ELIMINANDO respuesta en índice:', indexToRemove);
                 respuestas.removeAt(indexToRemove);
 
+                // Resetear todas las respuestas a esCorrecta: false para evitar inconsistencias visuales
+                this.resetCorrectAnswer(preguntaIndex);
+
                 console.log('[eliminarRespuesta] Respuestas después de eliminar:', respuestas.length);
                 console.log('[eliminarRespuesta] Estado de respuestas después:');
                 for (let i = 0; i < respuestas.length; i++) {
@@ -120,8 +127,7 @@ export class QuizFormComponent {
 
     setRespuestaCorrecta(preguntaIndex: number, respuestaIndex: number): void {
         console.log('[setRespuestaCorrecta] INICIO');
-        console.log('[setRespuestaCorrecta] preguntaIndex:', preguntaIndex);
-        console.log('[setRespuestaCorrecta] respuestaIndex:', respuestaIndex);
+        console.log('[setRespuestaCorrecta] preguntaIndex:', preguntaIndex, 'respuestaIndex:', respuestaIndex);
 
         const pregunta = this.preguntasArray.at(preguntaIndex);
         const respuestas = pregunta.get('respuestas') as FormArray;
@@ -131,34 +137,29 @@ export class QuizFormComponent {
             console.log(`  [${i}] texto: "${respuestas.at(i).get('texto')?.value}", esCorrecta: ${respuestas.at(i).get('esCorrecta')?.value}`);
         }
 
-        // First, check how many correct answers we have
-        let correctCount = 0;
-        let correctIndex = -1;
+        // Desmarcar TODAS las respuestas primero (forzar una sola correcta)
         for (let i = 0; i < respuestas.length; i++) {
-            if (respuestas.at(i).get('esCorrecta')?.value === true) {
-                correctCount++;
-                correctIndex = i;
-            }
+            respuestas.at(i).patchValue({ esCorrecta: false });
         }
 
-        console.log('[setRespuestaCorrecta] correctCount:', correctCount, 'correctIndex:', correctIndex);
-
-        // If the clicked answer is already correct, don't change anything
-        if (respuestaIndex === correctIndex) {
-            console.log('[setRespuestaCorrecta] La respuesta ya es correcta, no se cambia nada');
-            return;
-        }
-
-        // Uncheck all others first, then check the selected one
-        console.log('[setRespuestaCorrecta] Marcando respuesta', respuestaIndex, 'como correcta');
-        for (let i = 0; i < respuestas.length; i++) {
-            respuestas.at(i).patchValue({ esCorrecta: i === respuestaIndex });
-        }
+        // Marcar solo la respuesta clickeada como correcta
+        respuestas.at(respuestaIndex).patchValue({ esCorrecta: true });
 
         console.log('[setRespuestaCorrecta] Estado después de cambiar:');
         for (let i = 0; i < respuestas.length; i++) {
             console.log(`  [${i}] texto: "${respuestas.at(i).get('texto')?.value}", esCorrecta: ${respuestas.at(i).get('esCorrecta')?.value}`);
         }
+    }
+
+    private resetCorrectAnswer(preguntaIndex: number): void {
+        // Cuando se elimina una respuesta, resetear todas las respuestas a esCorrecta: false
+        // para evitar inconsistencias visuales
+        const pregunta = this.preguntasArray.at(preguntaIndex);
+        const respuestas = pregunta.get('respuestas') as FormArray;
+        for (let i = 0; i < respuestas.length; i++) {
+            respuestas.at(i).patchValue({ esCorrecta: false });
+        }
+        console.log('[resetCorrectAnswer] Respuestas de pregunta', preguntaIndex, 'reseteadas a esCorrecta: false');
     }
 
     esRespuestaCorrecta(preguntaIndex: number, respuestaIndex: number): boolean {
