@@ -4,9 +4,6 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
-    # DNS resolver para .railway.internal domains (Railway DNS)
-    resolver 127.0.0.11 valid=10s ipv6=off;
-
     # Configuración para Angular SPA
     location / {
         try_files $uri $uri/ /index.html;
@@ -14,7 +11,7 @@ server {
 
     # Proxy para archivos subidos (imágenes de preguntas, avatares, etc.)
     location /uploads/ {
-        proxy_pass http://triviup-backend.railway.internal:5164;
+        proxy_pass http://triviup-backend-production.up.railway.app:5164;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -24,7 +21,7 @@ server {
 
     # Proxy para el StorageController del backend
     location ^~ /storage/ {
-        proxy_pass http://triviup-backend.railway.internal:5164;
+        proxy_pass http://triviup-backend-production.up.railway.app:5164;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -34,7 +31,7 @@ server {
 
     # Proxy para la API del backend
     location /api/ {
-        proxy_pass http://triviup-backend.railway.internal:5164/;
+        proxy_pass http://triviup-backend-production.up.railway.app:5164/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -44,7 +41,7 @@ server {
 
     # Proxy para Auth (signin, signup, google oauth)
     location /auth/ {
-        proxy_pass http://triviup-backend.railway.internal:5164/auth/;
+        proxy_pass http://triviup-backend-production.up.railway.app:5164/auth/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
