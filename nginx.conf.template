@@ -11,7 +11,7 @@ server {
 
     # Proxy para archivos subidos (imágenes de preguntas, avatares, etc.)
     location /uploads/ {
-        proxy_pass https://triviup-backend-production.up.railway.app;
+        proxy_pass http://triviup-backend-production.up.railway.app;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -24,7 +24,7 @@ server {
 
     # Proxy para el StorageController del backend
     location ^~ /storage/ {
-        proxy_pass https://triviup-backend-production.up.railway.app;
+        proxy_pass http://triviup-backend-production.up.railway.app;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -37,7 +37,7 @@ server {
 
     # Proxy para la API del backend
     location /api/ {
-        proxy_pass https://triviup-backend-production.up.railway.app;
+        proxy_pass http://triviup-backend-production.up.railway.app;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -50,7 +50,7 @@ server {
 
     # Proxy para Auth (signin, signup, google oauth)
     location /auth/ {
-        proxy_pass https://triviup-backend-production.up.railway.app;
+        proxy_pass http://triviup-backend-production.up.railway.app;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
