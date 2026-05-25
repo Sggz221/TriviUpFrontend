@@ -71,7 +71,7 @@ export class Auth implements OnInit {
   }
 
   signInWithGoogle(): void {
-    window.location.href = 'http://localhost:5164/auth/google';
+    window.location.href = 'https://triviup-backend-production.up.railway.app/auth/google';
   }
 
   switchTab(tab: 'login' | 'register'): void {
