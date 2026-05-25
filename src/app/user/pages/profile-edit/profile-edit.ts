@@ -53,6 +53,7 @@ import { ProfilePhotoUploadComponent } from '../../../shared/components/profile-
                                 <app-profile-photo-upload
                                     [currentPhotoUrl]="currentUser()?.profilePhotoUrl ?? null"
                                     [username]="currentUser()?.username ?? ''"
+                                    [editable]="true"
                                     (photoUpdated)="onPhotoUpdated($event)"
                                 />
                             </div>
