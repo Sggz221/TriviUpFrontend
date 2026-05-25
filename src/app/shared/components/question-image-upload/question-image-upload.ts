@@ -275,6 +275,10 @@ export class QuestionImageUploadComponent {
         if (url.startsWith('http://') || url.startsWith('https://')) {
             return url;
         }
-        return 'http://localhost:5164' + url;
+        // Transformar /uploads/... a /storage/... para nginx proxy
+        if (url.startsWith('/uploads')) {
+            return url.replace('/uploads', '/storage');
+        }
+        return url;
     }
 }
