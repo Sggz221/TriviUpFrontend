@@ -18,22 +18,24 @@ import { ProfilePhotoComponent, ProfilePhotoSize } from '../profile-photo/profil
                     [showInitials]="!currentPhotoUrl()"
                 />
 
-                <!-- Upload overlay on hover -->
-                <label class="absolute inset-0 cursor-pointer rounded-full overflow-hidden group">
-                    <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </div>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        (change)="onFileSelected($event)"
-                        class="hidden"
-                        #fileInput
-                    />
-                </label>
+                <!-- Upload overlay on hover (only in edit mode) -->
+                @if (editable()) {
+                    <label class="absolute inset-0 cursor-pointer rounded-full overflow-hidden group">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </div>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            (change)="onFileSelected($event)"
+                            class="hidden"
+                            #fileInput
+                        />
+                    </label>
+                }
             </div>
 
             <!-- Hidden file input for programmatic access -->
@@ -77,27 +79,29 @@ import { ProfilePhotoComponent, ProfilePhotoSize } from '../profile-photo/profil
                 </div>
             }
 
-            <!-- Action buttons -->
-            <div class="flex gap-2">
-                @if (selectedFile() && !isUploading()) {
-                    <button
-                        (click)="uploadPhoto()"
-                        class="btn btn-primary btn-sm"
-                        [disabled]="!selectedFile() || isUploading()"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                        Subir foto
-                    </button>
-                    <button
-                        (click)="cancelSelection()"
-                        class="btn btn-ghost btn-sm"
-                    >
-                        Cancelar
-                    </button>
-                }
-            </div>
+            <!-- Action buttons (only in edit mode) -->
+            @if (editable()) {
+                <div class="flex gap-2">
+                    @if (selectedFile() && !isUploading()) {
+                        <button
+                            (click)="uploadPhoto()"
+                            class="btn btn-primary btn-sm"
+                            [disabled]="!selectedFile() || isUploading()"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            Subir foto
+                        </button>
+                        <button
+                            (click)="cancelSelection()"
+                            class="btn btn-ghost btn-sm"
+                        >
+                            Cancelar
+                        </button>
+                    }
+                </div>
+            }
 
             <!-- Success message -->
             @if (successMessage()) {
@@ -109,8 +113,8 @@ import { ProfilePhotoComponent, ProfilePhotoSize } from '../profile-photo/profil
                 </div>
             }
 
-            <!-- Help text -->
-            @if (!selectedFile() && !isUploading()) {
+            <!-- Help text (only in edit mode) -->
+            @if (editable() && !selectedFile() && !isUploading()) {
                 <p class="text-xs opacity-50" style="color: var(--base-content);">
                     Haz clic en la foto para cambiar • Máx. 5MB • JPG, PNG, GIF, WebP
                 </p>
@@ -129,6 +133,7 @@ export class ProfilePhotoUploadComponent {
     currentPhotoUrl = input<string | null>(null);
     username = input<string>('');
     size = input<ProfilePhotoSize>('md');
+    editable = input<boolean>(false); // Only allow photo changes in edit mode
 
     photoUpdated = output<string>();
 
