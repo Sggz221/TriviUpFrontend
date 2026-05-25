@@ -29,5 +29,8 @@ COPY --from=build /app/dist/TriviUp/browser /usr/share/nginx/html
 # Exponer puerto 80
 EXPOSE 80
 
-# Generar configuración final con variables de entorno y iniciar nginx
-CMD envsubst < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'
+# Copiar configuración de nginx directamente (sin envsubst ya que las URLs están hardcodeadas)
+COPY nginx.conf.template /etc/nginx/conf.d/default.conf
+
+# Iniciar nginx
+CMD ["nginx", "-g", "daemon off;"]
