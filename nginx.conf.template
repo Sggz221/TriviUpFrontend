@@ -48,7 +48,11 @@ server {
         proxy_read_timeout 120s;
     }
 
-    # Proxy para Auth (signin, signup, google oauth)
+    # Proxy para Auth (signin, signup, google oauth) - EXCEPTO callback que lo maneja Angular
+    location = /auth/callback {
+        try_files $uri $uri/ /index.html;
+    }
+
     location /auth/ {
         proxy_pass http://triviup-backend-production.up.railway.app;
         proxy_set_header Host $host;
