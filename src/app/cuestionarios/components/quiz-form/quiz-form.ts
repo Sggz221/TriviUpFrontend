@@ -82,20 +82,54 @@ export class QuizFormComponent {
     }
 
     eliminarRespuesta(preguntaIndex: number, respuestaIndex: number, respuestaControl: AbstractControl): void {
+        console.log('[eliminarRespuesta] INICIO');
+        console.log('[eliminarRespuesta] preguntaIndex:', preguntaIndex);
+        console.log('[eliminarRespuesta] respuestaIndex pasado:', respuestaIndex);
+        console.log('[eliminarRespuesta] respuestaControl texto:', respuestaControl.get('texto')?.value);
+
         const pregunta = this.preguntasArray.at(preguntaIndex);
         const respuestas = pregunta.get('respuestas') as FormArray;
+
+        console.log('[eliminarRespuesta] Respuestas antes de eliminar:', respuestas.length);
+        console.log('[eliminarRespuesta] Estado de respuestas antes:');
+        for (let i = 0; i < respuestas.length; i++) {
+            console.log(`  [${i}] texto: "${respuestas.at(i).get('texto')?.value}", esCorrecta: ${respuestas.at(i).get('esCorrecta')?.value}`);
+        }
+
         if (respuestas.length > 2) {
             // Remove by control reference to ensure we remove the exact one
             const indexToRemove = respuestas.controls.indexOf(respuestaControl);
+            console.log('[eliminarRespuesta] indexToRemove calculado:', indexToRemove);
+
             if (indexToRemove !== -1) {
+                console.log('[eliminarRespuesta] ELIMINANDO respuesta en índice:', indexToRemove);
                 respuestas.removeAt(indexToRemove);
+
+                console.log('[eliminarRespuesta] Respuestas después de eliminar:', respuestas.length);
+                console.log('[eliminarRespuesta] Estado de respuestas después:');
+                for (let i = 0; i < respuestas.length; i++) {
+                    console.log(`  [${i}] texto: "${respuestas.at(i).get('texto')?.value}", esCorrecta: ${respuestas.at(i).get('esCorrecta')?.value}`);
+                }
+            } else {
+                console.log('[eliminarRespuesta] ERROR: respuestaControl no encontrado en controls!');
             }
+        } else {
+            console.log('[eliminarRespuesta] No se puede eliminar, menos de 3 respuestas');
         }
     }
 
     setRespuestaCorrecta(preguntaIndex: number, respuestaIndex: number): void {
+        console.log('[setRespuestaCorrecta] INICIO');
+        console.log('[setRespuestaCorrecta] preguntaIndex:', preguntaIndex);
+        console.log('[setRespuestaCorrecta] respuestaIndex:', respuestaIndex);
+
         const pregunta = this.preguntasArray.at(preguntaIndex);
         const respuestas = pregunta.get('respuestas') as FormArray;
+
+        console.log('[setRespuestaCorrecta] Estado antes de cambiar:');
+        for (let i = 0; i < respuestas.length; i++) {
+            console.log(`  [${i}] texto: "${respuestas.at(i).get('texto')?.value}", esCorrecta: ${respuestas.at(i).get('esCorrecta')?.value}`);
+        }
 
         // First, check how many correct answers we have
         let correctCount = 0;
@@ -107,14 +141,23 @@ export class QuizFormComponent {
             }
         }
 
+        console.log('[setRespuestaCorrecta] correctCount:', correctCount, 'correctIndex:', correctIndex);
+
         // If the clicked answer is already correct, don't change anything
         if (respuestaIndex === correctIndex) {
+            console.log('[setRespuestaCorrecta] La respuesta ya es correcta, no se cambia nada');
             return;
         }
 
         // Uncheck all others first, then check the selected one
+        console.log('[setRespuestaCorrecta] Marcando respuesta', respuestaIndex, 'como correcta');
         for (let i = 0; i < respuestas.length; i++) {
             respuestas.at(i).patchValue({ esCorrecta: i === respuestaIndex });
+        }
+
+        console.log('[setRespuestaCorrecta] Estado después de cambiar:');
+        for (let i = 0; i < respuestas.length; i++) {
+            console.log(`  [${i}] texto: "${respuestas.at(i).get('texto')?.value}", esCorrecta: ${respuestas.at(i).get('esCorrecta')?.value}`);
         }
     }
 
