@@ -81,19 +81,38 @@ export class QuizFormComponent {
         }));
     }
 
-    eliminarRespuesta(preguntaIndex: number, respuestaIndex: number): void {
+    eliminarRespuesta(preguntaIndex: number, respuestaIndex: number, respuestaControl: AbstractControl): void {
         const pregunta = this.preguntasArray.at(preguntaIndex);
         const respuestas = pregunta.get('respuestas') as FormArray;
         if (respuestas.length > 2) {
-            respuestas.removeAt(respuestaIndex);
+            // Remove by control reference to ensure we remove the exact one
+            const indexToRemove = respuestas.controls.indexOf(respuestaControl);
+            if (indexToRemove !== -1) {
+                respuestas.removeAt(indexToRemove);
+            }
         }
     }
 
     setRespuestaCorrecta(preguntaIndex: number, respuestaIndex: number): void {
         const pregunta = this.preguntasArray.at(preguntaIndex);
         const respuestas = pregunta.get('respuestas') as FormArray;
-        
-        // Uncheck all others first
+
+        // First, check how many correct answers we have
+        let correctCount = 0;
+        let correctIndex = -1;
+        for (let i = 0; i < respuestas.length; i++) {
+            if (respuestas.at(i).get('esCorrecta')?.value === true) {
+                correctCount++;
+                correctIndex = i;
+            }
+        }
+
+        // If the clicked answer is already correct, don't change anything
+        if (respuestaIndex === correctIndex) {
+            return;
+        }
+
+        // Uncheck all others first, then check the selected one
         for (let i = 0; i < respuestas.length; i++) {
             respuestas.at(i).patchValue({ esCorrecta: i === respuestaIndex });
         }
