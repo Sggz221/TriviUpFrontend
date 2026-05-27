@@ -237,13 +237,14 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
 
 // ============ Answer Options ============
 .answer-options {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch; // Key: makes all children (answer buttons) equal height
     gap: 1rem;
     width: 100%;
 
     @media (max-width: 640px) {
-        grid-template-columns: 1fr;
+        flex-direction: column;
     }
 
     .answer-btn {
@@ -252,7 +253,12 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
         align-items: center;
         gap: 0.75rem;
         padding: 1rem 1.25rem;
+        flex: 1 1 calc(50% - 0.5rem); // Each button takes 50% width minus gap
         min-height: 70px;
+
+        @media (max-width: 640px) {
+            flex: 1 1 100%; // Full width on mobile
+        }
         background: rgba(255, 255, 255, 0.05);
         border: 2px solid rgba(255, 255, 255, 0.1);
         border-radius: 1rem;
