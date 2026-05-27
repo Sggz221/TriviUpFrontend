@@ -42,7 +42,7 @@ export class Auth implements OnInit {
 
   ngOnInit(): void {
     if (this.authService.isLoggedIn()) {
-      this.router.navigate(['/']);
+      this.router.navigate(['/']); 
     }
   }
 

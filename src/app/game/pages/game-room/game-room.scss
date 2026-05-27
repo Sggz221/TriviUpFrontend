@@ -173,6 +173,9 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
         color: var(--base-content);
         line-height: 1.5;
         margin: 0;
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
 }
 
@@ -255,7 +258,7 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
         border-radius: 1rem;
         cursor: pointer;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        overflow: hidden;
+        overflow: visible;
 
         &:hover:not(:disabled) {
             transform: translateY(-2px);
@@ -329,6 +332,9 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
             text-align: left;
             font-weight: 500;
             color: white;
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
     }
 }
