@@ -1,59 +1,45 @@
-# TriviUp
+# 🎯 TriviUp
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.2.
+> Plataforma de concursos de trivia multiplayer en tiempo real
 
-## Development server
+---
 
-To start a local development server, run:
+Desafía a tus amigos, pon a prueba tus conocimientos y diviértete con emocionantes partidas donde cada turno es una pregunta con temporizador y **puntuación por velocidad de respuesta**.
 
-```bash
-ng serve
-```
+---
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## ✨ Características
 
-## Code scaffolding
+| | |
+|---|---|
+| 🚀 **Rápido y Fácil** | Crea salas en segundos y empieza a jugar |
+| 🎨 **Personalizable** | Diseña tus propias preguntas y categorías |
+| 🏆 **Competitivo** | Sube en el ranking y demuestra tu conocimiento |
+| 👥 **Multiplayer** | Juega con amigos en tiempo real |
+| 🔒 **Seguro** | Autenticación con JWT y Google OAuth |
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+---
 
-```bash
-ng generate component component-name
-```
+## 🛠️ Tecnologías
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+### Frontend
+- **Angular 21** · TypeScript · Tailwind CSS
+- **DaisyUI 5** · SignalR · RxJS · Vitest
 
-```bash
-ng generate --help
-```
+### Backend
+- **.NET 9** · ASP.NET Core · Entity Framework Core
+- **PostgreSQL** · SignalR · JWT · BCrypt
 
-## Building
+---
 
-To build the project run:
+## 🔗 Enlaces
 
-```bash
-ng build
-```
+**Aplicación:** https://triviup.up.railway.app/
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+**Repositorios:**
+- Backend → https://github.com/charlieecy/TriviUpBackend
+- Frontend → https://github.com/Sggz221/TriviUpFrontend
 
-## Running unit tests
+---
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Hecho con ❤️ por [Samuel Gómez](https://github.com/Sggz221) y [Carlos Cortés](https://github.com/charlieecy)
