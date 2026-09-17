@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { GameSignalrService } from '../../services/game-signalr.service';
 import { AuthService } from '../../../auth/auth.service';
+import { getOrCreateAnonymousUserId, saveAnonymousIdentity } from '../../utils/anonymous-identity.utils';
 
 @Component({
     selector: 'app-join-room',
@@ -66,10 +67,13 @@ export class JoinRoomComponent {
                 await this.gameSignalrService.connect(token);
                 await this.gameSignalrService.joinGame(code, user.id, user.username);
             } else {
-                // Anonymous user: generate random ID and connect anonymously
-                const anonymousUserId = Math.floor(Math.random() * 1000000);
+                // Anonymous user: reuse the persisted id for this room if we have one
+                // (e.g. rejoining after a refresh), so the backend treats this as a
+                // reconnect instead of a brand new player.
+                const anonymousUserId = getOrCreateAnonymousUserId(code);
                 await this.gameSignalrService.connectAnonymously(anonymousUserId, username);
                 await this.gameSignalrService.joinGame(code);
+                saveAnonymousIdentity(code, anonymousUserId, username);
             }
 
             // Navigate to the game room

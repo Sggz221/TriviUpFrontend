@@ -11,6 +11,7 @@ import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AudioService } from '../../../shared/services/audio.service';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { getOrCreateAnonymousUserId, saveAnonymousIdentity } from '../../utils/anonymous-identity.utils';
 
 @Component({
     selector: 'app-game-room',
@@ -193,34 +194,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         }
     }
 
-    private anonymousIdStorageKey(): string {
-        return `triviup:anon:${this.roomCode()}`;
-    }
-
-    private getOrCreateAnonymousUserId(): number {
-        try {
-            const stored = sessionStorage.getItem(this.anonymousIdStorageKey());
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                if (typeof parsed.userId === 'number') {
-                    return parsed.userId;
-                }
-            }
-        } catch {
-            // sessionStorage no disponible o dato corrupto: seguimos con uno nuevo
-        }
-
-        return Math.floor(Math.random() * 1000000);
-    }
-
-    private saveAnonymousIdentity(userId: number, username: string): void {
-        try {
-            sessionStorage.setItem(this.anonymousIdStorageKey(), JSON.stringify({ userId, username }));
-        } catch {
-            // sessionStorage no disponible: no es crítico, simplemente no persistimos
-        }
-    }
-
     joinAsAnonymous(): void {
         console.log('[GameRoom] joinAsAnonymous() called');
         console.log('[GameRoom] Current anonymousUsername value:', this.anonymousUsername);
@@ -237,13 +210,13 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         // Reutilizar el userId anónimo de esta sala si ya existe (ej: venimos de un refresh),
         // para que el backend nos reconozca como el mismo jugador reconectando en vez de
         // crear una fila duplicada en la lista de jugadores.
-        const anonymousUserId = this.getOrCreateAnonymousUserId();
+        const anonymousUserId = getOrCreateAnonymousUserId(this.roomCode());
         console.log('[GameRoom] Using anonymousUserId:', anonymousUserId);
 
         console.log('[GameRoom] Calling connectAnonymously()...');
         this.gameSignalrService.connectAnonymously(anonymousUserId, username).then(() => {
             console.log('[GameRoom] connectAnonymously() succeeded');
-            this.saveAnonymousIdentity(anonymousUserId, username);
+            saveAnonymousIdentity(this.roomCode(), anonymousUserId, username);
             this.myUserId.set(anonymousUserId);
             this.myUsername.set(username);
             this.showJoinForm.set(false);
