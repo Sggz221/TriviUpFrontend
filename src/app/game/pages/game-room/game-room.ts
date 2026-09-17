@@ -141,6 +141,15 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 this.setupEventHandlers();
                 console.log('[GameRoom] Connection state:', this.gameSignalrService.connectionState());
 
+                // Semilla inicial desde el signal del servicio (poblado por GameCreated
+                // si acabamos de crear la sala en QuizDetail, antes de navegar aquí).
+                // Sin esto el propio owner ve "Jugadores (0)" hasta que se una alguien más.
+                const servicePlayers = this.gameSignalrService.players();
+                if (servicePlayers.length > 0) {
+                    this.players.set(servicePlayers);
+                    this.syncOwnershipFromPlayers(servicePlayers);
+                }
+
                 // If user is NOT the owner, join the game room
                 if (!this.isOwner()) {
                     console.log('[GameRoom] User is not owner, joining game room...');
@@ -254,6 +263,21 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         });
     }
 
+    /**
+     * Deriva si el usuario actual es el owner a partir de la lista de jugadores
+     * recibida del servidor, en vez de depender solo del evento GameCreated (que
+     * no vuelve a dispararse tras un refresh). Sin esto, tras un F5 el owner
+     * pierde el QR y el botón de "Iniciar Partida" aunque el backend lo siga
+     * reconociendo como owner.
+     */
+    private syncOwnershipFromPlayers(players: Player[]): void {
+        const me = players.find(p => p.userId === this.myUserId());
+        if (me && me.isOwner !== this.isOwner()) {
+            this.isOwner.set(me.isOwner);
+            this.gameSignalrService.setIsOwner(me.isOwner);
+        }
+    }
+
     private setupEventHandlers(): void {
         console.log('[GameRoom] ★ Setting up event handlers');
         // Cuando se une exitosamente a la sala
@@ -294,6 +318,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 console.log('[GameRoom] ★★★ Players list after join:', JSON.stringify(updated));
                 return updated;
             });
+            this.syncOwnershipFromPlayers(this.players());
         });
 
         // Cuando un jugador abandona
@@ -395,6 +420,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             console.log('[GameRoom] ★★★ Current players before update:', JSON.stringify(this.players()));
             this.players.set(players);
             console.log('[GameRoom] ★★★ Players list after update:', JSON.stringify(this.players()));
+            this.syncOwnershipFromPlayers(players);
         });
 
         // Game paused
