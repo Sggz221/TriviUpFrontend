@@ -426,9 +426,16 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     onLeaveGame(): void {
-        this.gameSignalrService.leaveGame(this.roomCode());
-        this.gameSignalrService.clearGameState();
-        this.router.navigate(['/']);
+        this.gameSignalrService.leaveGame(this.roomCode())
+            .catch((error) => console.error('[GameRoom] Error al notificar salida de la sala:', error))
+            .finally(() => {
+                // Cerrar la conexión SignalR por completo: si no, al volver a entrar
+                // connectAnonymously() la ve como "ya conectada" y no actualiza el
+                // nombre/usuario nuevo que se escriba en el formulario de unión.
+                this.gameSignalrService.disconnect();
+                this.gameSignalrService.clearGameState();
+                this.router.navigate(['/']);
+            });
     }
 
     onKickPlayer(playerId: number): void {
