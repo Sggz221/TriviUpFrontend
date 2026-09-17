@@ -3,12 +3,13 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { UserResponse, UpdateUserRequest, AdminStats } from '../models/admin.models';
 import { AuthService } from '../../auth/auth.service';
+import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 
 @Injectable({
     providedIn: 'root'
 })
 export class AdminService {
-    private readonly API_URL = '';
+    private readonly API_URL = getApiBaseUrl();
     private readonly USERS_URL = `${this.API_URL}/users`;
     private readonly ADMIN_URL = `${this.API_URL}/api/admin`;
 

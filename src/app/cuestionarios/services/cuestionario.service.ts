@@ -3,6 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Cuestionario, CreateQuizRequest } from '../models/cuestionario.model';
 import { AuthService } from '../../auth/auth.service';
+import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 
 export interface UploadQuestionImageResponse {
     imagenUrl: string;
@@ -17,8 +18,8 @@ export interface UploadQuizImageResponse {
     providedIn: 'root'
 })
 export class CuestionarioService {
-    private readonly API_URL = '/api/cuestionarios';
-    private readonly PREGUNTAS_API_URL = '/cuestionarios/preguntas';
+    private readonly API_URL = `${getApiBaseUrl()}/api/cuestionarios`;
+    private readonly PREGUNTAS_API_URL = `${getApiBaseUrl()}/cuestionarios/preguntas`;
 
     private http = inject(HttpClient);
     private authService = inject(AuthService);

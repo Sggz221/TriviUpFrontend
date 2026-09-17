@@ -2,12 +2,13 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { CuestionarioPublico, PaginatedQuizzesResponse } from '../models/cuestionario-publico.model';
+import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 
 @Injectable({
     providedIn: 'root'
 })
 export class QuizzesPublicService {
-    private readonly API_URL = '/api/quizzes';
+    private readonly API_URL = `${getApiBaseUrl()}/api/quizzes`;
 
     private http = inject(HttpClient);
 

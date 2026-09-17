@@ -1,0 +1,25 @@
+{
+    admin off
+}
+
+:80 {
+    root * /srv
+    encode gzip
+
+    # Assets con hash en el nombre (Angular outputHashing: all) -> cache larga e inmutable
+    @hashed {
+        path_regexp \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$
+    }
+    header @hashed Cache-Control "public, max-age=31536000, immutable"
+
+    # index.html no lleva hash: nunca debe cachearse, si no el navegador puede
+    # quedarse con una versión vieja que apunta a bundles que ya no existen.
+    @index {
+        path /index.html /
+    }
+    header @index Cache-Control "no-cache, no-store, must-revalidate"
+
+    # SPA fallback: cualquier ruta sin archivo real la resuelve Angular Router
+    try_files {path} /index.html
+    file_server
+}

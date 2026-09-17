@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AuthService } from '../../auth/auth.service';
+import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 
 export interface HistoryPlayerResultDto {
   userId: number;
@@ -26,7 +27,7 @@ export interface GameHistoryDto {
 export class GameHistoryService {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
-  private apiUrl = '/api/game';
+  private apiUrl = `${getApiBaseUrl()}/api/game`;
 
   private getHeaders(): HttpHeaders {
     const token = this.authService.getToken();

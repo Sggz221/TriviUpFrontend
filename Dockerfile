@@ -14,23 +14,13 @@ COPY . .
 # Build de la aplicación Angular
 RUN npm run build
 
-# Etapa 2: Servir con nginx
-FROM nginx:alpine AS runtime
+# Etapa 2: Servir con Caddy
+# Servidor estático puro: el frontend ya no proxea al backend (llama directo
+# a su dominio público en Railway), así que no depende de resolución DNS
+# interna ni de configuración de upstream.
+FROM caddy:2-alpine AS runtime
 
-# Instalar envsubst para substituir variables de entorno
-RUN apk add --no-cache gettext
+COPY Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/dist/TriviUp/browser /srv
 
-# Copiar template de configuración de nginx
-COPY nginx.conf.template /etc/nginx/conf.d/default.conf.template
-
-# Copiar archivos estáticos del build de Angular
-COPY --from=build /app/dist/TriviUp/browser /usr/share/nginx/html
-
-# Exponer puerto 80
 EXPOSE 80
-
-# Copiar configuración de nginx directamente (sin envsubst ya que las URLs están hardcodeadas)
-COPY nginx.conf.template /etc/nginx/conf.d/default.conf
-
-# Iniciar nginx
-CMD ["nginx", "-g", "daemon off;"]

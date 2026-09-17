@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState } from '../models/game.models';
+import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 
 export type GamePageState =
     | 'disconnected'
@@ -28,10 +29,15 @@ export class GameSignalrService {
 
     // Build hub URL dynamically based on environment
     private getHubUrl(): string {
+        const apiBaseUrl = getApiBaseUrl();
+        if (apiBaseUrl) {
+            // Producción: el backend ya no está detrás de un proxy de nginx,
+            // se llama directamente a su dominio público.
+            return `${apiBaseUrl}/hubs/game`;
+        }
+        // Local (ng serve): usar el host actual (permite probar desde el móvil en la LAN)
         const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-        // Use window.location.hostname which will be the actual IP when accessed from mobile
         const host = window.location.hostname;
-        // Connect through nginx proxy at /hubs/game (no port needed, nginx handles it)
         return `${protocol}//${host}/hubs/game`;
     }
 

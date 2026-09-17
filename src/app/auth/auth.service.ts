@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import { getApiBaseUrl } from '../shared/utils/api-url.utils';
 
 export interface AuthUser {
     id: number;
@@ -31,7 +32,7 @@ export interface SignUpPayload {
     providedIn: 'root'
 })
 export class AuthService {
-    private readonly API_URL = '/auth';
+    private readonly API_URL = `${getApiBaseUrl()}/auth`;
 
     constructor(private http: HttpClient) { }
 

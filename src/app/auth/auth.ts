@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { AuthService } from './auth.service';
+import { getApiBaseUrl } from '../shared/utils/api-url.utils';
 
 @Component({
   selector: 'app-auth',
@@ -71,7 +72,7 @@ export class Auth implements OnInit {
   }
 
   signInWithGoogle(): void {
-    window.location.href = 'https://triviup-backend-production.up.railway.app/auth/google';
+    window.location.href = `${getApiBaseUrl()}/auth/google`;
   }
 
   switchTab(tab: 'login' | 'register'): void {

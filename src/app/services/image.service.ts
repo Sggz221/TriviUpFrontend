@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, tap, catchError, throwError } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
+import { getApiBaseUrl } from '../shared/utils/api-url.utils';
 
 export interface UploadQuestionImageResponse {
     imagenUrl: string;
@@ -11,7 +12,7 @@ export interface UploadQuestionImageResponse {
     providedIn: 'root'
 })
 export class ImageService {
-    private readonly API_URL = '/cuestionarios/preguntas';
+    private readonly API_URL = `${getApiBaseUrl()}/cuestionarios/preguntas`;
 
     private http = inject(HttpClient);
     private authService = inject(AuthService);

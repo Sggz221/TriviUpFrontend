@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, tap, map, catchError, throwError } from 'rxjs';
 import { AuthService, AuthUser } from '../auth/auth.service';
+import { getApiBaseUrl } from '../shared/utils/api-url.utils';
 
 export interface UpdateProfilePhotoResponse {
     profilePhotoUrl: string;
@@ -25,7 +26,7 @@ export interface UpdateProfileResponse {
     providedIn: 'root'
 })
 export class UserService {
-    private readonly API_URL = '/users';
+    private readonly API_URL = `${getApiBaseUrl()}/users`;
 
     private http = inject(HttpClient);
     private authService = inject(AuthService);
