@@ -1,7 +1,10 @@
-# Upstream para backend usando DNS interno de Railway
-upstream backend {
-    server triviup-backend.railway.internal:5164;
-}
+# DNS resolver para .railway.internal domains (Docker DNS).
+# IMPORTANTE: no usar un bloque `upstream { server ... }` con este hostname,
+# porque nginx lo resolvería una sola vez al arrancar y se quedaría con la IP
+# vieja para siempre si el backend se reinicia (nueva IP interna) mientras
+# este contenedor de nginx sigue vivo. Usando una variable en cada proxy_pass,
+# nginx sí reconsulta el DNS por request respetando `valid=10s`.
+resolver 127.0.0.11 valid=10s ipv6=off;
 
 server {
     listen 80;
@@ -27,7 +30,8 @@ server {
 
     # Proxy para archivos subidos
     location /uploads/ {
-        proxy_pass http://backend;
+        set $backend_upstream triviup-backend.railway.internal:5164;
+        proxy_pass http://$backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -40,7 +44,8 @@ server {
 
     # Proxy para StorageController del backend
     location ^~ /storage/ {
-        proxy_pass http://backend;
+        set $backend_upstream triviup-backend.railway.internal:5164;
+        proxy_pass http://$backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -53,7 +58,8 @@ server {
 
     # Proxy para la API del backend
     location /api/ {
-        proxy_pass http://backend;
+        set $backend_upstream triviup-backend.railway.internal:5164;
+        proxy_pass http://$backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -66,7 +72,8 @@ server {
 
     # Proxy para SignalR hubs
     location /hubs/ {
-        proxy_pass http://backend;
+        set $backend_upstream triviup-backend.railway.internal:5164;
+        proxy_pass http://$backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -82,7 +89,8 @@ server {
 
     # Proxy para OpenAPI / Swagger
     location /swagger/ {
-        proxy_pass http://backend;
+        set $backend_upstream triviup-backend.railway.internal:5164;
+        proxy_pass http://$backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -94,7 +102,8 @@ server {
     }
 
     location /openapi/ {
-        proxy_pass http://backend;
+        set $backend_upstream triviup-backend.railway.internal:5164;
+        proxy_pass http://$backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -107,7 +116,8 @@ server {
 
     # Proxy para auth (signin, signup, google oauth) - EXCEPTO callback que lo maneja Angular
     location /auth/ {
-        proxy_pass http://backend;
+        set $backend_upstream triviup-backend.railway.internal:5164;
+        proxy_pass http://$backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -120,7 +130,8 @@ server {
 
     # Proxy para Users endpoints (profile photo, etc)
     location /users {
-        proxy_pass http://backend;
+        set $backend_upstream triviup-backend.railway.internal:5164;
+        proxy_pass http://$backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -132,7 +143,8 @@ server {
     }
 
     location /users/ {
-        proxy_pass http://backend;
+        set $backend_upstream triviup-backend.railway.internal:5164;
+        proxy_pass http://$backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
