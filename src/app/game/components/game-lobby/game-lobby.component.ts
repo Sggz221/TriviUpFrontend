@@ -2,11 +2,12 @@ import { Component, Input, Output, EventEmitter, computed, signal } from '@angul
 import { CommonModule } from '@angular/common';
 import { Player } from '../../models/game.models';
 import { QrCodeComponent } from '../qr-code/qr-code.component';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 @Component({
     selector: 'app-game-lobby',
     standalone: true,
-    imports: [CommonModule, QrCodeComponent],
+    imports: [CommonModule, QrCodeComponent, IconComponent],
     templateUrl: './game-lobby.component.html',
     styleUrl: './game-lobby.component.scss'
 })
@@ -47,6 +48,8 @@ export class GameLobbyComponent {
 
     playerCount = computed(() => this.playersSignal().length);
 
+    copied = signal(false);
+
     /**
      * Generate the QR code URL for joining the game
      * Uses current host (hostname + port) to work both locally and on mobile
@@ -70,6 +73,8 @@ export class GameLobbyComponent {
     async copyRoomCode(): Promise<void> {
         try {
             await navigator.clipboard.writeText(this.roomCodeSignal());
+            this.copied.set(true);
+            setTimeout(() => this.copied.set(false), 1500);
         } catch (err) {
             console.error('Failed to copy room code:', err);
         }

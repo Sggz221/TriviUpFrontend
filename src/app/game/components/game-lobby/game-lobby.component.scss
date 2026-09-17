@@ -8,20 +8,29 @@
 }
 
 .lobby-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
     text-align: center;
 }
 
-.room-title {
-    font-size: 1.75rem;
+.quiz-title {
+    font-size: 1.25rem;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--base-content);
     margin: 0;
 }
 
-.quiz-title {
-    color: var(--base-content);
-    opacity: 0.8;
-    margin: 0.25rem 0 0;
+.room-code-chip {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--primary);
+    background: var(--base-200);
+    border: 2px solid var(--primary);
+    border-radius: 0.75rem;
+    padding: 0.35rem 1rem;
 }
 
 // QR Code Section
@@ -63,8 +72,17 @@
 }
 
 .copy-btn {
-    padding: 0.25rem;
-    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    transition: color 0.2s;
+
+    &.copied {
+        color: var(--success, #16a34a);
+    }
 }
 
 // Players Section
@@ -103,8 +121,8 @@
 
 .player-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 0.625rem;
     padding: 0.75rem;
     background: var(--base-100);
     border-radius: 0.5rem;
@@ -119,15 +137,37 @@
     }
 }
 
+.status-dot {
+    flex: 0 0 auto;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 50%;
+
+    &.connected {
+        background: var(--success, #16a34a);
+        box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+    }
+
+    &.disconnected {
+        background: var(--error, #dc2626);
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+    }
+}
+
 .player-info {
+    flex: 1 1 auto;
+    min-width: 0;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
 }
 
 .player-name {
     font-weight: 500;
     color: var(--base-content);
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .you-badge {
@@ -136,27 +176,28 @@
 }
 
 .owner-badge {
-    font-size: 0.75rem;
-    color: var(--secondary);
-}
-
-.player-status {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-
-    .status {
-        font-size: 0.875rem;
-    }
+    gap: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--secondary);
+    background: rgba(var(--secondary-rgb, 234, 88, 12), 0.12);
+    border-radius: 999px;
+    padding: 0.15rem 0.5rem;
+    white-space: nowrap;
 }
 
 .kick-btn {
-    opacity: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    opacity: 0.6;
     transition: opacity 0.2s;
-}
 
-.player-item {
-    &:hover .kick-btn {
+    &:hover,
+    &:focus-visible {
         opacity: 1;
     }
 }

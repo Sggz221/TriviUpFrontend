@@ -10,11 +10,12 @@ import { Player, Question, TurnResult, GameResult } from '../../models/game.mode
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AudioService } from '../../../shared/services/audio.service';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
+import { IconComponent } from '../../../shared/components/icon/icon.component';
 
 @Component({
     selector: 'app-game-room',
     standalone: true,
-    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, AnswerShapeComponent],
+    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, AnswerShapeComponent, IconComponent],
     templateUrl: './game-room.html',
     styleUrls: ['./game-room.scss']
 })
@@ -183,6 +184,34 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         }
     }
 
+    private anonymousIdStorageKey(): string {
+        return `triviup:anon:${this.roomCode()}`;
+    }
+
+    private getOrCreateAnonymousUserId(): number {
+        try {
+            const stored = sessionStorage.getItem(this.anonymousIdStorageKey());
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (typeof parsed.userId === 'number') {
+                    return parsed.userId;
+                }
+            }
+        } catch {
+            // sessionStorage no disponible o dato corrupto: seguimos con uno nuevo
+        }
+
+        return Math.floor(Math.random() * 1000000);
+    }
+
+    private saveAnonymousIdentity(userId: number, username: string): void {
+        try {
+            sessionStorage.setItem(this.anonymousIdStorageKey(), JSON.stringify({ userId, username }));
+        } catch {
+            // sessionStorage no disponible: no es crítico, simplemente no persistimos
+        }
+    }
+
     joinAsAnonymous(): void {
         console.log('[GameRoom] joinAsAnonymous() called');
         console.log('[GameRoom] Current anonymousUsername value:', this.anonymousUsername);
@@ -196,13 +225,16 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             return;
         }
 
-        // Generar un userId pseudo-aleatorio para el jugador anónimo
-        const anonymousUserId = Math.floor(Math.random() * 1000000);
-        console.log('[GameRoom] Generated anonymousUserId:', anonymousUserId);
+        // Reutilizar el userId anónimo de esta sala si ya existe (ej: venimos de un refresh),
+        // para que el backend nos reconozca como el mismo jugador reconectando en vez de
+        // crear una fila duplicada en la lista de jugadores.
+        const anonymousUserId = this.getOrCreateAnonymousUserId();
+        console.log('[GameRoom] Using anonymousUserId:', anonymousUserId);
 
         console.log('[GameRoom] Calling connectAnonymously()...');
         this.gameSignalrService.connectAnonymously(anonymousUserId, username).then(() => {
             console.log('[GameRoom] connectAnonymously() succeeded');
+            this.saveAnonymousIdentity(anonymousUserId, username);
             this.myUserId.set(anonymousUserId);
             this.myUsername.set(username);
             this.showJoinForm.set(false);
@@ -293,6 +325,15 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                     return updated;
                 });
             }
+        });
+
+        // Cuando el anfitrión cierra la sala (salió explícitamente mientras se esperaba)
+        this.gameSignalrService.onRoomClosed.subscribe(() => {
+            console.log('[GameRoom] La sala fue cerrada por el anfitrión');
+            this.errorMessage.set('El anfitrión cerró la sala');
+            setTimeout(() => {
+                this.router.navigate(['/']);
+            }, 2000);
         });
 
         // Cuando la partida inicia

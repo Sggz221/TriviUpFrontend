@@ -67,7 +67,25 @@ export class AuthService {
     }
 
     isLoggedIn(): boolean {
-        return !!this.getToken();
+        const token = this.getToken();
+        if (!token) return false;
+
+        const expiresAt = this.getTokenExpiration(token);
+        if (expiresAt === null || expiresAt <= Date.now()) {
+            this.logout();
+            return false;
+        }
+
+        return true;
+    }
+
+    private getTokenExpiration(token: string): number | null {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
+        } catch {
+            return null;
+        }
     }
 
     logout(): void {

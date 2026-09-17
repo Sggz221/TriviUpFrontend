@@ -129,10 +129,10 @@
                 @if (showTurnResult() && lastTurnResult()) {
                     <div class="turn-result-indicator" [class.correct]="lastTurnResult()!.isCorrect" [class.incorrect]="!lastTurnResult()!.isCorrect">
                         @if (lastTurnResult()!.isCorrect) {
-                            <span class="result-icon">✓</span>
+                            <span class="result-icon"><app-icon name="check" [size]="20" /></span>
                             <span class="result-label">¡Correcta!</span>
                         } @else {
-                            <span class="result-icon">✗</span>
+                            <span class="result-icon"><app-icon name="x" [size]="20" /></span>
                             <span class="result-label">Incorrecta</span>
                         }
                     </div>

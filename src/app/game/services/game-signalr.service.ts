@@ -40,6 +40,7 @@ export class GameSignalrService {
     private playerJoined$ = new Subject<Player>();
     private playerLeft$ = new Subject<number>();
     private playerKicked$ = new Subject<number>();
+    private roomClosed$ = new Subject<{ roomCode: string; reason: string }>();
     private gameStarting$ = new Subject<number>();
     private gameStarted$ = new Subject<GameStateDto>();
     private turnStarted$ = new Subject<TurnStartedDto>();
@@ -74,6 +75,7 @@ export class GameSignalrService {
     onPlayerJoined = this.playerJoined$.asObservable();
     onPlayerLeft = this.playerLeft$.asObservable();
     onPlayerKicked = this.playerKicked$.asObservable();
+    onRoomClosed = this.roomClosed$.asObservable();
     onGameStarting = this.gameStarting$.asObservable();
     onGameStarted = this.gameStarted$.asObservable();
     onTurnStarted = this.turnStarted$.asObservable();
@@ -207,6 +209,10 @@ export class GameSignalrService {
         this.hubConnection.on('PlayerKicked', (data: number) => {
             console.log('[GameSignalr] Event: PlayerKicked', data);
             this.playerKicked$.next(data);
+        });
+        this.hubConnection.on('RoomClosed', (data: { roomCode: string; reason: string }) => {
+            console.log('[GameSignalr] Event: RoomClosed', data);
+            this.roomClosed$.next(data);
         });
         this.hubConnection.on('GameStarting', (data: number) => {
             console.log('[GameSignalr] Event: GameStarting', data);
