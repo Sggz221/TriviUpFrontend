@@ -3,12 +3,17 @@
   - Base image (0) is always visible.
   - Variant images (1-4) fade in/out on top based on .active class.
 */
+.logo-container {
+  flex-wrap: nowrap;
+  max-width: 100%;
+}
+
 .logo-u-gallery {
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: 1fr;
   aspect-ratio: 1 / 1;
-  height: 7rem;
+  height: 3.5rem;
   width: auto;
   flex-shrink: 0;
   position: relative;
@@ -47,5 +52,6 @@
 }
 
 /* Responsive sizes */
+@media (min-width: 640px) { .logo-u-gallery { height: 5.5rem; } }
 @media (min-width: 768px) { .logo-u-gallery { height: 8.5rem; } }
 @media (min-width: 1024px) { .logo-u-gallery { height: 10rem; } }

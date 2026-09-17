@@ -1,19 +1,22 @@
 :host {
     display: block;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 nav {
     position: sticky;
     top: 0;
     z-index: 100;
+    max-width: 100vw;
 }
 
 // Mobile scroll styles for nav links only
 .nav-scroll-wrapper {
     position: relative;
-    flex: 1;
+    flex: 1 1 auto;
     min-width: 0;
-    max-width: calc(100vw - 180px);
+    max-width: min(100%, calc(100vw - 7.5rem));
 }
 
 .nav-scroll {
@@ -24,7 +27,7 @@ nav {
     scrollbar-width: none;
     -ms-overflow-style: none;
     scroll-behavior: smooth;
-    padding: 0.25rem 1rem;
+    padding: 0.25rem 0.75rem;
 
     &::-webkit-scrollbar {
         display: none;
@@ -90,7 +93,7 @@ nav {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
     font-weight: 600;
     background-color: var(--primary);
@@ -101,5 +104,9 @@ nav {
 
     &:hover {
         opacity: 0.9;
+    }
+
+    @media (min-width: 640px) {
+        padding: 0.5rem 1rem;
     }
 }

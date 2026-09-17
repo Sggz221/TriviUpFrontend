@@ -105,24 +105,25 @@
             </div>
 
             @if (totalPages() > 1) {
-                <div class="pagination mt-8 flex justify-center items-center gap-2">
+                <div class="pagination mt-8 flex flex-wrap justify-center items-center gap-2 max-w-full px-1">
                     <button
-                        class="btn btn-sm btn-outline"
+                        type="button"
+                        class="btn btn-sm pagination-btn"
                         [disabled]="currentPage() === 1 || isLoading()"
                         (click)="prevPage()"
                     >
                         Anterior
                     </button>
 
-                    <div class="flex gap-1">
+                    <div class="flex flex-wrap justify-center gap-1 max-w-full overflow-x-auto">
                         @for (page of getVisiblePages(); track page) {
                             @if (page === '...') {
-                                <span class="btn btn-sm btn-disabled">...</span>
+                                <span class="btn btn-sm btn-disabled pagination-ellipsis">...</span>
                             } @else {
                                 <button
-                                    class="btn btn-sm"
-                                    [class.btn-primary]="page === currentPage()"
-                                    [class.btn-outline]="page !== currentPage()"
+                                    type="button"
+                                    class="btn btn-sm pagination-btn"
+                                    [class.pagination-btn-active]="page === currentPage()"
                                     (click)="goToPage(+page)"
                                     [disabled]="isLoading()"
                                 >
@@ -133,7 +134,8 @@
                     </div>
 
                     <button
-                        class="btn btn-sm btn-outline"
+                        type="button"
+                        class="btn btn-sm pagination-btn"
                         [disabled]="currentPage() === totalPages() || isLoading()"
                         (click)="nextPage()"
                     >

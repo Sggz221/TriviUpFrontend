@@ -4,34 +4,36 @@
 /* Import Tailwind CSS */
 @import "tailwindcss";
 
-/* Import DaisyUI using plugin directive */
-@plugin "daisyui";
+/* DaisyUI: only custom TriviUp theme (no light/valentine defaults) */
+@plugin "daisyui" {
+    themes: false;
+}
 
 @plugin "daisyui/theme" {
     name: "TriviUp";
     default: true;
     prefersdark: true;
     color-scheme: "dark";
-    --base-100: oklch(30.857% 0.023 264.149);
-    --base-200: oklch(28.036% 0.019 264.182);
-    --base-300: oklch(26.346% 0.018 262.177);
-    --base-content: oklch(82.901% 0.031 222.959);
-    --primary: oklch(86.133% 0.141 139.549);
-    --primary-content: oklch(17.226% 0.028 139.549);
-    --secondary: oklch(73.375% 0.165 35.353);
-    --secondary-content: oklch(14.675% 0.033 35.353);
-    --accent: oklch(74.229% 0.133 311.379);
-    --accent-content: oklch(14.845% 0.026 311.379);
-    --neutral: oklch(24.731% 0.02 264.094);
-    --neutral-content: oklch(82.901% 0.031 222.959);
-    --info: oklch(86.078% 0.142 206.182);
-    --info-content: oklch(17.215% 0.028 206.182);
-    --success: oklch(86.171% 0.142 166.534);
-    --success-content: oklch(17.234% 0.028 166.534);
-    --warning: oklch(86.163% 0.142 94.818);
-    --warning-content: oklch(17.232% 0.028 94.818);
-    --error: oklch(82.418% 0.099 33.756);
-    --error-content: oklch(16.483% 0.019 33.756);
+    --color-base-100: oklch(30.857% 0.023 264.149);
+    --color-base-200: oklch(28.036% 0.019 264.182);
+    --color-base-300: oklch(26.346% 0.018 262.177);
+    --color-base-content: oklch(82.901% 0.031 222.959);
+    --color-primary: oklch(86.133% 0.141 139.549);
+    --color-primary-content: oklch(17.226% 0.028 139.549);
+    --color-secondary: oklch(73.375% 0.165 35.353);
+    --color-secondary-content: oklch(14.675% 0.033 35.353);
+    --color-accent: oklch(74.229% 0.133 311.379);
+    --color-accent-content: oklch(14.845% 0.026 311.379);
+    --color-neutral: oklch(24.731% 0.02 264.094);
+    --color-neutral-content: oklch(82.901% 0.031 222.959);
+    --color-info: oklch(86.078% 0.142 206.182);
+    --color-info-content: oklch(17.215% 0.028 206.182);
+    --color-success: oklch(86.171% 0.142 166.534);
+    --color-success-content: oklch(17.234% 0.028 166.534);
+    --color-warning: oklch(86.163% 0.142 94.818);
+    --color-warning-content: oklch(17.232% 0.028 94.818);
+    --color-error: oklch(82.418% 0.099 33.756);
+    --color-error-content: oklch(16.483% 0.019 33.756);
     --radius-selector: 1rem;
     --radius-field: 0.5rem;
     --radius-box: 1rem;
@@ -42,6 +44,39 @@
     --noise: 0;
 }
 
+/* Compat aliases used across the app (var(--base-content), etc.) */
+:root,
+[data-theme="TriviUp"] {
+    --base-100: var(--color-base-100);
+    --base-200: var(--color-base-200);
+    --base-300: var(--color-base-300);
+    --base-content: var(--color-base-content);
+    --primary: var(--color-primary);
+    --primary-content: var(--color-primary-content);
+    --secondary: var(--color-secondary);
+    --secondary-content: var(--color-secondary-content);
+    --accent: var(--color-accent);
+    --accent-content: var(--color-accent-content);
+    --neutral: var(--color-neutral);
+    --neutral-content: var(--color-neutral-content);
+    --info: var(--color-info);
+    --info-content: var(--color-info-content);
+    --success: var(--color-success);
+    --success-content: var(--color-success-content);
+    --warning: var(--color-warning);
+    --warning-content: var(--color-warning-content);
+    --error: var(--color-error);
+    --error-content: var(--color-error-content);
+}
+
+/* Global canvas: avoid white side bands + inherit theme text */
+html,
+body {
+    background-color: var(--color-base-100);
+    color: var(--color-base-content);
+    overflow-x: hidden;
+    max-width: 100%;
+}
 
 /* Apply custom font globally */
 body {
@@ -58,4 +93,25 @@ body {
     --answer-square: #eab308;      /* warning - yellow */
     --answer-circle: #0ea5e9;      /* info - sky blue */
     --answer-pentagon: #22c55e;    /* success - green */
+}
+
+/* Outline / ghost buttons: always use theme content color on dark canvas */
+.btn-outline:not(.btn-primary):not(.btn-secondary):not(.btn-accent):not(.btn-info):not(.btn-success):not(.btn-warning):not(.btn-error) {
+    color: var(--color-base-content);
+    border-color: color-mix(in oklab, var(--color-base-content) 40%, transparent);
+}
+
+.btn-outline:not(.btn-primary):not(.btn-secondary):not(.btn-accent):not(.btn-info):not(.btn-success):not(.btn-warning):not(.btn-error):hover:not(:disabled) {
+    background-color: color-mix(in oklab, var(--color-base-content) 12%, transparent);
+    color: var(--color-base-content);
+    border-color: var(--color-base-content);
+}
+
+.btn-ghost:not(.btn-primary):not(.btn-secondary):not(.btn-accent) {
+    color: var(--color-base-content);
+}
+
+.btn-disabled,
+.btn:disabled {
+    color: color-mix(in oklab, var(--color-base-content) 50%, transparent) !important;
 }

@@ -7,7 +7,7 @@
   <div class="text-center max-w-3xl px-4">
     <!-- Logo grande con hover-gallery en la U -->
     <div class="logo-container flex items-end justify-center mb-8">
-      <span class="triviup text-8xl md:text-9xl lg:text-[10rem] font-black tracking-wide text-white leading-none">Trivi</span>
+      <span class="triviup text-5xl sm:text-7xl md:text-9xl lg:text-[10rem] font-black tracking-wide text-white leading-none">Trivi</span>
       <figure class="u-gallery-custom logo-u-gallery">
         <!-- Base Image (0) - Always visible foundation -->
         <img src="images/LogoHover0.webp" alt="U" class="base-img" />
@@ -18,11 +18,11 @@
         <img src="images/LogoHover3.webp" alt="U" [class.active]="activeImageIndex === 3" />
         <img src="images/LogoHover4.webp" alt="U" [class.active]="activeImageIndex === 4" />
       </figure>
-      <span class="triviup text-8xl md:text-9xl lg:text-[10rem] font-black tracking-tight text-white leading-none">p</span>
+      <span class="triviup text-5xl sm:text-7xl md:text-9xl lg:text-[10rem] font-black tracking-tight text-white leading-none">p</span>
     </div>
 
     <!-- Descripción -->
-    <span class="text-rotate mb-5 duration-6000 text-6xl">
+    <span class="text-rotate mb-5 duration-6000 text-3xl sm:text-5xl md:text-6xl">
       <span class="justify-items-center">
         <span style="color: var(--accent)">JUEGA</span>
         <span style="color: var(--warning)">APRENDE</span>
@@ -35,9 +35,9 @@
     </p>
 
     <!-- Botón principal -->
-    <div class="flex gap-4 justify-center flex-wrap mb-16">
+    <div class="flex gap-3 sm:gap-4 justify-center flex-wrap mb-16 w-full">
       <a routerLink="/unirse"
-        class="px-8 py-4 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2 no-underline"
+        class="px-6 sm:px-8 py-3 sm:py-4 rounded-lg text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-2 no-underline w-full sm:w-auto"
         style="background-color: var(--primary); color: var(--primary-content);">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -46,7 +46,7 @@
         Unirse a una Sala
       </a>
       <a routerLink="/quizzes/public"
-        class="px-8 py-4 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2"
+        class="px-6 sm:px-8 py-3 sm:py-4 rounded-lg text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-2 w-full sm:w-auto"
         style="background-color: var(--secondary); color: var(--secondary-content);">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -56,7 +56,7 @@
       @if (isLoggedIn()) {
         <button
           (click)="crearConcurso()"
-          class="px-8 py-4 rounded-lg text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2"
+          class="px-6 sm:px-8 py-3 sm:py-4 rounded-lg text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-shadow flex items-center justify-center gap-2 w-full sm:w-auto"
           style="background-color: var(--secondary); color: var(--secondary-content);">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />

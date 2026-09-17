@@ -14,7 +14,7 @@
                     </label>
                     <input
                         type="text"
-                        class="input input-bordered w-full max-w-xs"
+                        class="input input-bordered w-full"
                         style="background-color: var(--base-300); color: var(--base-content);"
                         placeholder="Tu nombre"
                         [(ngModel)]="anonymousUsername"
@@ -29,14 +29,14 @@
                     </div>
                 }
 
-                <div class="flex gap-4 mt-6">
+                <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6">
                     <button
                         class="btn btn-primary flex-1"
                         [disabled]="!anonymousUsername || anonymousUsername.length < 2"
                         (click)="joinAsAnonymous()">
                         Unirme
                     </button>
-                    <button class="btn btn-ghost" routerLink="/">
+                    <button class="btn btn-ghost" routerLink="/" style="color: var(--base-content);">
                         Cancelar
                     </button>
                 </div>
@@ -200,7 +200,7 @@
             }
 
             <div class="card-actions mt-6">
-                <button class="btn btn-outline btn-sm" (click)="onLeaveGame()">
+                <button class="btn btn-outline btn-sm" style="color: var(--base-content); border-color: color-mix(in oklab, var(--base-content) 40%, transparent);" (click)="onLeaveGame()">
                     Salir de la Sala
                 </button>
             </div>
