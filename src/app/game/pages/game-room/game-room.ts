@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { GameSignalrService } from '../../services/game-signalr.service';
 import { AuthService } from '../../../auth/auth.service';
 import { GameLobbyComponent } from '../../components/game-lobby/game-lobby.component';
+import { GameScoreboardComponent } from '../../components/game-scoreboard/game-scoreboard.component';
 import { Player, Question, TurnResult, GameResult } from '../../models/game.models';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AudioService } from '../../../shared/services/audio.service';
@@ -13,7 +14,7 @@ import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answ
 @Component({
     selector: 'app-game-room',
     standalone: true,
-    imports: [CommonModule, FormsModule, GameLobbyComponent, AnswerShapeComponent],
+    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, AnswerShapeComponent],
     templateUrl: './game-room.html',
     styleUrls: ['./game-room.scss']
 })
@@ -430,5 +431,29 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         } else {
             this.gameSignalrService.pauseGame(roomCode);
         }
+    }
+
+    formatGameDuration(duration: number | string | null | undefined): string {
+        if (duration == null || duration === '') return '';
+
+        if (typeof duration === 'string') {
+            // TimeSpan often serializes as "00:05:32" or "05:32"
+            const parts = duration.split(':').map(Number);
+            if (parts.length >= 3 && parts.every(n => !Number.isNaN(n))) {
+                const hours = parts[0];
+                const mins = parts[1];
+                const secs = Math.floor(parts[2]);
+                return hours > 0 ? `${hours}h ${mins}m ${secs}s` : `${mins}m ${secs}s`;
+            }
+            if (parts.length === 2 && parts.every(n => !Number.isNaN(n))) {
+                return `${parts[0]}m ${parts[1]}s`;
+            }
+            return duration;
+        }
+
+        const totalSecs = Math.max(0, Math.floor(duration));
+        const mins = Math.floor(totalSecs / 60);
+        const secs = totalSecs % 60;
+        return `${mins}m ${secs}s`;
     }
 }

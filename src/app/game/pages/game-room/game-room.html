@@ -71,36 +71,20 @@
                     }
                 </button>
             </div>
-            <div class="card bg-base-100 shadow-xl">
-                <div class="card-body">
-                    <h2 class="card-title text-3xl text-center" style="color: var(--primary);">¡Partida Terminada!</h2>
-                    <h3 class="text-xl text-center mb-6">{{ gameResults()!.quizTitle }}</h3>
 
-                    <div class="results-list">
-                        @for (player of gameResults()!.playerResults; track player.userId; let i = $index) {
-                            <div class="result-item" [class.winner]="$index === 0">
-                                <div class="rank">#{{ player.rank }}</div>
-                                <div class="player-info">
-                                    <span class="username">{{ player.username }}</span>
-                                    <span class="score">{{ player.finalScore }} pts</span>
-                                </div>
-                                <div class="stats">
-                                    <span class="correct">{{ player.correctAnswers }} correctas</span>
-                                    <span class="percentage">{{ player.correctPercentage }}%</span>
-                                </div>
-                            </div>
-                        }
-                    </div>
+            <div class="results-panel">
+                <app-game-scoreboard
+                    [playerResults]="gameResults()!.playerResults"
+                    [quizTitle]="gameResults()!.quizTitle"
+                    headline="¡Partida Terminada!"
+                    [totalQuestions]="gameResults()!.totalQuestions"
+                    [durationLabel]="formatGameDuration(gameResults()!.gameDuration)"
+                />
 
-                    <div class="game-info mt-6 text-center opacity-70">
-                        <p>{{ gameResults()!.totalQuestions }} preguntas • {{ gameResults()!.gameDuration }}</p>
-                    </div>
-
-                    <div class="card-actions justify-center mt-6">
-                        <button class="btn btn-primary" (click)="onLeaveGame()">
-                            Volver al inicio
-                        </button>
-                    </div>
+                <div class="results-actions">
+                    <button class="btn btn-primary results-leave-btn" (click)="onLeaveGame()">
+                        Volver al inicio
+                    </button>
                 </div>
             </div>
         </div>

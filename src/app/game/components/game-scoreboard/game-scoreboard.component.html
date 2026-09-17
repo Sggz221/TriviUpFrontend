@@ -1,0 +1,93 @@
+<div class="scoreboard">
+  <header class="scoreboard-header">
+    <h2 class="scoreboard-headline">{{ headline }}</h2>
+    @if (quizTitle) {
+      <p class="scoreboard-quiz">{{ quizTitle }}</p>
+    }
+    @if (metaLabel()) {
+      <p class="scoreboard-meta">{{ metaLabel() }}</p>
+    }
+  </header>
+
+  @if (podiumCount() > 0) {
+    <div class="podium" [attr.data-count]="podiumCount()">
+      @if (second()) {
+        <article class="pedestal place-2" style="--delay: 0.08s">
+          <div class="medal" aria-hidden="true">2</div>
+          <div class="pedestal-body">
+            <p class="pedestal-name" [title]="second()!.username">{{ second()!.username }}</p>
+            @if (isOwner(second()!)) {
+              <span class="owner-chip">Anfitrión</span>
+            }
+            <p class="pedestal-score">{{ second()!.finalScore }} <span>pts</span></p>
+            <p class="pedestal-stats">
+              <span class="ok">{{ second()!.correctAnswers }} aciertos</span>
+              <span class="pct">{{ percentage(second()!) }}%</span>
+            </p>
+          </div>
+          <div class="plinth" aria-hidden="true"></div>
+        </article>
+      }
+
+      @if (first()) {
+        <article class="pedestal place-1" style="--delay: 0s">
+          <div class="medal" aria-hidden="true">1</div>
+          <div class="pedestal-body">
+            <p class="pedestal-name" [title]="first()!.username">{{ first()!.username }}</p>
+            @if (isOwner(first()!)) {
+              <span class="owner-chip">Anfitrión</span>
+            }
+            <p class="pedestal-score">{{ first()!.finalScore }} <span>pts</span></p>
+            <p class="pedestal-stats">
+              <span class="ok">{{ first()!.correctAnswers }} aciertos</span>
+              <span class="pct">{{ percentage(first()!) }}%</span>
+            </p>
+          </div>
+          <div class="plinth" aria-hidden="true"></div>
+        </article>
+      }
+
+      @if (third()) {
+        <article class="pedestal place-3" style="--delay: 0.16s">
+          <div class="medal" aria-hidden="true">3</div>
+          <div class="pedestal-body">
+            <p class="pedestal-name" [title]="third()!.username">{{ third()!.username }}</p>
+            @if (isOwner(third()!)) {
+              <span class="owner-chip">Anfitrión</span>
+            }
+            <p class="pedestal-score">{{ third()!.finalScore }} <span>pts</span></p>
+            <p class="pedestal-stats">
+              <span class="ok">{{ third()!.correctAnswers }} aciertos</span>
+              <span class="pct">{{ percentage(third()!) }}%</span>
+            </p>
+          </div>
+          <div class="plinth" aria-hidden="true"></div>
+        </article>
+      }
+    </div>
+  }
+
+  @if (restPlayers().length > 0) {
+    <div class="rest-block">
+      <h3 class="rest-title">Clasificación</h3>
+      <ul class="rest-list">
+        @for (player of restPlayers(); track player.userId) {
+          <li class="rest-row">
+            <span class="rest-rank">{{ player.rank }}</span>
+            <div class="rest-info">
+              <span class="rest-name" [title]="player.username">{{ player.username }}</span>
+              @if (isOwner(player)) {
+                <span class="owner-chip">Anfitrión</span>
+              }
+            </div>
+            <span class="rest-score">{{ player.finalScore }} pts</span>
+            <span class="rest-stats">
+              <span class="ok">{{ player.correctAnswers }}</span>
+              <span class="pct">{{ percentage(player) }}%</span>
+            </span>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</div>

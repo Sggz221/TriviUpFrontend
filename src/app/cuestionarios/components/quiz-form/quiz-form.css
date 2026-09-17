@@ -1,5 +1,32 @@
 /* quiz-form specific styles */
 
+/* Avoid flex vertical centering: on mobile it clips tall forms so the submit never scrolls into view */
+.quiz-form-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding: 1.5rem 0.75rem 6rem;
+}
+
+.quiz-form-shell {
+  width: 100%;
+  max-width: 48rem;
+  min-width: 0;
+}
+
+.quiz-form-card {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  /* Do not use overflow-x:hidden here — it forces overflow-y:auto and can trap scroll */
+  overflow: visible;
+}
+
 .question-card {
   min-width: 0;
   max-width: 100%;
@@ -39,6 +66,25 @@
   min-width: 0;
 }
 
+/* Keep create action reachable above mobile browser chrome */
+.quiz-form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  margin-top: 1.5rem;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  background-color: var(--base-200);
+  border-top: 1px solid var(--neutral);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.quiz-form-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 /* Fix: Remove white ring/outline from question number badge */
 .badge {
   border: none !important;
@@ -67,5 +113,21 @@
   .answer-shape {
     transform: scale(0.85);
     transform-origin: center left;
+  }
+}
+
+@media (min-width: 640px) {
+  .quiz-form-page {
+    padding: 3rem 1rem 4rem;
+  }
+
+  .quiz-form-actions {
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 2rem;
+    padding: 0;
+    border-top: none;
+    background: transparent;
+    position: static;
   }
 }
