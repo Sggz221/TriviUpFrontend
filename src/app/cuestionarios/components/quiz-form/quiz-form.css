@@ -1,10 +1,50 @@
 /* quiz-form specific styles */
 
+.question-card {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.question-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.question-body {
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.answers-list {
+  min-width: 0;
+}
+
+.answer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.answer-shape {
+  flex: 0 0 auto;
+}
+
+.answer-input {
+  width: 100%;
+  min-width: 0;
+}
+
 /* Fix: Remove white ring/outline from question number badge */
 .badge {
   border: none !important;
   outline: none !important;
   box-shadow: none !important;
+  flex-shrink: 0;
 }
 
 /* Fix: Remove white background on hover for "Agregar respuesta" button */
@@ -16,4 +56,16 @@
   outline: none !important;
   box-shadow: none !important;
   opacity: 0.8;
+}
+
+/* Shrink answer shapes a bit on very small screens */
+@media (max-width: 480px) {
+  .answer-row {
+    gap: 0.35rem;
+  }
+
+  .answer-shape {
+    transform: scale(0.85);
+    transform-origin: center left;
+  }
 }

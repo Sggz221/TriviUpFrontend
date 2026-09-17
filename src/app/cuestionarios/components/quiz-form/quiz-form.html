@@ -1,7 +1,7 @@
-<section class="min-h-screen flex items-center justify-center px-4 py-12"
+<section class="min-h-screen flex items-center justify-center px-3 sm:px-4 py-8 sm:py-12"
     style="background: linear-gradient(to bottom right, var(--base-100), var(--base-200), var(--base-300));">
 
-    <div class="w-full max-w-3xl">
+    <div class="w-full max-w-3xl min-w-0">
         <!-- Back link -->
         <a routerLink="/"
             class="inline-flex items-center gap-2 mb-6 text-sm opacity-70 hover:opacity-100 transition-opacity"
@@ -13,8 +13,8 @@
             Volver al inicio
         </a>
 
-        <div class="rounded-xl shadow-xl p-8" style="background-color: var(--base-200);">
-            <h2 class="text-3xl font-bold text-center mb-2 tracking-tight" style="color: var(--secondary);">
+        <div class="rounded-xl shadow-xl p-4 sm:p-8 overflow-x-hidden" style="background-color: var(--base-200);">
+            <h2 class="text-2xl sm:text-3xl font-bold text-center mb-2 tracking-tight" style="color: var(--secondary);">
                 Crear Nuevo Cuestionario
             </h2>
 
@@ -36,15 +36,15 @@
                 </div>
             }
 
-            <form [formGroup]="quizForm" (ngSubmit)="onSubmit()">
-                <div class="mb-8">
-                    <label class="block text-lg font-medium mb-2" style="color: var(--base-content);">
+            <form [formGroup]="quizForm" (ngSubmit)="onSubmit()" class="min-w-0">
+                <div class="mb-6 sm:mb-8">
+                    <label class="block text-base sm:text-lg font-medium mb-2" style="color: var(--base-content);">
                         Nombre del Cuestionario
                     </label>
-                    <input type="text" 
-                           formControlName="nombre" 
-                           placeholder="Ej: Historia General" 
-                           class="w-full px-4 py-3 rounded-lg border outline-none transition-all text-lg"
+                    <input type="text"
+                           formControlName="nombre"
+                           placeholder="Ej: Historia General"
+                           class="w-full max-w-full px-4 py-3 rounded-lg border outline-none transition-all text-base sm:text-lg box-border"
                            style="background-color: var(--base-300); border-color: var(--neutral); color: var(--base-content);">
                     @if (quizForm.get('nombre')?.invalid && quizForm.get('nombre')?.touched) {
                         <p class="text-xs mt-1.5" style="color: var(--error);">
@@ -54,15 +54,15 @@
                 </div>
 
                 <!-- Toggle Público/Privado -->
-                <div class="mb-8">
-                    <div class="flex items-center gap-4 p-4 rounded-lg" style="background-color: var(--base-300);">
+                <div class="mb-6 sm:mb-8">
+                    <div class="flex items-start sm:items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg" style="background-color: var(--base-300);">
                         <input type="checkbox"
                                formControlName="esPublico"
                                id="esPublico"
-                               class="toggle toggle-lg"
+                               class="toggle toggle-md sm:toggle-lg shrink-0 mt-1 sm:mt-0"
                                style="accent-color: var(--primary);">
-                        <label for="esPublico" class="cursor-pointer flex flex-col">
-                            <span class="text-lg font-medium" style="color: var(--base-content);">
+                        <label for="esPublico" class="cursor-pointer flex flex-col min-w-0">
+                            <span class="text-base sm:text-lg font-medium" style="color: var(--base-content);">
                                 Cuestionario público
                             </span>
                             <span class="text-sm opacity-70" style="color: var(--base-content);">
@@ -74,76 +74,80 @@
 
                 <div formArrayName="preguntas" class="space-y-6">
                     @for (pregunta of preguntasArray.controls; track $index; let preguntaIndex = $index) {
-                        <div class="rounded-xl shadow-md p-6" style="background-color: var(--base-100);" [formGroupName]="preguntaIndex">
-                            <div class="flex items-start gap-4">
-                                <div class="badge badge-lg font-bold text-xl w-10 h-10 flex items-center justify-center" style="background-color: var(--info); color: var(--info-content);">
+                        <div class="question-card rounded-xl shadow-md p-3 sm:p-6" style="background-color: var(--base-100);" [formGroupName]="preguntaIndex">
+                            <div class="question-header">
+                                <div class="badge badge-lg font-bold text-lg sm:text-xl w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0"
+                                     style="background-color: var(--info); color: var(--info-content);">
                                     {{ obtenerNumeroPregunta(preguntaIndex) }}
                                 </div>
-<div class="flex-1">
-                                     <textarea formControlName="enunciado"
-                                               placeholder="Escribe la pregunta..."
-                                               class="w-full px-4 py-3 rounded-lg border outline-none transition-all text-lg"
-                                               style="background-color: var(--base-300); border-color: var(--neutral); color: var(--base-content);"
-                                               rows="2"></textarea>
-                                     @if (pregunta.get('enunciado')?.invalid && pregunta.get('enunciado')?.touched) {
-                                         <label class="label">
-                                             <span class="label-text-alt" style="color: var(--error);">La pregunta es requerida</span>
-                                         </label>
-                                     }
-                                 </div>
 
-                                 <!-- Image Upload Section -->
-                                 <div class="mt-3">
-                                     @if (getQuestionImageData(preguntaIndex)?.url) {
-                                         <div class="flex items-center gap-3 p-3 rounded-lg" style="background-color: var(--base-300);">
-                                             <img
-                                                 [src]="getQuestionImageData(preguntaIndex)!.url"
-                                                 alt="Imagen de pregunta"
-                                                 class="rounded-lg max-w-[150px] max-h-[100px] object-cover"
-                                             />
-                                             <button type="button"
-                                                     class="btn btn-ghost btn-sm"
-                                                     style="color: var(--error);"
-                                                     (click)="removeImage(preguntaIndex)">
-                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                 </svg>
-                                                 Quitar
-                                             </button>
-                                         </div>
-                                     } @else if (getQuestionImageData(preguntaIndex)?.preview) {
-                                         <div class="flex items-center gap-3 p-3 rounded-lg" style="background-color: var(--base-300);">
-                                             <img
-                                                 [src]="getQuestionImageData(preguntaIndex)!.preview"
-                                                 alt="Preview"
-                                                 class="rounded-lg max-w-[150px] max-h-[100px] object-cover opacity-50"
-                                             />
-                                             @if (isUploadingImageFor(preguntaIndex)) {
-                                                 <span class="loading loading-spinner loading-sm"></span>
-                                                 <span class="text-sm opacity-70">Subiendo...</span>
-                                             }
-                                         </div>
-                                     } @else {
-                                         <label class="cursor-pointer flex items-center gap-2 text-sm py-2"
-                                                style="color: var(--info);">
-                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                             </svg>
-                                             Añadir imagen
-                                             <input
-                                                 type="file"
-                                                 accept="image/*"
-                                                 (change)="onImageSelected($event, preguntaIndex)"
-                                                 class="hidden"
-                                             />
-                                         </label>
-                                     }
-                                 </div>
+                                <div class="question-body min-w-0 flex-1">
+                                    <textarea formControlName="enunciado"
+                                              placeholder="Escribe la pregunta..."
+                                              class="w-full max-w-full px-3 sm:px-4 py-3 rounded-lg border outline-none transition-all text-base sm:text-lg box-border"
+                                              style="background-color: var(--base-300); border-color: var(--neutral); color: var(--base-content);"
+                                              rows="2"></textarea>
+                                    @if (pregunta.get('enunciado')?.invalid && pregunta.get('enunciado')?.touched) {
+                                        <label class="label">
+                                            <span class="label-text-alt" style="color: var(--error);">La pregunta es requerida</span>
+                                        </label>
+                                    }
+
+                                    <!-- Image Upload Section (below question on all sizes) -->
+                                    <div class="mt-3">
+                                        @if (getQuestionImageData(preguntaIndex)?.url) {
+                                            <div class="flex flex-wrap items-center gap-3 p-3 rounded-lg" style="background-color: var(--base-300);">
+                                                <img
+                                                    [src]="getQuestionImageData(preguntaIndex)!.url"
+                                                    alt="Imagen de pregunta"
+                                                    class="rounded-lg max-w-[150px] max-h-[100px] object-cover"
+                                                />
+                                                <button type="button"
+                                                        class="btn btn-ghost btn-sm"
+                                                        style="color: var(--error);"
+                                                        (click)="removeImage(preguntaIndex)">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                    Quitar
+                                                </button>
+                                            </div>
+                                        } @else if (getQuestionImageData(preguntaIndex)?.preview) {
+                                            <div class="flex flex-wrap items-center gap-3 p-3 rounded-lg" style="background-color: var(--base-300);">
+                                                <img
+                                                    [src]="getQuestionImageData(preguntaIndex)!.preview"
+                                                    alt="Preview"
+                                                    class="rounded-lg max-w-[150px] max-h-[100px] object-cover opacity-50"
+                                                />
+                                                @if (isUploadingImageFor(preguntaIndex)) {
+                                                    <span class="loading loading-spinner loading-sm"></span>
+                                                    <span class="text-sm opacity-70">Subiendo...</span>
+                                                }
+                                            </div>
+                                        } @else {
+                                            <label class="cursor-pointer inline-flex items-center gap-2 text-sm py-2"
+                                                   style="color: var(--info);">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                Añadir imagen
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    (change)="onImageSelected($event, preguntaIndex)"
+                                                    class="hidden"
+                                                />
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+
                                 @if (preguntasArray.length > 1) {
                                     <button type="button"
-                                            class="btn btn-circle btn-ghost btn-sm"
+                                            class="btn btn-circle btn-ghost btn-sm shrink-0"
                                             style="color: var(--error);"
-                                            (click)="eliminarPregunta(preguntaIndex)">
+                                            (click)="eliminarPregunta(preguntaIndex)"
+                                            aria-label="Eliminar pregunta">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                                         </svg>
@@ -151,55 +155,55 @@
                                 }
                             </div>
 
-                            
+                            <div class="answers-list mt-4 space-y-3" formArrayName="respuestas">
+                                @for (respuesta of obtenerRespuestasFormArray(preguntaIndex).controls; track respuesta; let respuestaIndex = $index) {
+                                    <div class="answer-row" [formGroupName]="respuestaIndex">
+                                        <app-answer-shape class="answer-shape shrink-0" [shape]="obtenerShapeRespuesta(respuestaIndex)" [selected]="false" />
+                                        <input type="text"
+                                               formControlName="texto"
+                                               placeholder="Respuesta..."
+                                               class="answer-input min-w-0 flex-1 px-3 sm:px-4 py-2 rounded-lg border outline-none transition-all box-border"
+                                               style="background-color: var(--base-300); border-color: var(--neutral); color: var(--base-content);">
+                                        <input type="checkbox"
+                                               formControlName="esCorrecta"
+                                               class="checkbox checkbox-md sm:checkbox-lg shrink-0"
+                                               style="accent-color: var(--success);"
+                                               (change)="setRespuestaCorrecta(preguntaIndex, respuestaIndex)"
+                                               aria-label="Respuesta correcta">
+                                        @if (obtenerRespuestasFormArray(preguntaIndex).length > 2) {
+                                            <button type="button"
+                                                    class="btn btn-ghost btn-xs shrink-0"
+                                                    style="color: var(--error);"
+                                                    (click)="eliminarRespuesta(preguntaIndex, respuestaIndex, respuesta)"
+                                                    aria-label="Eliminar respuesta">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            </div>
 
-                                <div class="mt-4 space-y-3 pl-14" formArrayName="respuestas">
-                                    @for (respuesta of obtenerRespuestasFormArray(preguntaIndex).controls; track respuesta; let respuestaIndex = $index) {
-                                        <div class="flex items-center gap-3" [formGroupName]="respuestaIndex">
-                                            <app-answer-shape [shape]="obtenerShapeRespuesta(respuestaIndex)" [selected]="false" />
-                                            <input type="text"
-                                                   formControlName="texto"
-                                                   placeholder="Respuesta..."
-                                                   class="flex-1 px-4 py-2 rounded-lg border outline-none transition-all"
-                                                   style="background-color: var(--base-300); border-color: var(--neutral); color: var(--base-content);">
-                                            <input type="checkbox"
-                                                   formControlName="esCorrecta"
-                                                   class="checkbox checkbox-lg"
-                                                   style="accent-color: var(--success);"
-                                                   (change)="setRespuestaCorrecta(preguntaIndex, respuestaIndex)">
-                                            @if (obtenerRespuestasFormArray(preguntaIndex).length > 2) {
-                                                <button type="button"
-                                                        class="btn btn-ghost btn-xs"
-                                                        style="color: var(--error);"
-                                                        (click)="eliminarRespuesta(preguntaIndex, respuestaIndex, respuesta)">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                                    </svg>
-                                                </button>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-
-                                <div class="mt-3 pl-14">
-                                    @if (obtenerRespuestasFormArray(preguntaIndex).length < 4) {
-                                        <button type="button"
-                                                class="btn btn-ghost btn-sm"
-                                                style="color: var(--info);"
-                                                (click)="agregarRespuesta(preguntaIndex)">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                                            </svg>
-                                            Agregar respuesta
-                                        </button>
-                                    }
-                                </div>
+                            <div class="mt-3">
+                                @if (obtenerRespuestasFormArray(preguntaIndex).length < 4) {
+                                    <button type="button"
+                                            class="btn btn-ghost btn-sm"
+                                            style="color: var(--info);"
+                                            (click)="agregarRespuesta(preguntaIndex)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                                        </svg>
+                                        Agregar respuesta
+                                    </button>
+                                }
+                            </div>
                         </div>
                     }
                 </div>
 
                 <button type="button"
-                        class="w-full py-3 rounded-lg font-semibold text-lg transition-all cursor-pointer flex items-center justify-center gap-2 mt-6"
+                        class="w-full py-3 rounded-lg font-semibold text-base sm:text-lg transition-all cursor-pointer flex items-center justify-center gap-2 mt-6"
                         style="background-color: transparent; border: 2px solid var(--warning); color: var(--warning);"
                         (click)="agregarPregunta()">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -208,9 +212,9 @@
                     Agregar Pregunta
                 </button>
 
-                <div class="mt-8">
-                    <button type="submit" 
-                            class="w-full py-3 rounded-lg font-semibold text-lg transition-all cursor-pointer flex items-center justify-center gap-2"
+                <div class="mt-6 sm:mt-8">
+                    <button type="submit"
+                            class="w-full py-3 rounded-lg font-semibold text-base sm:text-lg transition-all cursor-pointer flex items-center justify-center gap-2"
                             style="background-color: var(--accent); color: var(--accent-content);"
                             [disabled]="isLoading()">
                         @if (isLoading()) {

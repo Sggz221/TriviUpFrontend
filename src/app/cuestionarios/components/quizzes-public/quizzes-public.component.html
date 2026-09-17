@@ -105,43 +105,53 @@
             </div>
 
             @if (totalPages() > 1) {
-                <div class="pagination mt-8 flex flex-wrap justify-center items-center gap-2 max-w-full px-1">
-                    <button
-                        type="button"
-                        class="btn btn-sm pagination-btn"
-                        [disabled]="currentPage() === 1 || isLoading()"
-                        (click)="prevPage()"
-                    >
-                        Anterior
-                    </button>
+                <nav class="pagination" aria-label="Paginación de cuestionarios">
+                    <div class="pagination-bar">
+                        <button
+                            type="button"
+                            class="pagination-nav-btn"
+                            [disabled]="currentPage() === 1 || isLoading()"
+                            (click)="prevPage()"
+                            aria-label="Página anterior"
+                        >
+                            ‹ Anterior
+                        </button>
 
-                    <div class="flex flex-wrap justify-center gap-1 max-w-full overflow-x-auto">
+                        <span class="pagination-status">
+                            {{ currentPage() }} / {{ totalPages() }}
+                        </span>
+
+                        <button
+                            type="button"
+                            class="pagination-nav-btn"
+                            [disabled]="currentPage() === totalPages() || isLoading()"
+                            (click)="nextPage()"
+                            aria-label="Página siguiente"
+                        >
+                            Siguiente ›
+                        </button>
+                    </div>
+
+                    <div class="pagination-pages" role="list">
                         @for (page of getVisiblePages(); track page) {
                             @if (page === '...') {
-                                <span class="btn btn-sm btn-disabled pagination-ellipsis">...</span>
+                                <span class="pagination-ellipsis" aria-hidden="true">…</span>
                             } @else {
                                 <button
                                     type="button"
-                                    class="btn btn-sm pagination-btn"
-                                    [class.pagination-btn-active]="page === currentPage()"
+                                    class="pagination-page-btn"
+                                    [class.is-active]="page === currentPage()"
                                     (click)="goToPage(+page)"
                                     [disabled]="isLoading()"
+                                    [attr.aria-current]="page === currentPage() ? 'page' : null"
+                                    [attr.aria-label]="'Ir a página ' + page"
                                 >
                                     {{ page }}
                                 </button>
                             }
                         }
                     </div>
-
-                    <button
-                        type="button"
-                        class="btn btn-sm pagination-btn"
-                        [disabled]="currentPage() === totalPages() || isLoading()"
-                        (click)="nextPage()"
-                    >
-                        Siguiente
-                    </button>
-                </div>
+                </nav>
             }
         }
     </div>
