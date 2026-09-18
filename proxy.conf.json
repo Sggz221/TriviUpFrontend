@@ -9,6 +9,12 @@
     "secure": false,
     "changeOrigin": true
   },
+  "/hubs": {
+    "target": "http://localhost:5164",
+    "secure": false,
+    "changeOrigin": true,
+    "ws": true
+  },
   "/auth": {
     "target": "http://localhost:5164",
     "secure": false,

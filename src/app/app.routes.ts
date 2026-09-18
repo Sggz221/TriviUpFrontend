@@ -25,6 +25,7 @@ export const routes: Routes = [
     { path: 'perfil', component: Profile },
     { path: 'perfil/editar', component: ProfileEdit },
     { path: 'cuestionarios/crear', component: CrearCuestionarioPage },
+    { path: 'cuestionarios/editar/:id', component: CrearCuestionarioPage },
     { path: 'cuestionarios/mis-cuestionarios', component: QuizListComponent },
     { path: 'quizzes/public', component: QuizzesPublicComponent },
     { path: 'cuestionarios/:id', component: QuizDetailComponent },

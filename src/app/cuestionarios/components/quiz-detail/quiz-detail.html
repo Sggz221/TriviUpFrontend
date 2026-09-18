@@ -54,7 +54,17 @@
                 </div>
 
                 <!-- Create Game Room Button -->
-                <div class="flex justify-center">
+                <div class="flex flex-col items-center gap-3">
+                    <label class="flex items-center gap-3 text-sm" style="color: var(--base-content);">
+                        <span class="opacity-80">Tiempo por turno</span>
+                        <select class="select select-bordered select-sm"
+                                [value]="tiempoTurno()"
+                                (change)="onTiempoTurnoChange($event)">
+                            @for (op of opcionesTiempo; track op.valor) {
+                                <option [value]="op.valor" [selected]="op.valor === tiempoTurno()">{{ op.etiqueta }}</option>
+                            }
+                        </select>
+                    </label>
                     <button
                         class="btn btn-lg gap-2"
                         style="background-color: var(--primary); color: var(--primary-content);"

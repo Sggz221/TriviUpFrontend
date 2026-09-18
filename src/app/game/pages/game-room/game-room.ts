@@ -11,7 +11,7 @@ import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AudioService } from '../../../shared/services/audio.service';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
-import { getOrCreateAnonymousUserId, saveAnonymousIdentity } from '../../utils/anonymous-identity.utils';
+import { getOrCreateAnonymousUserId, saveAnonymousIdentity, touchAnonymousIdentity } from '../../utils/anonymous-identity.utils';
 
 @Component({
     selector: 'app-game-room',
@@ -50,6 +50,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     isMuted = signal<boolean>(false);
     isPaused = signal<boolean>(false);
     localTimeRemaining = signal<number>(0);
+    /** Segundos totales del turno actual (0 = sin límite de tiempo). */
+    turnTimeLimit = signal<number>(0);
+    /** Nombre mostrado en el banner "Turno de: ..." (null = oculto). */
+    turnBanner = signal<string | null>(null);
+    private bannerTimeout: ReturnType<typeof setTimeout> | null = null;
+    private activityTimer: ReturnType<typeof setInterval> | null = null;
     private timerInterval: ReturnType<typeof setInterval> | null = null;
 
     // Shape colors: triangle=red, square=yellow, circle=blue, pentagon=purple
@@ -90,9 +96,14 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         console.log('[GameRoom] ★★★ Final component isOwner:', this.isOwner());
 
         this.initializeConnection();
+
+        // Mantener viva la identidad anónima mientras el jugador está en la sala
+        this.activityTimer = setInterval(() => touchAnonymousIdentity(this.roomCode()), 60 * 1000);
     }
 
     ngOnDestroy(): void {
+        if (this.activityTimer) clearInterval(this.activityTimer);
+        if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
         // DON'T call leaveGame() or disconnect() here
         // When navigating to game-play, we want to KEEP the SignalR connection
         // The user is still in the game, just viewing a different page
@@ -114,9 +125,16 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         }
     }
 
+    private showTurnBanner(): void {
+        if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
+        this.turnBanner.set(this.getCurrentTurnPlayerName());
+        this.bannerTimeout = setTimeout(() => this.turnBanner.set(null), 2000);
+    }
+
     private startLocalTimer(timeLimit: number): void {
         this.clearTimerInterval();
         this.localTimeRemaining.set(timeLimit);
+        if (timeLimit <= 0) return;
         this.timerInterval = setInterval(() => {
             this.localTimeRemaining.update(t => Math.max(0, t - 1));
         }, 1000);
@@ -350,6 +368,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.isMyTurn.set(isMyTurn);
             this.selectedAnswer.set(null);
             this.showTurnResult.set(false);
+            this.turnTimeLimit.set(data.timeLimit);
+            this.showTurnBanner();
             if (isMyTurn) {
                 this.audioService.playTurnStart();
                 this.startLocalTimer(data.timeLimit);
@@ -449,7 +469,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.roomCode(),
             this.currentQuestion()!.id,
             answerIndex,
-            this.gameSignalrService.timeRemaining()
+            this.turnTimeLimit() > 0 ? this.localTimeRemaining() : 0
         );
     }
 

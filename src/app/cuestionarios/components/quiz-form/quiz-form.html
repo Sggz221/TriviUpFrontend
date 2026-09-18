@@ -15,8 +15,19 @@
 
         <div class="quiz-form-card rounded-xl shadow-xl p-4 sm:p-8" style="background-color: var(--base-200);">
             <h2 class="text-2xl sm:text-3xl font-bold text-center mb-2 tracking-tight" style="color: var(--secondary);">
-                Crear Nuevo Cuestionario
+                {{ isEdit() ? 'Editar Cuestionario' : 'Crear Nuevo Cuestionario' }}
+                @if (isDraft()) {
+                    <span class="badge badge-warning align-middle text-sm">Borrador</span>
+                }
             </h2>
+
+            @if (lastSavedAt()) {
+                <p class="text-center text-xs opacity-70 mb-3">Guardado a las {{ lastSavedAt() | date:'HH:mm' }} · se autoguarda cada 5 min</p>
+            }
+
+            @if (loadingQuiz()) {
+                <div class="flex justify-center py-6"><span class="loading loading-spinner loading-lg"></span></div>
+            }
 
             @if (errorMessage()) {
                 <div class="alert alert-error mb-4">
@@ -213,6 +224,16 @@
                 </button>
 
                 <div class="quiz-form-actions">
+                    @if (!isEdit() || isDraft()) {
+                        <button type="button"
+                                class="w-full py-3 mb-3 rounded-lg font-semibold text-base sm:text-lg transition-all cursor-pointer flex items-center justify-center gap-2"
+                                style="background-color: transparent; border: 2px solid var(--info); color: var(--info);"
+                                [disabled]="savingDraft() || isLoading()"
+                                (click)="guardarBorrador()">
+                            {{ savingDraft() ? 'Guardando...' : 'Guardar borrador' }}
+                        </button>
+                    }
+
                     <button type="submit"
                             class="quiz-form-submit w-full py-3 rounded-lg font-semibold text-base sm:text-lg transition-all cursor-pointer flex items-center justify-center gap-2"
                             style="background-color: var(--accent); color: var(--accent-content);"
@@ -222,12 +243,12 @@
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Creando...
+                            Guardando...
                         } @else {
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" />
                             </svg>
-                            Crear Cuestionario
+                            {{ isDraft() ? 'Publicar cuestionario' : (isEdit() ? 'Guardar cambios' : 'Crear Cuestionario') }}
                         }
                     </button>
 

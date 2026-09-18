@@ -718,3 +718,76 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
         transform: translateY(-2px);
     }
 }
+
+// Banner "Turno de: Nombre" centrado en pantalla
+.turn-banner {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    background: color-mix(in oklab, var(--base-100) 55%, transparent);
+    animation: banner-backdrop 2s ease both;
+}
+
+.turn-banner-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0 1rem;
+    text-align: center;
+    animation: banner-pop 2s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.turn-banner-label {
+    font-size: clamp(1.25rem, 4vw, 2rem);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--base-content);
+    opacity: 0.8;
+}
+
+.turn-banner-name {
+    font-size: clamp(2.5rem, 12vw, 6rem);
+    font-weight: 800;
+    line-height: 1.05;
+    word-break: break-word;
+    color: var(--secondary);
+    text-shadow: 0 4px 24px color-mix(in oklab, var(--secondary) 45%, transparent);
+}
+
+@keyframes banner-backdrop {
+    0% { opacity: 0; }
+    12%, 80% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes banner-pop {
+    0% { transform: scale(0.4) rotate(-3deg); opacity: 0; }
+    18% { transform: scale(1.1) rotate(1deg); opacity: 1; }
+    30% { transform: scale(1) rotate(0); }
+    80% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1.15); opacity: 0; }
+}
+
+.reconnect-toast {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 70;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: var(--warning);
+    color: var(--warning-content);
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .turn-banner-text { animation: none; }
+}

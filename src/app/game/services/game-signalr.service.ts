@@ -1,8 +1,9 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState } from '../models/game.models';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
+import { AuthService } from '../../auth/auth.service';
 
 export type GamePageState =
     | 'disconnected'
@@ -23,6 +24,9 @@ export type GamePageState =
 })
 export class GameSignalrService {
     private hubConnection: HubConnection | null = null;
+    private authService = inject(AuthService);
+    private intentionalStop = false;
+    private static readonly RETRY_DELAYS = [0, 2000, 5000, 10000, 20000, 30000, 30000, 30000];
     private isAnonymousConnection = false;
     private anonymousUserId: number | null = null;
     private anonymousUsername: string | null = null;
@@ -62,6 +66,7 @@ export class GameSignalrService {
 
     // State signals
     isConnected = signal(false);
+    reconnecting = signal(false);
     currentRoomCode = signal<string | null>(null);
     connectionState = signal<GamePageState>('disconnected');
     currentQuestion = signal<Question | null>(null);
@@ -112,11 +117,13 @@ export class GameSignalrService {
         console.log('[GameSignalr] Connection state before start:', this.hubConnection?.state);
 
         this.hubConnection = new HubConnectionBuilder()
-            .withUrl(hubUrl, token ? { accessTokenFactory: () => token } : {})
-            .withAutomaticReconnect()
+            .withUrl(hubUrl, token ? { accessTokenFactory: () => this.authService.getToken() ?? token } : {})
+            .withAutomaticReconnect(GameSignalrService.RETRY_DELAYS)
             .build();
 
+        this.intentionalStop = false;
         this.setupEventHandlers();
+        this.setupLifecycleHandlers();
 
         try {
             await this.hubConnection.start();
@@ -153,10 +160,12 @@ export class GameSignalrService {
 
         this.hubConnection = new HubConnectionBuilder()
             .withUrl(hubUrl)
-            .withAutomaticReconnect()
+            .withAutomaticReconnect(GameSignalrService.RETRY_DELAYS)
             .build();
 
+        this.intentionalStop = false;
         this.setupEventHandlers();
+        this.setupLifecycleHandlers();
 
         try {
             await this.hubConnection.start();
@@ -172,6 +181,7 @@ export class GameSignalrService {
     }
 
     async disconnect(): Promise<void> {
+        this.intentionalStop = true;
         if (this.hubConnection) {
             await this.hubConnection.stop();
             this.hubConnection = null;
@@ -181,6 +191,61 @@ export class GameSignalrService {
             this.anonymousUserId = null;
             this.anonymousUsername = null;
             this.connectionState.set('disconnected');
+        }
+    }
+
+    /**
+     * Reconexión: SignalR pierde la pertenencia a los grupos al reconectar (cambia el
+     * connectionId), así que hay que volver a hacer JoinGame. Si la reconexión
+     * automática se agota, se reintenta manualmente hasta que el usuario salga.
+     */
+    private setupLifecycleHandlers(): void {
+        const connection = this.hubConnection;
+        if (!connection) return;
+
+        connection.onreconnecting(() => {
+            console.warn('[GameSignalr] Reconnecting...');
+            this.reconnecting.set(true);
+        });
+
+        connection.onreconnected(async () => {
+            console.log('[GameSignalr] Reconnected, rejoining room');
+            this.reconnecting.set(false);
+            this.isConnected.set(true);
+            await this.rejoinCurrentRoom();
+        });
+
+        connection.onclose(async () => {
+            this.isConnected.set(false);
+            if (this.intentionalStop || this.hubConnection !== connection) return;
+            this.reconnecting.set(true);
+            await this.retryStart(connection);
+        });
+    }
+
+    private async retryStart(connection: HubConnection): Promise<void> {
+        while (!this.intentionalStop && this.hubConnection === connection) {
+            try {
+                await connection.start();
+                this.reconnecting.set(false);
+                this.isConnected.set(true);
+                await this.rejoinCurrentRoom();
+                return;
+            } catch {
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+        }
+    }
+
+    private async rejoinCurrentRoom(): Promise<void> {
+        const roomCode = this.currentRoomCode();
+        const userId = this.currentUserId();
+        const username = this.currentUsername();
+        if (!roomCode || userId === null || username === null || !this.hubConnection) return;
+        try {
+            await this.hubConnection.invoke('JoinGame', roomCode, userId, username);
+        } catch (error) {
+            console.error('[GameSignalr] Rejoin failed:', error);
         }
     }
 
@@ -286,9 +351,11 @@ export class GameSignalrService {
     /**
      * Create a new game room (requires authenticated user)
      */
-    async createGame(quizId: number): Promise<string> {
+    async createGame(quizId: number, turnTimeLimitSeconds: number | null = null): Promise<string> {
         if (!this.hubConnection) throw new Error('Hub not connected');
-        return this.hubConnection.invoke('CreateGame', quizId);
+        const roomCode = await this.hubConnection.invoke<string>('CreateGame', quizId, turnTimeLimitSeconds);
+        this.currentRoomCode.set(roomCode);
+        return roomCode;
     }
 
     /**
@@ -312,6 +379,7 @@ export class GameSignalrService {
         this.currentUserId.set(effectiveUserId);
         this.currentUsername.set(effectiveUsername);
 
+        this.currentRoomCode.set(roomCode);
         return this.hubConnection.invoke('JoinGame', roomCode, effectiveUserId, effectiveUsername);
     }
 

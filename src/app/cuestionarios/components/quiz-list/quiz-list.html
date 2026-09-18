@@ -57,7 +57,12 @@
                     <div class="rounded-xl shadow-md p-4 sm:p-6 hover:shadow-lg transition-shadow" style="background-color: var(--base-200);">
                         <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                             <div class="flex-1 min-w-0">
-                                <h2 class="text-xl font-bold mb-2 break-words" style="color: var(--base-content);">{{ quiz.nombre }}</h2>
+                                <h2 class="text-xl font-bold mb-2 break-words" style="color: var(--base-content);">
+                                    {{ quiz.nombre }}
+                                    @if (quiz.esBorrador) {
+                                        <span class="badge badge-warning ml-2 align-middle">Borrador</span>
+                                    }
+                                </h2>
                                 <div class="flex flex-wrap gap-4 text-sm" style="color: var(--base-content);">
                                     <div class="flex items-center gap-1 opacity-70">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -74,6 +79,9 @@
                                 </div>
                             </div>
                             <div class="flex gap-2 w-full sm:w-auto">
+                                <a [routerLink]="['/cuestionarios/editar', quiz.id]" class="btn btn-sm btn-outline flex-1 sm:flex-none justify-center" style="border-color: var(--info); color: var(--info);">
+                                    Editar
+                                </a>
                                 <a [routerLink]="['/cuestionarios', quiz.id]" class="btn btn-warning-custom btn-sm flex-1 sm:flex-none justify-center">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />

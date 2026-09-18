@@ -139,10 +139,10 @@
                 }
             </div>
 
-            @if (isMyTurn() && !showTurnResult() && !isPaused()) {
+            @if (isMyTurn() && !showTurnResult() && !isPaused() && turnTimeLimit() > 0) {
                 <div class="turn-timer" [class.time-warning]="localTimeRemaining() <= 10" [class.time-danger]="localTimeRemaining() <= 5">
                     <div class="timer-bar">
-                        <div class="timer-progress" [style.width.%]="(localTimeRemaining() / gameSignalrService.timeRemaining()) * 100"></div>
+                        <div class="timer-progress" [style.width.%]="(localTimeRemaining() / turnTimeLimit()) * 100"></div>
                     </div>
                     <span class="timer-text">{{ localTimeRemaining() }}s</span>
                 </div>
@@ -244,3 +244,16 @@
         </div>
     }
 </div>
+
+@if (turnBanner()) {
+    <div class="turn-banner" aria-live="assertive">
+        <div class="turn-banner-text">
+            <span class="turn-banner-label">Turno de:</span>
+            <span class="turn-banner-name">{{ turnBanner() }}</span>
+        </div>
+    </div>
+}
+
+@if (gameSignalrService.reconnecting()) {
+    <div class="reconnect-toast">Reconectando…</div>
+}

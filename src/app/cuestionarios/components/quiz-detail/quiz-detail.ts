@@ -5,6 +5,7 @@ import { CuestionarioService } from '../../services/cuestionario.service';
 import { Cuestionario, Pregunta, Respuesta } from '../../models/cuestionario.model';
 import { GameSignalrService } from '../../../game/services/game-signalr.service';
 import { AuthService } from '../../../auth/auth.service';
+import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 
 @Component({
@@ -121,16 +122,23 @@ export class QuizDetailComponent implements OnInit {
 
     obtenerImagenPreguntaUrl(path: string | null | undefined): string | null {
         if (!path) return null;
-        // Si ya es una URL completa, devolverla tal cual
-        if (path.startsWith('http://') || path.startsWith('https://')) {
-            return path;
-        }
-        // Transformar /uploads/... a /storage/... para usar el endpoint del StorageController
-        // Usar ruta relativa para que nginx haga proxy correctamente
-        if (path.startsWith('/uploads')) {
-            return path.replace('/uploads', '/storage');
-        }
-        return path;
+        return imageUrl(path);
+    }
+
+    /** Segundos por turno elegidos para la sala (0 = sin tiempo). */
+    tiempoTurno = signal<number>(20);
+    readonly opcionesTiempo = [
+        { valor: 10, etiqueta: '10 s' },
+        { valor: 15, etiqueta: '15 s' },
+        { valor: 20, etiqueta: '20 s' },
+        { valor: 30, etiqueta: '30 s' },
+        { valor: 45, etiqueta: '45 s' },
+        { valor: 60, etiqueta: '60 s' },
+        { valor: 0, etiqueta: 'Sin tiempo' }
+    ];
+
+    onTiempoTurnoChange(event: Event): void {
+        this.tiempoTurno.set(Number((event.target as HTMLSelectElement).value));
     }
 
     crearSalaJuego(): void {
@@ -149,7 +157,7 @@ export class QuizDetailComponent implements OnInit {
 
         this.gameSignalrService.connect(token).then(() => {
             // Invocar CreateGame en el hub
-            return this.gameSignalrService.createGame(quiz.id);
+            return this.gameSignalrService.createGame(quiz.id, this.tiempoTurno());
         }).then((roomCode) => {
             console.log('[QuizDetail] ★★★ Sala creada:', roomCode);
             // Indicar que este usuario es el owner

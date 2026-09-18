@@ -19,6 +19,7 @@ export interface Cuestionario {
     id: number;
     nombre: string;
     esPublico: boolean;
+    esBorrador?: boolean;
     gameCode: string;
     preguntas: Pregunta[];
     creatorId: number;
@@ -29,6 +30,7 @@ export interface Cuestionario {
 export interface CreateQuizRequest {
     nombre: string;
     esPublico: boolean;
+    esBorrador?: boolean;
     preguntas: {
         numeroPregunta: number;
         enunciado: string;
@@ -36,3 +38,5 @@ export interface CreateQuizRequest {
         imagenUrl?: string;
     }[];
 }
+
+export type UpdateQuizRequest = CreateQuizRequest;

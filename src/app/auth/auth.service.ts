@@ -48,6 +48,21 @@ export class AuthService {
         );
     }
 
+    /** Pide un token nuevo al backend (renueva la sesión sin volver a pedir credenciales). */
+    refreshToken(): Observable<AuthResponse> {
+        return this.http.post<AuthResponse>(`${this.API_URL}/refresh`, {}).pipe(
+            tap(response => this.saveSession(response))
+        );
+    }
+
+    /** Milisegundos hasta que caduca el token actual (null si no hay token válido). */
+    msUntilExpiry(): number | null {
+        const token = localStorage.getItem('token');
+        if (!token) return null;
+        const expiresAt = this.getTokenExpiration(token);
+        return expiresAt === null ? null : expiresAt - Date.now();
+    }
+
     saveSession(response: AuthResponse): void {
         console.log('[AuthService] saveSession called with:', response);
         localStorage.setItem('token', response.token);

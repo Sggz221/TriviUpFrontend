@@ -12,7 +12,7 @@ export interface UploadQuestionImageResponse {
     providedIn: 'root'
 })
 export class ImageService {
-    private readonly API_URL = `${getApiBaseUrl()}/cuestionarios/preguntas`;
+    private readonly API_URL = `${getApiBaseUrl()}/api/cuestionarios/preguntas`;
 
     private http = inject(HttpClient);
     private authService = inject(AuthService);
@@ -30,7 +30,7 @@ export class ImageService {
         const formData = new FormData();
         formData.append('file', file);
 
-        return this.http.post<UploadQuestionImageResponse>(
+        return this.http.put<UploadQuestionImageResponse>(
             `${this.API_URL}/${questionId}/imagen`,
             formData,
             {

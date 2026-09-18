@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Cuestionario, CreateQuizRequest } from '../models/cuestionario.model';
+import { Cuestionario, CreateQuizRequest, UpdateQuizRequest } from '../models/cuestionario.model';
 import { AuthService } from '../../auth/auth.service';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 
@@ -19,7 +19,7 @@ export interface UploadQuizImageResponse {
 })
 export class CuestionarioService {
     private readonly API_URL = `${getApiBaseUrl()}/api/cuestionarios`;
-    private readonly PREGUNTAS_API_URL = `${getApiBaseUrl()}/cuestionarios/preguntas`;
+    private readonly PREGUNTAS_API_URL = `${getApiBaseUrl()}/api/cuestionarios/preguntas`;
 
     private http = inject(HttpClient);
     private authService = inject(AuthService);
@@ -34,6 +34,12 @@ export class CuestionarioService {
 
     crearQuiz(request: CreateQuizRequest): Observable<Cuestionario> {
         return this.http.post<Cuestionario>(this.API_URL, request, {
+            headers: this.getHeaders()
+        });
+    }
+
+    actualizarQuiz(id: number, request: UpdateQuizRequest): Observable<Cuestionario> {
+        return this.http.put<Cuestionario>(`${this.API_URL}/${id}`, request, {
             headers: this.getHeaders()
         });
     }
@@ -83,7 +89,7 @@ export class CuestionarioService {
         const formData = new FormData();
         formData.append('file', file);
 
-        return this.http.post<UploadQuestionImageResponse>(
+        return this.http.put<UploadQuestionImageResponse>(
             `${this.PREGUNTAS_API_URL}/${preguntaId}/imagen`,
             formData,
             {

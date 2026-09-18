@@ -1,9 +1,10 @@
-import { Component, signal, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, signal, inject, computed, DestroyRef } from '@angular/core';
+import { CommonModule, Location } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators, AbstractControl } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CuestionarioService } from '../../services/cuestionario.service';
-import { CreateQuizRequest } from '../../models/cuestionario.model';
+import { Cuestionario, CreateQuizRequest } from '../../models/cuestionario.model';
+import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 
 interface RespuestaFormValue {
@@ -28,6 +29,19 @@ export class QuizFormComponent {
     private fb = inject(FormBuilder);
     private router = inject(Router);
     private cuestionarioService = inject(CuestionarioService);
+    private route = inject(ActivatedRoute);
+    private location = inject(Location);
+    private destroyRef = inject(DestroyRef);
+
+    /** Intervalo de autoguardado del borrador (5 min). */
+    private static readonly AUTOSAVE_MS = 5 * 60 * 1000;
+
+    quizId = signal<number | null>(null);
+    isEdit = computed(() => this.quizId() !== null);
+    isDraft = signal(false);
+    savingDraft = signal(false);
+    lastSavedAt = signal<Date | null>(null);
+    loadingQuiz = signal(false);
 
     isLoading = signal(false);
     errorMessage = signal<string | null>(null);
@@ -46,8 +60,61 @@ export class QuizFormComponent {
             preguntas: this.fb.array([])
         });
 
-        // Add initial question
-        this.agregarPregunta();
+        const idParam = this.route.snapshot.paramMap.get('id');
+        if (idParam) {
+            this.cargarQuiz(Number(idParam));
+        } else {
+            // Add initial question
+            this.agregarPregunta();
+        }
+
+        const timer = setInterval(() => this.autoguardar(), QuizFormComponent.AUTOSAVE_MS);
+        this.destroyRef.onDestroy(() => clearInterval(timer));
+    }
+
+    private cargarQuiz(id: number): void {
+        this.loadingQuiz.set(true);
+        this.cuestionarioService.obtenerQuiz(id).subscribe({
+            next: (quiz) => {
+                this.quizId.set(quiz.id);
+                this.isDraft.set(!!quiz.esBorrador);
+                this.rellenarFormulario(quiz);
+                this.loadingQuiz.set(false);
+            },
+            error: () => {
+                this.loadingQuiz.set(false);
+                this.errorMessage.set('No se pudo cargar el cuestionario.');
+                this.agregarPregunta();
+            }
+        });
+    }
+
+    private rellenarFormulario(quiz: Cuestionario): void {
+        this.quizForm.patchValue({ nombre: quiz.nombre, esPublico: quiz.esPublico ?? false });
+        this.preguntasArray.clear();
+        const images = new Map<number, { uploading: boolean; url: string | null; preview: string | null }>();
+
+        [...quiz.preguntas]
+            .sort((a, b) => a.numeroPregunta - b.numeroPregunta)
+            .forEach((p, index) => {
+                this.preguntasArray.push(this.fb.group({
+                    enunciado: [p.enunciado, Validators.required],
+                    respuestas: this.fb.array(p.respuestas.map(r => this.fb.group({
+                        texto: [r.texto, Validators.required],
+                        esCorrecta: [r.esCorrecta]
+                    }))),
+                    imagenUrl: [p.imagenUrl ?? null]
+                }));
+                if (p.imagenUrl) {
+                    images.set(index, { uploading: false, url: imageUrl(p.imagenUrl), preview: null });
+                }
+            });
+
+        if (this.preguntasArray.length === 0) {
+            this.agregarPregunta();
+        }
+        this.questionImages.set(images);
+        this.quizForm.markAsPristine();
     }
 
     get preguntasArray(): FormArray {
@@ -218,12 +285,13 @@ export class QuizFormComponent {
             this.cuestionarioService.subirImagenPregunta(file).subscribe({
                 next: (response) => {
                     const updatedMap = new Map(this.questionImages());
-                    updatedMap.set(preguntaIndex, { uploading: false, url: response.url, preview: null });
+                    updatedMap.set(preguntaIndex, { uploading: false, url: imageUrl(response.path), preview: null });
                     this.questionImages.set(updatedMap);
                     this.uploadingQuestionIndex.set(null);
 
                     // Store the path (relative URL) in the form
                     this.preguntasArray.at(preguntaIndex).patchValue({ imagenUrl: response.path });
+                    this.quizForm.markAsDirty();
                 },
                 error: (err) => {
                     const updatedMap = new Map(this.questionImages());
@@ -285,6 +353,83 @@ export class QuizFormComponent {
         return true;
     }
 
+    private construirRequest(esBorrador: boolean): CreateQuizRequest {
+        const formValue = this.quizForm.value as {
+            nombre: string;
+            esPublico: boolean;
+            preguntas: PreguntaFormValue[];
+        };
+
+        const nombre = (formValue.nombre ?? '').trim();
+
+        return {
+            nombre: nombre || 'Borrador sin título',
+            esPublico: esBorrador ? false : (formValue.esPublico ?? false),
+            esBorrador,
+            preguntas: formValue.preguntas.map((pregunta: PreguntaFormValue, index: number) => ({
+                numeroPregunta: index + 1,
+                enunciado: pregunta.enunciado ?? '',
+                respuestas: pregunta.respuestas.map((r: RespuestaFormValue) => ({
+                    texto: r.texto ?? '',
+                    esCorrecta: !!r.esCorrecta
+                })),
+                imagenUrl: pregunta.imagenUrl || undefined
+            }))
+        };
+    }
+
+    private guardar(request: CreateQuizRequest) {
+        const id = this.quizId();
+        return id === null
+            ? this.cuestionarioService.crearQuiz(request)
+            : this.cuestionarioService.actualizarQuiz(id, request);
+    }
+
+    guardarBorrador(): void {
+        this.enviarBorrador(false);
+    }
+
+    /** Autoguardado periódico: solo si hay cambios sin guardar. */
+    private autoguardar(): void {
+        if (this.quizForm.dirty) {
+            this.enviarBorrador(true);
+        }
+    }
+
+    private enviarBorrador(silencioso: boolean): void {
+        if (this.savingDraft() || this.isLoading() || this.loadingQuiz()) return;
+        // Un cuestionario ya publicado no vuelve a borrador automáticamente
+        if (this.isEdit() && !this.isDraft()) return;
+
+        this.savingDraft.set(true);
+        if (!silencioso) {
+            this.errorMessage.set(null);
+        }
+
+        this.guardar(this.construirRequest(true)).subscribe({
+            next: (cuestionario) => {
+                this.savingDraft.set(false);
+                this.isDraft.set(true);
+                this.lastSavedAt.set(new Date());
+                this.quizForm.markAsPristine();
+                if (this.quizId() === null) {
+                    this.quizId.set(cuestionario.id);
+                    this.location.replaceState(`/cuestionarios/editar/${cuestionario.id}`);
+                }
+                if (!silencioso) {
+                    this.successMessage.set('Borrador guardado.');
+                    setTimeout(() => this.successMessage.set(null), 2500);
+                }
+            },
+            error: (err) => {
+                this.savingDraft.set(false);
+                if (!silencioso) {
+                    this.errorMessage.set(err.error?.message || 'No se pudo guardar el borrador.');
+                }
+            }
+        });
+    }
+
     onSubmit(): void {
         if (!this.validarFormulario()) {
             return;
@@ -294,30 +439,13 @@ export class QuizFormComponent {
         this.errorMessage.set(null);
         this.successMessage.set(null);
 
-        const formValue = this.quizForm.value as {
-            nombre: string;
-            esPublico: boolean;
-            preguntas: PreguntaFormValue[];
-        };
+        const editando = this.isEdit();
 
-        const request: CreateQuizRequest = {
-            nombre: formValue.nombre,
-            esPublico: formValue.esPublico ?? false,
-            preguntas: formValue.preguntas.map((pregunta: PreguntaFormValue, index: number) => ({
-                numeroPregunta: index + 1,
-                enunciado: pregunta.enunciado,
-                respuestas: pregunta.respuestas.map((r: RespuestaFormValue) => ({
-                    texto: r.texto,
-                    esCorrecta: r.esCorrecta
-                })),
-                imagenUrl: pregunta.imagenUrl || undefined
-            }))
-        };
-
-        this.cuestionarioService.crearQuiz(request).subscribe({
+        this.guardar(this.construirRequest(false)).subscribe({
             next: (cuestionario) => {
                 this.isLoading.set(false);
-                this.successMessage.set('¡Cuestionario creado exitosamente!');
+                this.quizForm.markAsPristine();
+                this.successMessage.set(editando ? '¡Cuestionario actualizado!' : '¡Cuestionario creado exitosamente!');
                 setTimeout(() => {
                     this.router.navigate(['/cuestionarios', cuestionario.id]);
                 }, 1500);
@@ -325,7 +453,7 @@ export class QuizFormComponent {
             error: (err) => {
                 this.isLoading.set(false);
                 this.errorMessage.set(
-                    err.error?.message || 'No se pudo crear el cuestionario. Inténtalo de nuevo.'
+                    err.error?.message || 'No se pudo guardar el cuestionario. Inténtalo de nuevo.'
                 );
             }
         });
