@@ -2,6 +2,7 @@ import { Component, OnInit, signal, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subject, takeUntil } from 'rxjs';
 import { GameSignalrService } from '../../services/game-signalr.service';
 import { AuthService } from '../../../auth/auth.service';
 import { GameLobbyComponent } from '../../components/game-lobby/game-lobby.component';
@@ -55,6 +56,10 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Nombre mostrado en el banner "Turno de: ..." (null = oculto). */
     turnBanner = signal<string | null>(null);
     private bannerTimeout: ReturnType<typeof setTimeout> | null = null;
+    /** Evita unirse dos veces (Enter + clic) y crear dos conexiones con ids distintos. */
+    isJoining = signal<boolean>(false);
+    private handlersRegistered = false;
+    private destroy$ = new Subject<void>();
     private activityTimer: ReturnType<typeof setInterval> | null = null;
     private timerInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -102,6 +107,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
         if (this.activityTimer) clearInterval(this.activityTimer);
         if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
         // DON'T call leaveGame() or disconnect() here
@@ -213,6 +220,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     joinAsAnonymous(): void {
+        if (this.isJoining()) return;
         console.log('[GameRoom] joinAsAnonymous() called');
         console.log('[GameRoom] Current anonymousUsername value:', this.anonymousUsername);
 
@@ -231,6 +239,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         const anonymousUserId = getOrCreateAnonymousUserId(this.roomCode());
         console.log('[GameRoom] Using anonymousUserId:', anonymousUserId);
 
+        this.isJoining.set(true);
+        this.errorMessage.set(null);
+        // Guardar ya la identidad: si algo reintenta, reutilizará este mismo id
+        saveAnonymousIdentity(this.roomCode(), anonymousUserId, username);
+
         console.log('[GameRoom] Calling connectAnonymously()...');
         this.gameSignalrService.connectAnonymously(anonymousUserId, username).then(() => {
             console.log('[GameRoom] connectAnonymously() succeeded');
@@ -248,9 +261,16 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         }).then(() => {
             console.log('[GameRoom] joinGame() succeeded');
             console.log('[GameRoom] joinAsAnonymous() completed successfully');
+            // El id con el que el servidor nos registró es el del servicio: única fuente de verdad
+            const registeredId = this.gameSignalrService.currentUserId();
+            if (registeredId !== null) {
+                this.myUserId.set(registeredId);
+            }
+            this.isJoining.set(false);
         }).catch((error) => {
             console.error('[GameRoom] Error al conectar como anónimo:', error);
             this.errorMessage.set('Error al conectar con el servidor de juego');
+            this.isJoining.set(false);
         });
     }
 
@@ -270,9 +290,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     private setupEventHandlers(): void {
+        if (this.handlersRegistered) return;
+        this.handlersRegistered = true;
         console.log('[GameRoom] ★ Setting up event handlers');
         // Cuando se une exitosamente a la sala
-        this.gameSignalrService.onGameCreated.subscribe((data) => {
+        this.gameSignalrService.onGameCreated.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             console.log('[GameRoom] ★★★ GameCreated event received!');
             console.log('[GameRoom] ★★★ data:', JSON.stringify(data));
             console.log('[GameRoom] ★★★ data.isOwner:', data.isOwner);
@@ -296,7 +318,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         });
 
         // Cuando un jugador se une
-        this.gameSignalrService.onPlayerJoined.subscribe((player) => {
+        this.gameSignalrService.onPlayerJoined.pipe(takeUntil(this.destroy$)).subscribe((player) => {
             console.log('[GameRoom] ★★★ PlayerJoined event received!:', JSON.stringify(player));
             console.log('[GameRoom] ★★★ Current players list before update:', JSON.stringify(this.players()));
             this.players.update(current => {
@@ -313,7 +335,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         });
 
         // Cuando un jugador abandona
-        this.gameSignalrService.onPlayerLeft.subscribe((playerId) => {
+        this.gameSignalrService.onPlayerLeft.pipe(takeUntil(this.destroy$)).subscribe((playerId) => {
             console.log('[GameRoom] Jugador abandonó:', playerId);
             this.players.update(current => {
                 const updated = current.filter(p => p.userId !== playerId);
@@ -323,7 +345,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         });
 
         // Cuando un jugador es expulsado
-        this.gameSignalrService.onPlayerKicked.subscribe((playerId) => {
+        this.gameSignalrService.onPlayerKicked.pipe(takeUntil(this.destroy$)).subscribe((playerId) => {
             console.log('[GameRoom] Jugador expulsado:', playerId);
             // Check if the kicked player is the current user
             if (playerId === this.myUserId()) {
@@ -344,7 +366,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         });
 
         // Cuando el anfitrión cierra la sala (salió explícitamente mientras se esperaba)
-        this.gameSignalrService.onRoomClosed.subscribe(() => {
+        this.gameSignalrService.onRoomClosed.pipe(takeUntil(this.destroy$)).subscribe(() => {
             console.log('[GameRoom] La sala fue cerrada por el anfitrión');
             this.errorMessage.set('El anfitrión cerró la sala');
             setTimeout(() => {
@@ -353,19 +375,21 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         });
 
         // Cuando la partida inicia
-        this.gameSignalrService.onGameStarted.subscribe((gameStateDto) => {
+        this.gameSignalrService.onGameStarted.pipe(takeUntil(this.destroy$)).subscribe((gameStateDto) => {
             console.log('[GameRoom] Partida iniciada:', gameStateDto);
             this.gameState.set('playing');
             this.audioService.playTurnStart();
         });
 
         // Turn started
-        this.gameSignalrService.onTurnStarted.subscribe((data) => {
+        this.gameSignalrService.onTurnStarted.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             console.log('[GameRoom] Turn started:', data);
             this.currentQuestion.set(data.question);
             this.currentTurnPlayerId.set(data.currentPlayerId);
             const isMyTurn = data.currentPlayerId === this.myUserId();
             this.isMyTurn.set(isMyTurn);
+            this.gameState.set('playing');
+            this.isPaused.set(false);
             this.selectedAnswer.set(null);
             this.showTurnResult.set(false);
             this.turnTimeLimit.set(data.timeLimit);
@@ -377,7 +401,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         });
 
         // Turn result
-        this.gameSignalrService.onTurnResult.subscribe((result) => {
+        this.gameSignalrService.onTurnResult.pipe(takeUntil(this.destroy$)).subscribe((result) => {
             console.log('[GameRoom] Turn result:', result);
             this.lastTurnResult.set(result);
             this.showTurnResult.set(true);
@@ -390,25 +414,25 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         });
 
         // Turn timeout
-        this.gameSignalrService.onTurnTimeout.subscribe((data) => {
+        this.gameSignalrService.onTurnTimeout.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             console.log('[GameRoom] Turn timeout for player:', data.playerId);
         });
 
         // Game finished
-        this.gameSignalrService.onGameFinished.subscribe((results) => {
+        this.gameSignalrService.onGameFinished.pipe(takeUntil(this.destroy$)).subscribe((results) => {
             console.log('[GameRoom] Game finished:', results);
             this.gameResults.set(results);
             this.audioService.playGameOver();
         });
 
         // Errores
-        this.gameSignalrService.onError.subscribe((error) => {
+        this.gameSignalrService.onError.pipe(takeUntil(this.destroy$)).subscribe((error) => {
             console.error('[GameRoom] Error:', error);
             this.errorMessage.set(error.message);
         });
 
         // Players list
-        this.gameSignalrService.onPlayersList.subscribe((players) => {
+        this.gameSignalrService.onPlayersList.pipe(takeUntil(this.destroy$)).subscribe((players) => {
             console.log('[GameRoom] ★★★ PlayersList event received!:', JSON.stringify(players));
             console.log('[GameRoom] ★★★ Current players before update:', JSON.stringify(this.players()));
             this.players.set(players);
@@ -417,14 +441,14 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         });
 
         // Game paused
-        this.gameSignalrService.onGamePaused.subscribe(() => {
+        this.gameSignalrService.onGamePaused.pipe(takeUntil(this.destroy$)).subscribe(() => {
             console.log('[GameRoom] Game paused');
             this.isPaused.set(true);
             this.clearTimerInterval();
         });
 
         // Game resumed
-        this.gameSignalrService.onGameResumed.subscribe((data) => {
+        this.gameSignalrService.onGameResumed.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             console.log('[GameRoom] Game resumed with', data.timeRemaining, 'seconds');
             this.isPaused.set(false);
             this.startLocalTimer(data.timeRemaining);

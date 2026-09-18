@@ -32,9 +32,9 @@
                 <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6">
                     <button
                         class="btn btn-primary flex-1"
-                        [disabled]="!anonymousUsername || anonymousUsername.length < 2"
+                        [disabled]="isJoining() || !anonymousUsername || anonymousUsername.length < 2"
                         (click)="joinAsAnonymous()">
-                        Unirme
+                        {{ isJoining() ? 'Uniéndose...' : 'Unirme' }}
                     </button>
                     <button class="btn btn-ghost" routerLink="/" style="color: var(--base-content);">
                         Cancelar
