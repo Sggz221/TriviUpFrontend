@@ -19,7 +19,59 @@
                 @if (isDraft()) {
                     <span class="badge badge-warning align-middle text-sm">Borrador</span>
                 }
+                @if (esPublicado()) {
+                    <span class="badge badge-success align-middle text-sm">Publicada v{{ version() }}</span>
+                }
+                @if (esPublicado() && tieneBorrador()) {
+                    <span class="badge badge-warning align-middle text-sm">Borrador pendiente</span>
+                }
             </h2>
+
+            @if (esPublicado()) {
+                <div class="flex flex-wrap items-center justify-center gap-3 mb-4 text-sm">
+                    <span class="opacity-70">Lo publicado sigue jugable mientras editas; solo cambia al pulsar "Publicar cambios".</span>
+                    <button type="button" class="link" style="color: var(--info);" (click)="toggleHistorial()">
+                        {{ mostrarHistorial() ? 'Ocultar historial' : 'Historial de versiones' }}
+                    </button>
+                    @if (tieneBorrador()) {
+                        <button type="button" class="link" style="color: var(--error);" (click)="descartarBorrador()">Descartar borrador</button>
+                    }
+                </div>
+            }
+
+            @if (borradorPendiente()) {
+                <div class="alert alert-warning mb-4 flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <span>Tienes un borrador sin publicar de este cuestionario. Ahora ves la versión publicada (v{{ version() }}).</span>
+                    <div class="flex gap-2">
+                        <button type="button" class="btn btn-sm" (click)="continuarBorrador()">Continuar borrador</button>
+                        <button type="button" class="btn btn-sm btn-ghost" (click)="descartarBorrador()">Descartar</button>
+                    </div>
+                </div>
+            }
+
+            @if (mostrarHistorial()) {
+                <div class="rounded-lg p-3 mb-4" style="background-color: var(--base-300);">
+                    @if (versiones() === null) {
+                        <span class="loading loading-spinner loading-sm"></span>
+                    } @else {
+                        <ul class="space-y-2 text-sm">
+                            @for (v of versiones(); track $index) {
+                                <li class="flex flex-wrap items-center justify-between gap-2">
+                                    <span>
+                                        <strong>{{ v.numero !== null ? 'v' + v.numero : 'Borrador' }}</strong>
+                                        · {{ v.estado }} · {{ v.nombre }} · {{ v.fecha | date:'dd/MM/yyyy HH:mm' }}
+                                    </span>
+                                    @if (v.numero !== null) {
+                                        <button type="button" class="btn btn-xs btn-outline" (click)="restaurarVersion(v.numero)">
+                                            Restaurar en borrador
+                                        </button>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
 
             @if (lastSavedAt()) {
                 <p class="text-center text-xs opacity-70 mb-3">Guardado a las {{ lastSavedAt() | date:'HH:mm' }} · se autoguarda cada 5 min</p>
@@ -224,15 +276,13 @@
                 </button>
 
                 <div class="quiz-form-actions">
-                    @if (!isEdit() || isDraft()) {
-                        <button type="button"
-                                class="w-full py-3 mb-3 rounded-lg font-semibold text-base sm:text-lg transition-all cursor-pointer flex items-center justify-center gap-2"
-                                style="background-color: transparent; border: 2px solid var(--info); color: var(--info);"
-                                [disabled]="savingDraft() || isLoading()"
-                                (click)="guardarBorrador()">
-                            {{ savingDraft() ? 'Guardando...' : 'Guardar borrador' }}
-                        </button>
-                    }
+                    <button type="button"
+                            class="w-full py-3 mb-3 rounded-lg font-semibold text-base sm:text-lg transition-all cursor-pointer flex items-center justify-center gap-2"
+                            style="background-color: transparent; border: 2px solid var(--info); color: var(--info);"
+                            [disabled]="savingDraft() || isLoading()"
+                            (click)="guardarBorrador()">
+                        {{ savingDraft() ? 'Guardando...' : (esPublicado() ? 'Guardar borrador (no cambia lo publicado)' : 'Guardar borrador') }}
+                    </button>
 
                     <button type="submit"
                             class="quiz-form-submit w-full py-3 rounded-lg font-semibold text-base sm:text-lg transition-all cursor-pointer flex items-center justify-center gap-2"
@@ -248,7 +298,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" />
                             </svg>
-                            {{ isDraft() ? 'Publicar cuestionario' : (isEdit() ? 'Guardar cambios' : 'Crear Cuestionario') }}
+                            {{ esPublicado() ? 'Publicar cambios (v' + (version() + 1) + ')' : (isDraft() ? 'Publicar cuestionario' : 'Crear Cuestionario') }}
                         }
                     </button>
 

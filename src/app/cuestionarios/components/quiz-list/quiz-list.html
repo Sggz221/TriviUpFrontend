@@ -61,6 +61,11 @@
                                     {{ quiz.nombre }}
                                     @if (quiz.esBorrador) {
                                         <span class="badge badge-warning ml-2 align-middle">Borrador</span>
+                                    } @else {
+                                        <span class="badge badge-success badge-outline ml-2 align-middle">v{{ quiz.version ?? 1 }}</span>
+                                        @if (quiz.tieneBorrador) {
+                                            <span class="badge badge-warning ml-1 align-middle">Borrador pendiente</span>
+                                        }
                                     }
                                 </h2>
                                 <div class="flex flex-wrap gap-4 text-sm" style="color: var(--base-content);">

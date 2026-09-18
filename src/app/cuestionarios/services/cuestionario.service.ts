@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Cuestionario, CreateQuizRequest, UpdateQuizRequest } from '../models/cuestionario.model';
+import { Cuestionario, CreateQuizRequest, UpdateQuizRequest, QuizVersion } from '../models/cuestionario.model';
 import { AuthService } from '../../auth/auth.service';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 
@@ -40,6 +40,30 @@ export class CuestionarioService {
 
     actualizarQuiz(id: number, request: UpdateQuizRequest): Observable<Cuestionario> {
         return this.http.put<Cuestionario>(`${this.API_URL}/${id}`, request, {
+            headers: this.getHeaders()
+        });
+    }
+
+    obtenerBorrador(id: number): Observable<Cuestionario> {
+        return this.http.get<Cuestionario>(`${this.API_URL}/${id}/borrador`, {
+            headers: this.getHeaders()
+        });
+    }
+
+    descartarBorrador(id: number): Observable<void> {
+        return this.http.delete<void>(`${this.API_URL}/${id}/borrador`, {
+            headers: this.getHeaders()
+        });
+    }
+
+    obtenerVersiones(id: number): Observable<QuizVersion[]> {
+        return this.http.get<QuizVersion[]>(`${this.API_URL}/${id}/versiones`, {
+            headers: this.getHeaders()
+        });
+    }
+
+    restaurarVersion(id: number, numero: number): Observable<Cuestionario> {
+        return this.http.post<Cuestionario>(`${this.API_URL}/${id}/versiones/${numero}/restaurar`, {}, {
             headers: this.getHeaders()
         });
     }

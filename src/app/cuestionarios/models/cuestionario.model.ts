@@ -20,6 +20,10 @@ export interface Cuestionario {
     nombre: string;
     esPublico: boolean;
     esBorrador?: boolean;
+    /** Versión publicada actual (0 = nunca publicado). */
+    version?: number;
+    /** Un cuestionario publicado tiene un borrador pendiente aparte. */
+    tieneBorrador?: boolean;
     gameCode: string;
     preguntas: Pregunta[];
     creatorId: number;
@@ -40,3 +44,10 @@ export interface CreateQuizRequest {
 }
 
 export type UpdateQuizRequest = CreateQuizRequest;
+
+export interface QuizVersion {
+    numero: number | null;
+    estado: 'Publicada' | 'Borrador' | 'Archivada';
+    nombre: string;
+    fecha: string;
+}

@@ -3,7 +3,7 @@ import { CommonModule, Location } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CuestionarioService } from '../../services/cuestionario.service';
-import { Cuestionario, CreateQuizRequest } from '../../models/cuestionario.model';
+import { Cuestionario, CreateQuizRequest, QuizVersion } from '../../models/cuestionario.model';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 
@@ -38,7 +38,17 @@ export class QuizFormComponent {
 
     quizId = signal<number | null>(null);
     isEdit = computed(() => this.quizId() !== null);
+    /** Nunca publicado: todo el contenido es un borrador. */
     isDraft = signal(false);
+    /** Versión publicada actual (0 = nunca publicado). */
+    version = signal(0);
+    /** El cuestionario publicado tiene un borrador pendiente aparte. */
+    tieneBorrador = signal(false);
+    /** Borrador pendiente encontrado al abrir; el usuario decide si continuarlo o descartarlo. */
+    borradorPendiente = signal<Cuestionario | null>(null);
+    versiones = signal<QuizVersion[] | null>(null);
+    mostrarHistorial = signal(false);
+    esPublicado = computed(() => this.isEdit() && this.version() > 0);
     savingDraft = signal(false);
     lastSavedAt = signal<Date | null>(null);
     loadingQuiz = signal(false);
@@ -78,14 +88,87 @@ export class QuizFormComponent {
             next: (quiz) => {
                 this.quizId.set(quiz.id);
                 this.isDraft.set(!!quiz.esBorrador);
+                this.version.set(quiz.version ?? (quiz.esBorrador ? 0 : 1));
                 this.rellenarFormulario(quiz);
                 this.loadingQuiz.set(false);
+                if (this.version() > 0) {
+                    this.buscarBorradorPendiente(id);
+                }
             },
             error: () => {
                 this.loadingQuiz.set(false);
                 this.errorMessage.set('No se pudo cargar el cuestionario.');
                 this.agregarPregunta();
             }
+        });
+    }
+
+    /** Un cuestionario publicado puede tener un borrador guardado antes; 404 = no hay. */
+    private buscarBorradorPendiente(id: number): void {
+        this.cuestionarioService.obtenerBorrador(id).subscribe({
+            next: (borrador) => {
+                this.tieneBorrador.set(true);
+                this.borradorPendiente.set(borrador);
+            },
+            error: () => {
+                this.tieneBorrador.set(false);
+                this.borradorPendiente.set(null);
+            }
+        });
+    }
+
+    continuarBorrador(): void {
+        const borrador = this.borradorPendiente();
+        if (!borrador) return;
+        this.rellenarFormulario(borrador);
+        this.borradorPendiente.set(null);
+        this.successMessage.set('Borrador cargado. Lo publicado no cambia hasta que pulses "Publicar cambios".');
+        setTimeout(() => this.successMessage.set(null), 4000);
+    }
+
+    descartarBorrador(): void {
+        const id = this.quizId();
+        if (id === null || !confirm('¿Descartar el borrador? La versión publicada no se modifica.')) return;
+
+        this.cuestionarioService.descartarBorrador(id).subscribe({
+            next: () => {
+                this.tieneBorrador.set(false);
+                this.borradorPendiente.set(null);
+                this.versiones.set(null);
+                this.cargarQuiz(id);
+            },
+            error: (err) => this.errorMessage.set(err.error?.message || 'No se pudo descartar el borrador.')
+        });
+    }
+
+    toggleHistorial(): void {
+        const id = this.quizId();
+        if (id === null) return;
+        this.mostrarHistorial.update(v => !v);
+        if (this.mostrarHistorial() && this.versiones() === null) {
+            this.cuestionarioService.obtenerVersiones(id).subscribe({
+                next: (v) => this.versiones.set(v),
+                error: () => this.errorMessage.set('No se pudo cargar el historial.')
+            });
+        }
+    }
+
+    restaurarVersion(numero: number | null): void {
+        const id = this.quizId();
+        if (id === null || numero === null) return;
+
+        this.cuestionarioService.restaurarVersion(id, numero).subscribe({
+            next: (borrador) => {
+                this.rellenarFormulario(borrador);
+                this.borradorPendiente.set(null);
+                this.tieneBorrador.set(true);
+                this.versiones.set(null);
+                this.mostrarHistorial.set(false);
+                this.quizForm.markAsDirty();
+                this.successMessage.set(`Versión ${numero} cargada como borrador. Publícala para que sea la versión activa.`);
+                setTimeout(() => this.successMessage.set(null), 4000);
+            },
+            error: (err) => this.errorMessage.set(err.error?.message || 'No se pudo restaurar la versión.')
         });
     }
 
@@ -364,7 +447,7 @@ export class QuizFormComponent {
 
         return {
             nombre: nombre || 'Borrador sin título',
-            esPublico: esBorrador ? false : (formValue.esPublico ?? false),
+            esPublico: formValue.esPublico ?? false,
             esBorrador,
             preguntas: formValue.preguntas.map((pregunta: PreguntaFormValue, index: number) => ({
                 numeroPregunta: index + 1,
@@ -398,9 +481,6 @@ export class QuizFormComponent {
 
     private enviarBorrador(silencioso: boolean): void {
         if (this.savingDraft() || this.isLoading() || this.loadingQuiz()) return;
-        // Un cuestionario ya publicado no vuelve a borrador automáticamente
-        if (this.isEdit() && !this.isDraft()) return;
-
         this.savingDraft.set(true);
         if (!silencioso) {
             this.errorMessage.set(null);
@@ -409,7 +489,14 @@ export class QuizFormComponent {
         this.guardar(this.construirRequest(true)).subscribe({
             next: (cuestionario) => {
                 this.savingDraft.set(false);
-                this.isDraft.set(true);
+                if (this.version() > 0) {
+                    // Cuestionario publicado: el borrador va aparte, lo publicado no cambia
+                    this.tieneBorrador.set(true);
+                    this.borradorPendiente.set(null);
+                    this.versiones.set(null);
+                } else {
+                    this.isDraft.set(true);
+                }
                 this.lastSavedAt.set(new Date());
                 this.quizForm.markAsPristine();
                 if (this.quizId() === null) {
@@ -445,7 +532,7 @@ export class QuizFormComponent {
             next: (cuestionario) => {
                 this.isLoading.set(false);
                 this.quizForm.markAsPristine();
-                this.successMessage.set(editando ? '¡Cuestionario actualizado!' : '¡Cuestionario creado exitosamente!');
+                this.successMessage.set(this.esPublicado() ? `¡Publicada la versión ${cuestionario.version ?? ''}!` : (editando ? '¡Cuestionario publicado!' : '¡Cuestionario creado exitosamente!'));
                 setTimeout(() => {
                     this.router.navigate(['/cuestionarios', cuestionario.id]);
                 }, 1500);
