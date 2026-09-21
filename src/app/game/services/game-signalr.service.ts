@@ -380,7 +380,15 @@ export class GameSignalrService {
         this.currentUsername.set(effectiveUsername);
 
         this.currentRoomCode.set(roomCode);
-        return this.hubConnection.invoke('JoinGame', roomCode, effectiveUserId, effectiveUsername);
+        const registeredId = await this.hubConnection.invoke<number>('JoinGame', roomCode, effectiveUserId, effectiveUsername);
+
+        // Si el servidor nos reconoció como un jugador existente (por nombre), usar su id original
+        if (typeof registeredId === 'number' && registeredId !== effectiveUserId) {
+            this.currentUserId.set(registeredId);
+            if (this.isAnonymousConnection) {
+                this.anonymousUserId = registeredId;
+            }
+        }
     }
 
     /**
@@ -391,7 +399,7 @@ export class GameSignalrService {
         if (this.anonymousUserId !== null) {
             return this.hubConnection.invoke('LeaveGame', roomCode, this.anonymousUserId);
         }
-        return this.hubConnection.invoke('LeaveGame', roomCode, 0);
+        return this.hubConnection.invoke('LeaveGame', roomCode, this.currentUserId() ?? 0);
     }
 
     /**

@@ -176,12 +176,10 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                     this.syncOwnershipFromPlayers(servicePlayers);
                 }
 
-                // If user is NOT the owner, join the game room
-                if (!this.isOwner()) {
-                    console.log('[GameRoom] User is not owner, joining game room...');
-                    return this.gameSignalrService.joinGame(this.roomCode(), this.myUserId(), this.myUsername());
-                }
-                return Promise.resolve();
+                // Unirse siempre (también el owner): JoinGame es idempotente para quien ya está
+                // en la sala y reenvía el estado de una partida en curso. Si el owner se saltara
+                // este paso al volver a entrar, se quedaría en el lobby sin recibir la pregunta.
+                return this.gameSignalrService.joinGame(this.roomCode(), this.myUserId(), this.myUsername());
             }).then(() => {
                 console.log('[GameRoom] joinGame() succeeded (if called)');
             }).catch((error) => {
@@ -273,7 +271,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         console.log('[GameRoom] Calling connectAnonymously()...');
         this.gameSignalrService.connectAnonymously(anonymousUserId, username).then(() => {
             console.log('[GameRoom] connectAnonymously() succeeded');
-            saveAnonymousIdentity(this.roomCode(), anonymousUserId, username);
             this.myUserId.set(anonymousUserId);
             this.myUsername.set(username);
             this.showJoinForm.set(false);
@@ -291,6 +288,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             const registeredId = this.gameSignalrService.currentUserId();
             if (registeredId !== null) {
                 this.myUserId.set(registeredId);
+                saveAnonymousIdentity(this.roomCode(), registeredId, username);
             }
             this.isJoining.set(false);
         }).catch((error) => {

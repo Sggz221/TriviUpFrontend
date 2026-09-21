@@ -73,7 +73,7 @@ export class JoinRoomComponent {
                 const anonymousUserId = getOrCreateAnonymousUserId(code);
                 await this.gameSignalrService.connectAnonymously(anonymousUserId, username);
                 await this.gameSignalrService.joinGame(code);
-                saveAnonymousIdentity(code, anonymousUserId, username);
+                saveAnonymousIdentity(code, this.gameSignalrService.currentUserId() ?? anonymousUserId, username);
             }
 
             // Navigate to the game room
