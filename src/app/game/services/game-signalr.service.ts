@@ -3,6 +3,7 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo } from '../models/game.models';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
+import { colorDeFase } from '../../cuestionarios/models/fase-color';
 import { AuthService } from '../../auth/auth.service';
 
 export type GamePageState =
@@ -307,7 +308,7 @@ export class GameSignalrService {
             this.timeRemaining.set(data.timeLimit);
             this.phaseBreak.set(null);
             this.currentPhase.set(data.totalFases && data.totalFases > 1
-                ? { numero: data.faseNumero ?? 1, nombre: data.faseNombre ?? null, total: data.totalFases }
+                ? { numero: data.faseNumero ?? 1, nombre: data.faseNombre ?? null, total: data.totalFases, color: colorDeFase(data.faseNumero, data.faseColor) }
                 : null);
             this.turnStarted$.next(data);
         });

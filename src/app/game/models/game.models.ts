@@ -60,6 +60,7 @@ export interface TurnStartedDto {
     faseNumero?: number;
     faseNombre?: string | null;
     totalFases?: number;
+    faseColor?: string | null;
 }
 
 /** Fase en curso (solo se muestra cuando la partida tiene más de una). */
@@ -67,6 +68,8 @@ export interface PhaseInfo {
     numero: number;
     nombre: string | null;
     total: number;
+    /** Color ya resuelto (el configurado o el de la paleta por defecto). */
+    color: string;
 }
 
 /** Intermedio al terminar una fase: marcador y datos de la siguiente. */
@@ -77,6 +80,9 @@ export interface PhaseCompletedDto {
     siguienteFaseNombre?: string | null;
     totalFases: number;
     players: Player[];
+    faseColor?: string | null;
+    siguienteFaseNumero?: number;
+    siguienteFaseColor?: string | null;
 }
 
 export interface GameLobbyState {

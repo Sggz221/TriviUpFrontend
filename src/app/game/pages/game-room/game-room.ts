@@ -7,8 +7,10 @@ import { GameSignalrService } from '../../services/game-signalr.service';
 import { AuthService } from '../../../auth/auth.service';
 import { GameLobbyComponent } from '../../components/game-lobby/game-lobby.component';
 import { GameScoreboardComponent } from '../../components/game-scoreboard/game-scoreboard.component';
+import { PhaseLeaderboardComponent } from '../../components/phase-leaderboard/phase-leaderboard.component';
 import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto } from '../../models/game.models';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
+import { colorDeFase, textoSobreColor } from '../../../cuestionarios/models/fase-color';
 import { AudioService } from '../../../shared/services/audio.service';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
@@ -17,7 +19,7 @@ import { clearAnonymousIdentity, getOrCreateAnonymousUserId, getSavedAnonymousId
 @Component({
     selector: 'app-game-room',
     standalone: true,
-    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, AnswerShapeComponent, IconComponent],
+    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent],
     templateUrl: './game-room.html',
     styleUrls: ['./game-room.scss']
 })
@@ -60,25 +62,20 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Intermedio entre fases: marcador a la espera de que el anfitrión continúe. */
     phaseBreak = signal<PhaseCompletedDto | null>(null);
     isContinuing = signal<boolean>(false);
-    /** Marcador del intermedio: solo jugadores (el anfitrión no puntúa), ordenados por puntos. */
-    phaseBreakResults = computed(() => {
-        const players = (this.phaseBreak()?.players ?? [])
-            .filter(p => !p.isOwner)
-            .sort((a, b) => b.score - a.score);
-        return players.map((p) => {
-            const total = p.correctAnswers + p.wrongAnswers;
-            return {
-                userId: p.userId,
-                username: p.username,
-                // Empates comparten puesto
-                rank: 1 + players.filter(o => o.score > p.score).length,
-                finalScore: p.score,
-                correctAnswers: p.correctAnswers,
-                wrongAnswers: p.wrongAnswers,
-                correctPercentage: total > 0 ? (p.correctAnswers / total) * 100 : 0
-            };
-        });
-    });
+    /** Clasificación del intermedio anterior (o ceros en el primero), para animar las subidas y bajadas. */
+    phaseBreakPrevious = signal<Player[] | null>(null);
+    /** Fase cuyo banner grande se está mostrando (null = oculto). */
+    phaseBanner = signal<PhaseInfo | null>(null);
+    /** Colores del intermedio: el de la fase que acaba y el de la siguiente. */
+    colorIntermedio = computed(() => colorDeFase(this.phaseBreak()?.faseNumero, this.phaseBreak()?.faseColor));
+    colorSiguiente = computed(() => colorDeFase(this.phaseBreak()?.siguienteFaseNumero, this.phaseBreak()?.siguienteFaseColor));
+    readonly textoSobreColor = textoSobreColor;
+    private lastBannerPhase: number | null = null;
+    private lastPhaseBreakPlayers: Player[] | null = null;
+    private sawTurn = false;
+    private phaseBannerTimeout: ReturnType<typeof setTimeout> | null = null;
+    /** Duración del banner de fase; el "Turno de:" espera a que termine. */
+    private static readonly PHASE_BANNER_MS = 2800;
     private bannerTimeout: ReturnType<typeof setTimeout> | null = null;
     /** Evita unirse dos veces (Enter + clic) y crear dos conexiones con ids distintos. */
     isJoining = signal<boolean>(false);
@@ -135,6 +132,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.destroy$.complete();
         if (this.activityTimer) clearInterval(this.activityTimer);
         if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
+        if (this.phaseBannerTimeout) clearTimeout(this.phaseBannerTimeout);
         // DON'T call leaveGame() or disconnect() here
         // When navigating to game-play, we want to KEEP the SignalR connection
         // The user is still in the game, just viewing a different page
@@ -156,10 +154,24 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         }
     }
 
-    private showTurnBanner(): void {
+    private showTurnBanner(retrasoMs = 0): void {
         if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
-        this.turnBanner.set(this.getCurrentTurnPlayerName());
-        this.bannerTimeout = setTimeout(() => this.turnBanner.set(null), 2000);
+        this.turnBanner.set(null);
+        this.bannerTimeout = setTimeout(() => {
+            this.turnBanner.set(this.getCurrentTurnPlayerName());
+            this.bannerTimeout = setTimeout(() => this.turnBanner.set(null), 2000);
+        }, retrasoMs);
+    }
+
+    /** Banner grande al empezar cada fase (una vez por fase); devuelve cuánto dura, para retrasar el "Turno de:". */
+    private mostrarBannerFase(fase: PhaseInfo | null): number {
+        if (!fase || fase.numero === this.lastBannerPhase) return 0;
+
+        this.lastBannerPhase = fase.numero;
+        if (this.phaseBannerTimeout) clearTimeout(this.phaseBannerTimeout);
+        this.phaseBanner.set(fase);
+        this.phaseBannerTimeout = setTimeout(() => this.phaseBanner.set(null), GameRoomComponent.PHASE_BANNER_MS);
+        return GameRoomComponent.PHASE_BANNER_MS;
     }
 
     private startLocalTimer(timeLimit: number): void {
@@ -450,10 +462,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.turnTimeLimit.set(data.timeLimit);
             this.phaseBreak.set(null);
             this.isContinuing.set(false);
-            this.phase.set(data.totalFases && data.totalFases > 1
-                ? { numero: data.faseNumero ?? 1, nombre: data.faseNombre ?? null, total: data.totalFases }
-                : null);
-            this.showTurnBanner();
+            this.sawTurn = true;
+            const fase: PhaseInfo | null = data.totalFases && data.totalFases > 1
+                ? { numero: data.faseNumero ?? 1, nombre: data.faseNombre ?? null, total: data.totalFases, color: colorDeFase(data.faseNumero, data.faseColor) }
+                : null;
+            this.phase.set(fase);
+            this.showTurnBanner(this.mostrarBannerFase(fase));
             if (isMyTurn) {
                 this.audioService.playTurnStart();
                 this.startLocalTimer(data.timeLimit);
@@ -467,6 +481,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.gameState.set('playing');
             this.isMyTurn.set(false);
             this.isContinuing.set(false);
+            // Para animar: la clasificación del intermedio anterior o, en el primero, todos a cero
+            const alcanzado = this.lastPhaseBreakPlayers
+                ?? (this.sawTurn ? data.players.map(j => ({ ...j, score: 0, correctAnswers: 0, wrongAnswers: 0 })) : null);
+            this.phaseBreakPrevious.set(alcanzado);
+            this.lastPhaseBreakPlayers = data.players;
             this.phaseBreak.set(data);
             this.players.set(data.players);
             this.syncOwnershipFromPlayers(data.players);

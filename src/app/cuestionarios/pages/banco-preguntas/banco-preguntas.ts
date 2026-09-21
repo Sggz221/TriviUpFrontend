@@ -11,6 +11,7 @@ import {
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { CategoriaElegida, CategoriaSelectorComponent } from '../../../shared/components/categoria-selector/categoria-selector';
 import { DificultadSelectorComponent } from '../../../shared/components/dificultad-selector/dificultad-selector';
+import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 
 /** Pregunta que se está creando o editando en el formulario. */
 interface Editor {
@@ -31,7 +32,7 @@ type FiltroCategoria = { tipo: 'todas' } | { tipo: 'sin' } | { tipo: 'categoria'
 @Component({
     selector: 'app-banco-preguntas',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink, CategoriaSelectorComponent, DificultadSelectorComponent],
+    imports: [CommonModule, FormsModule, RouterLink, NavbarComponent, CategoriaSelectorComponent, DificultadSelectorComponent],
     templateUrl: './banco-preguntas.html'
 })
 export class BancoPreguntasPage implements OnInit {

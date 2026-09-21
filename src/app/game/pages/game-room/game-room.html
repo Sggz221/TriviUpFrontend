@@ -91,16 +91,39 @@
     } @else if (phaseBreak()) {
         <!-- Intermedio entre fases -->
         <div class="game-results">
-            <div class="results-panel">
-                <app-game-scoreboard
-                    [playerResults]="phaseBreakResults()"
-                    [headline]="'Fase ' + phaseBreak()!.faseNumero + ' de ' + phaseBreak()!.totalFases + ' completada' + (phaseBreak()!.faseNombre ? ': ' + phaseBreak()!.faseNombre : '')"
-                    [quizTitle]="phaseBreak()!.siguienteFaseNombre ? 'Siguiente: ' + phaseBreak()!.siguienteFaseNombre : ''"
-                />
+            <div class="phase-break" [style.--fase]="colorIntermedio()" [style.--siguiente]="colorSiguiente()">
+                <header class="pb-header">
+                    <p class="pb-etiqueta">Fase completada</p>
+                    <h1 class="pb-numero">Fase {{ phaseBreak()!.faseNumero }}<small> / {{ phaseBreak()!.totalFases }}</small></h1>
+                    @if (phaseBreak()!.faseNombre) {
+                        <h2 class="pb-nombre">{{ phaseBreak()!.faseNombre }}</h2>
+                    }
+                </header>
+
+                <app-phase-leaderboard
+                    [players]="phaseBreak()!.players"
+                    [previous]="phaseBreakPrevious()"
+                    [color]="colorIntermedio()"
+                    [myUserId]="myUserId()" />
+
+                @if (phaseBreak()!.siguienteFaseNumero) {
+                    <div class="pb-siguiente">
+                        <span class="pb-siguiente-chip"
+                              [style.background-color]="colorSiguiente()"
+                              [style.color]="textoSobreColor(colorSiguiente())">Siguiente</span>
+                        <span class="pb-siguiente-texto">
+                            Fase {{ phaseBreak()!.siguienteFaseNumero }}@if (phaseBreak()!.siguienteFaseNombre) { · {{ phaseBreak()!.siguienteFaseNombre }}}
+                        </span>
+                    </div>
+                }
 
                 <div class="results-actions">
                     @if (isOwner()) {
-                        <button class="btn btn-primary results-leave-btn" [disabled]="isContinuing()" (click)="onContinuePhase()">
+                        <button class="btn results-leave-btn"
+                                [style.background-color]="colorSiguiente()"
+                                [style.border-color]="colorSiguiente()"
+                                [style.color]="textoSobreColor(colorSiguiente())"
+                                [disabled]="isContinuing()" (click)="onContinuePhase()">
                             {{ isContinuing() ? 'Continuando...' : 'Continuar con la siguiente fase' }}
                         </button>
                     } @else {
@@ -143,8 +166,11 @@
             }
 
             @if (phase()) {
-                <div class="phase-badge" aria-label="Fase actual">
-                    Fase {{ phase()!.numero }}/{{ phase()!.total }}@if (phase()!.nombre) { · {{ phase()!.nombre }}}
+                <div class="phase-badge" aria-label="Fase actual"
+                     [style.background-color]="phase()!.color"
+                     [style.color]="textoSobreColor(phase()!.color)">
+                    <span class="phase-badge-numero">Fase {{ phase()!.numero }}<small>/{{ phase()!.total }}</small></span>
+                    @if (phase()!.nombre) { <span class="phase-badge-nombre">{{ phase()!.nombre }}</span> }
                 </div>
             }
 
@@ -271,6 +297,18 @@
         </div>
     }
 </div>
+
+@if (phaseBanner(); as fase) {
+    <div class="phase-banner" [style.--fase]="fase.color" aria-live="assertive">
+        <div class="phase-banner-text">
+            <span class="phase-banner-label">Fase</span>
+            <span class="phase-banner-numero">{{ fase.numero }}<small> / {{ fase.total }}</small></span>
+            @if (fase.nombre) {
+                <span class="phase-banner-nombre">{{ fase.nombre }}</span>
+            }
+        </div>
+    </div>
+}
 
 @if (turnBanner()) {
     <div class="turn-banner" aria-live="assertive">

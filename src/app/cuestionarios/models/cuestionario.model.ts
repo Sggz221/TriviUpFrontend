@@ -33,6 +33,8 @@ export interface Pregunta {
     faseNumero?: number;
     /** Nombre libre de la fase (ronda, categoría, dificultad...). */
     faseNombre?: string | null;
+    /** Color de la fase (#rrggbb); ausente = color por defecto según el número de fase. */
+    faseColor?: string | null;
     dificultad?: Dificultad | null;
     imagenUrl?: string | null;
 }
@@ -64,6 +66,7 @@ export interface CreateQuizRequest {
         imagenUrl?: string;
         faseNumero: number;
         faseNombre?: string;
+        faseColor?: string;
         dificultad?: Dificultad;
     }[];
 }

@@ -10,6 +10,7 @@ import { BancoPickerComponent } from '../banco-picker/banco-picker';
 import { CategoriaElegida, CategoriaSelectorComponent } from '../../../shared/components/categoria-selector/categoria-selector';
 import { DificultadSelectorComponent } from '../../../shared/components/dificultad-selector/dificultad-selector';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
+import { PALETA_FASES, colorDeFase, esColorValido } from '../../models/fase-color';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 
 interface RespuestaFormValue {
@@ -22,6 +23,8 @@ interface PreguntaFormValue {
     tipo: 'pregunta' | 'separador';
     /** Nombre de la fase (solo separadores). */
     nombre?: string;
+    /** Color de la fase #rrggbb, vacío = por defecto (solo separadores). */
+    color?: string;
     dificultad?: Dificultad | null;
     enunciado: string;
     respuestas: RespuestaFormValue[];
@@ -77,6 +80,9 @@ export class QuizFormComponent {
 
     /** Atajos para nombrar una fase con la taxonomía que se prefiera (solo rellenan el nombre). */
     readonly presetsFase = ['Ronda', 'Categoría: ', 'Dificultad: '];
+
+    /** Colores sugeridos para las fases; también se puede elegir cualquiera con el selector de color. */
+    readonly paletaFases = PALETA_FASES;
 
     /** Panel para añadir preguntas desde el banco personal. */
     mostrarBanco = signal(false);
@@ -219,7 +225,7 @@ export class QuizFormComponent {
             const fase = p.faseNumero ?? 1;
             if (fase !== faseAnterior) {
                 if (hayVariasFases || p.faseNombre) {
-                    this.preguntasArray.push(this.crearSeparador(p.faseNombre ?? ''));
+                    this.preguntasArray.push(this.crearSeparador(p.faseNombre ?? '', p.faseColor ?? ''));
                 }
                 faseAnterior = fase;
             }
@@ -269,10 +275,11 @@ export class QuizFormComponent {
         });
     }
 
-    private crearSeparador(nombre = ''): FormGroup {
+    private crearSeparador(nombre = '', color = ''): FormGroup {
         return this.fb.group({
             tipo: ['separador'],
-            nombre: [nombre]
+            nombre: [nombre],
+            color: [color]
         });
     }
 
@@ -319,6 +326,38 @@ export class QuizFormComponent {
         const control = this.preguntasArray.at(index);
         this.preguntasArray.removeAt(index);
         this.preguntasArray.insert(destino, control);
+        this.quizForm.markAsDirty();
+    }
+
+    /** Número de fase (1..n) que abre el separador de esa posición (uno inicial nombra la primera). */
+    numeroFaseSeparador(index: number): number {
+        let fase = 1;
+        let hayPreguntas = false;
+        for (let i = 0; i <= index; i++) {
+            const control = this.preguntasArray.at(i);
+            if (!this.esSeparador(control)) {
+                hayPreguntas = true;
+            } else if (hayPreguntas && i > 0) {
+                fase++;
+                hayPreguntas = false;
+            }
+        }
+        return fase;
+    }
+
+    /** Color efectivo del separador: el elegido o el de la paleta según el número de fase. */
+    colorSeparador(index: number): string {
+        return colorDeFase(this.numeroFaseSeparador(index), this.preguntasArray.at(index).get('color')?.value);
+    }
+
+    /** ¿El separador usa un color elegido a mano (no el de por defecto)? */
+    tieneColorPropio(index: number): boolean {
+        return esColorValido(this.preguntasArray.at(index).get('color')?.value);
+    }
+
+    /** Fija el color de la fase; vacío vuelve al color por defecto. */
+    aplicarColorFase(index: number, color: string): void {
+        this.preguntasArray.at(index).patchValue({ color: esColorValido(color) ? color.toLowerCase() : '' });
         this.quizForm.markAsDirty();
     }
 
@@ -729,6 +768,7 @@ export class QuizFormComponent {
         const resultado: CreateQuizRequest['preguntas'] = [];
         let fase = 1;
         let faseNombre: string | undefined;
+        let faseColor: string | undefined;
         let preguntasEnFase = 0;
 
         for (const item of items) {
@@ -738,6 +778,7 @@ export class QuizFormComponent {
                     preguntasEnFase = 0;
                 }
                 faseNombre = (item.nombre ?? '').trim() || undefined;
+                faseColor = esColorValido(item.color) ? item.color.toLowerCase() : undefined;
                 continue;
             }
 
@@ -746,6 +787,7 @@ export class QuizFormComponent {
                 numeroPregunta: resultado.length + 1,
                 faseNumero: fase,
                 faseNombre,
+                faseColor,
                 enunciado: item.enunciado ?? '',
                 respuestas: item.respuestas.map((r: RespuestaFormValue) => ({
                     texto: r.texto ?? '',

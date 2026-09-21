@@ -140,10 +140,13 @@
                         @if (esSeparador(pregunta)) {
                         <!-- Separador de fase: las preguntas que siguen pertenecen a esta fase -->
                         <div class="phase-divider rounded-xl p-3 sm:p-4 border-2 border-dashed"
-                             style="border-color: var(--info); background-color: var(--base-100);"
+                             style="background-color: var(--base-100);"
+                             [style.border-color]="colorSeparador(preguntaIndex)"
                              [formGroupName]="preguntaIndex">
                             <div class="flex items-center gap-2">
-                                <span class="badge badge-info font-bold shrink-0">Fase</span>
+                                <span class="badge font-bold shrink-0 px-3 py-3"
+                                      [style.background-color]="colorSeparador(preguntaIndex)"
+                                      style="color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.45);">Fase {{ numeroFaseSeparador(preguntaIndex) }}</span>
                                 <input type="text"
                                        formControlName="nombre"
                                        maxlength="100"
@@ -157,6 +160,24 @@
                                         [disabled]="preguntaIndex === preguntasArray.length - 1" (click)="moverElemento(preguntaIndex, 1)">▼</button>
                                 <button type="button" class="btn btn-ghost btn-xs shrink-0" style="color: var(--error);"
                                         aria-label="Quitar separador" (click)="eliminarPregunta(preguntaIndex)">✕</button>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 mt-2">
+                                <span class="text-xs opacity-70">Color:</span>
+                                @for (c of paletaFases; track c) {
+                                    <button type="button" class="phase-swatch"
+                                            [class.phase-swatch-activo]="colorSeparador(preguntaIndex) === c"
+                                            [style.background-color]="c"
+                                            [attr.aria-label]="'Color ' + c"
+                                            [attr.aria-pressed]="colorSeparador(preguntaIndex) === c"
+                                            (click)="aplicarColorFase(preguntaIndex, c)"></button>
+                                }
+                                <input type="color" class="phase-color-input"
+                                       aria-label="Elegir otro color"
+                                       [value]="colorSeparador(preguntaIndex)"
+                                       (input)="aplicarColorFase(preguntaIndex, $any($event.target).value)">
+                                @if (tieneColorPropio(preguntaIndex)) {
+                                    <button type="button" class="btn btn-xs btn-ghost" (click)="aplicarColorFase(preguntaIndex, '')">Automático</button>
+                                }
                             </div>
                             <div class="flex flex-wrap items-center gap-2 mt-2">
                                 <span class="text-xs opacity-70">Atajos:</span>

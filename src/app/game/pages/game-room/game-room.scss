@@ -158,14 +158,172 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
 // ============ Phase badge ============
 .phase-badge {
     align-self: center;
-    padding: 0.35rem 1rem;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    font-weight: 700;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.25rem 0.75rem;
+    max-width: 100%;
+    padding: 0.5rem 1.5rem;
+    border-radius: 1rem;
+    font-weight: 800;
     letter-spacing: 0.02em;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    text-align: center;
+}
+
+.phase-badge-numero {
+    font-size: clamp(1.25rem, 4.5vw, 1.75rem);
+    line-height: 1.1;
+
+    small { font-size: 0.7em; opacity: 0.75; }
+}
+
+.phase-badge-nombre {
+    font-size: clamp(1.1rem, 4vw, 1.5rem);
+    line-height: 1.1;
+    word-break: break-word;
+}
+
+// ============ Intermedio entre fases ============
+.phase-break {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.5rem 1rem 1.75rem;
+    box-sizing: border-box;
+    border-radius: 1.25rem;
+    background-color: var(--base-200);
+    border: 1px solid var(--neutral);
+    border-top: 6px solid var(--fase);
+}
+
+.pb-header {
+    text-align: center;
+}
+
+.pb-etiqueta {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.pb-numero {
+    margin: 0.15rem 0 0;
+    font-size: clamp(2.75rem, 12vw, 5rem);
+    font-weight: 900;
+    line-height: 1;
+    color: var(--fase);
+    text-shadow: 0 4px 24px color-mix(in oklab, var(--fase) 45%, transparent);
+
+    small { font-size: 0.45em; opacity: 0.7; font-weight: 700; }
+}
+
+.pb-nombre {
+    margin: 0.4rem 0 0;
+    font-size: clamp(1.5rem, 6vw, 2.5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    word-break: break-word;
+}
+
+.pb-siguiente {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.9rem;
+    background: color-mix(in oklab, var(--siguiente) 14%, transparent);
+    border: 1px dashed color-mix(in oklab, var(--siguiente) 60%, transparent);
+}
+
+.pb-siguiente-chip {
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.pb-siguiente-texto {
+    font-size: 1.15rem;
+    font-weight: 700;
+    word-break: break-word;
+}
+
+// Banner grande de inicio de fase (antes del "Turno de:")
+.phase-banner {
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at center, color-mix(in oklab, var(--fase) 55%, transparent) 0%, transparent 70%),
+        color-mix(in oklab, var(--base-100) 82%, transparent);
+    animation: phase-backdrop 2.8s ease both;
+}
+
+.phase-banner-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 1rem;
+    text-align: center;
+    animation: phase-pop 2.8s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+
+.phase-banner-label {
+    font-size: clamp(1.25rem, 5vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
     color: var(--base-content);
+    opacity: 0.85;
+}
+
+.phase-banner-numero {
+    font-size: clamp(6rem, 32vw, 16rem);
+    font-weight: 900;
+    line-height: 0.95;
+    color: var(--fase);
+    text-shadow: 0 6px 40px color-mix(in oklab, var(--fase) 60%, transparent);
+
+    small { font-size: 0.3em; opacity: 0.7; font-weight: 700; }
+}
+
+.phase-banner-nombre {
+    margin-top: 0.5rem;
+    max-width: 90vw;
+    font-size: clamp(2rem, 9vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    word-break: break-word;
+    color: var(--base-content);
+    text-shadow: 0 4px 24px color-mix(in oklab, var(--fase) 50%, transparent);
+}
+
+@keyframes phase-backdrop {
+    0% { opacity: 0; }
+    10%, 82% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes phase-pop {
+    0% { transform: scale(0.3) rotate(-4deg); opacity: 0; }
+    16% { transform: scale(1.12) rotate(1.5deg); opacity: 1; }
+    28% { transform: scale(1) rotate(0); }
+    82% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1.2); opacity: 0; }
 }
 
 // ============ Question Card ============
@@ -802,5 +960,5 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .turn-banner-text { animation: none; }
+    .turn-banner-text, .phase-banner-text { animation: none; }
 }

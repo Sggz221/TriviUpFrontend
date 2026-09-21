@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CuestionarioService } from '../../services/cuestionario.service';
 import { Cuestionario, Pregunta, Respuesta, colorDificultad, etiquetaDificultad } from '../../models/cuestionario.model';
+import { colorDeFase } from '../../models/fase-color';
 import { GameSignalrService } from '../../../game/services/game-signalr.service';
 import { AuthService } from '../../../auth/auth.service';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
@@ -94,6 +95,12 @@ export class QuizDetailComponent implements OnInit {
 
     obtenerRespuestaCorrecta(pregunta: Pregunta): Respuesta | undefined {
         return pregunta.respuestas.find(r => r.esCorrecta);
+    }
+
+    /** Color de la fase de la pregunta (el configurado o el de la paleta según su número). */
+    colorFase(index: number): string {
+        const pregunta = this.cuestionario()?.preguntas[index];
+        return colorDeFase(pregunta?.faseNumero, pregunta?.faseColor);
     }
 
     /** Título de la fase si la pregunta abre una (null si sigue en la misma fase o el cuestionario no tiene fases). */
