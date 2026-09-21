@@ -12,7 +12,7 @@ import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AudioService } from '../../../shared/services/audio.service';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
-import { getOrCreateAnonymousUserId, saveAnonymousIdentity, touchAnonymousIdentity } from '../../utils/anonymous-identity.utils';
+import { clearAnonymousIdentity, getOrCreateAnonymousUserId, getSavedAnonymousIdentity, saveAnonymousIdentity, touchAnonymousIdentity } from '../../utils/anonymous-identity.utils';
 
 @Component({
     selector: 'app-game-room',
@@ -212,6 +212,32 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                     console.log('[GameRoom] Set players from service:', servicePlayers.length);
                 }
                 this.setupEventHandlers();
+
+                // JoinGame (desde /unirse) pudo reenviar el estado de una partida en curso
+                // antes de que este componente registrara sus handlers: recuperarlo del servicio.
+                const question = this.gameSignalrService.currentQuestion();
+                if (question) {
+                    const turnPlayerId = this.gameSignalrService.currentTurnPlayerId();
+                    this.currentQuestion.set(question);
+                    this.currentTurnPlayerId.set(turnPlayerId);
+                    this.isMyTurn.set(turnPlayerId !== null && turnPlayerId === serviceUserId);
+                    this.turnTimeLimit.set(this.gameSignalrService.timeRemaining());
+                    this.gameState.set('playing');
+                    this.isPaused.set(this.gameSignalrService.isPaused());
+                    if (this.isMyTurn() && !this.isPaused()) {
+                        this.startLocalTimer(this.gameSignalrService.timeRemaining());
+                    }
+                }
+                return;
+            }
+
+            // Reconexión tras refresh/caída: si ya tenemos identidad de esta sala,
+            // volvemos a entrar solos en vez de pedir el nombre otra vez.
+            const saved = getSavedAnonymousIdentity(this.roomCode());
+            if (saved) {
+                this.isAnonymous.set(true);
+                this.anonymousUsername = saved.username;
+                this.joinAsAnonymous();
                 return;
             }
             this.showJoinForm.set(true);
@@ -351,6 +377,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             if (playerId === this.myUserId()) {
                 console.log('[GameRoom] You were kicked from the game!');
                 this.errorMessage.set('Has sido expulsado de la sala');
+                clearAnonymousIdentity(this.roomCode());
                 // Redirect to home after a short delay
                 setTimeout(() => {
                     this.router.navigate(['/']);
@@ -469,6 +496,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     onLeaveGame(): void {
+        clearAnonymousIdentity(this.roomCode());
         this.gameSignalrService.leaveGame(this.roomCode())
             .catch((error) => console.error('[GameRoom] Error al notificar salida de la sala:', error))
             .finally(() => {

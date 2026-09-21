@@ -44,6 +44,36 @@ export function getOrCreateAnonymousUserId(roomCode: string): number {
     return Math.floor(Math.random() * 1000000);
 }
 
+/** Identidad guardada y vigente de esta sala (para reconectar sin volver a pedir el nombre). */
+export function getSavedAnonymousIdentity(roomCode: string): { userId: number; username: string } | null {
+    try {
+        const stored = localStorage.getItem(storageKey(roomCode));
+        if (!stored) return null;
+        const parsed = JSON.parse(stored);
+        if (
+            typeof parsed.userId === 'number' &&
+            typeof parsed.username === 'string' &&
+            parsed.username.length >= 2 &&
+            typeof parsed.savedAt === 'number' &&
+            Date.now() - parsed.savedAt < EXPIRY_MS
+        ) {
+            return { userId: parsed.userId, username: parsed.username };
+        }
+    } catch {
+        // localStorage no disponible o dato corrupto
+    }
+    return null;
+}
+
+/** Olvida la identidad de la sala (salida voluntaria o expulsión: no debe auto-reconectar). */
+export function clearAnonymousIdentity(roomCode: string): void {
+    try {
+        localStorage.removeItem(storageKey(roomCode));
+    } catch {
+        // no crítico
+    }
+}
+
 export function saveAnonymousIdentity(roomCode: string, userId: number, username: string): void {
     try {
         localStorage.setItem(storageKey(roomCode), JSON.stringify({ userId, username, savedAt: Date.now() }));
