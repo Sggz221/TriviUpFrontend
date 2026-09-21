@@ -2,7 +2,7 @@ import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CuestionarioService } from '../../services/cuestionario.service';
-import { Cuestionario, Pregunta, Respuesta } from '../../models/cuestionario.model';
+import { Cuestionario, Pregunta, Respuesta, colorDificultad, etiquetaDificultad } from '../../models/cuestionario.model';
 import { GameSignalrService } from '../../../game/services/game-signalr.service';
 import { AuthService } from '../../../auth/auth.service';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
@@ -16,6 +16,9 @@ import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answ
     styleUrls: ['./quiz-detail.css']
 })
 export class QuizDetailComponent implements OnInit {
+    readonly colorDificultad = colorDificultad;
+    readonly etiquetaDificultad = etiquetaDificultad;
+
     private route = inject(ActivatedRoute);
     private router = inject(Router);
     private cuestionarioService = inject(CuestionarioService);

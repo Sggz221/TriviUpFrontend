@@ -100,6 +100,10 @@
                                 <p class="text-lg font-medium flex-1" style="color: var(--base-content);">
                                     {{ pregunta.enunciado }}
                                 </p>
+                                @if (pregunta.dificultad) {
+                                    <span class="badge shrink-0" style="color: var(--base-100);"
+                                          [style.background-color]="colorDificultad(pregunta.dificultad)">{{ etiquetaDificultad(pregunta.dificultad) }}</span>
+                                }
                             </div>
 
                             <!-- Question Image -->

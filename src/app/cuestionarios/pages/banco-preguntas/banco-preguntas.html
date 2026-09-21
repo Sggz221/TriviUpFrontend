@@ -5,12 +5,14 @@
             <div>
                 <h1 class="text-2xl sm:text-3xl font-bold tracking-tight" style="color: var(--secondary);">Banco de preguntas</h1>
                 <p class="text-sm opacity-70" style="color: var(--base-content);">
-                    Tus preguntas sin cuestionario. Añádelas a cualquier cuestionario desde el editor.
+                    Tus preguntas sin cuestionario, por categoría y dificultad. Añádelas a cualquier cuestionario desde el editor.
                 </p>
             </div>
             <div class="flex gap-2">
                 <a routerLink="/cuestionarios/mis-cuestionarios" class="btn btn-ghost btn-sm">Mis cuestionarios</a>
-                <button type="button" class="btn btn-primary btn-sm" (click)="nueva()">Nueva pregunta</button>
+                <button type="button" class="btn btn-primary btn-sm" (click)="nueva()">
+                    @if (categoriaActiva(); as cat) { Nueva pregunta en «{{ cat.nombre }}» } @else { Nueva pregunta }
+                </button>
             </div>
         </div>
 
@@ -67,10 +69,19 @@
                     }
                 </div>
 
-                <div class="mt-4">
-                    <label class="block text-sm mb-1" style="color: var(--base-content);">Etiquetas (separadas por comas)</label>
-                    <input type="text" class="input input-bordered w-full" placeholder="geografía, europa, fácil"
-                           [(ngModel)]="editor.etiquetas" />
+                <div class="grid gap-4 sm:grid-cols-2 mt-4">
+                    <div>
+                        <label class="block text-sm mb-1" style="color: var(--base-content);">Categoría</label>
+                        <app-categoria-selector
+                            [categorias]="categorias()"
+                            [categoriaId]="editor.categoriaId"
+                            [categoriaNombre]="editor.categoriaNombre"
+                            (cambio)="onCategoria($event)" />
+                    </div>
+                    <div>
+                        <label class="block text-sm mb-1" style="color: var(--base-content);">Dificultad</label>
+                        <app-dificultad-selector [valor]="editor.dificultad" (cambio)="editor.dificultad = $event" />
+                    </div>
                 </div>
 
                 <div class="flex justify-end gap-2 mt-5">
@@ -82,40 +93,139 @@
             </div>
         }
 
-        <div class="flex flex-wrap items-center gap-2 mb-3">
-            <input type="search" class="input input-bordered input-sm flex-1 min-w-[12rem]"
-                   placeholder="Buscar por texto o etiqueta..."
-                   [ngModel]="busqueda()" (ngModelChange)="onBusqueda($event)" />
-        </div>
-
-        @if (etiquetas().length > 0) {
-            <div class="flex flex-wrap gap-2 mb-4">
-                <button type="button" class="badge badge-lg cursor-pointer"
-                        [class.badge-info]="!etiquetaActiva()" [class.badge-outline]="!!etiquetaActiva()"
-                        (click)="elegirEtiqueta(null)">Todas</button>
-                @for (e of etiquetas(); track e.etiqueta) {
-                    <button type="button" class="badge badge-lg cursor-pointer"
-                            [class.badge-info]="etiquetaActiva() === e.etiqueta"
-                            [class.badge-outline]="etiquetaActiva() !== e.etiqueta"
-                            (click)="elegirEtiqueta(e.etiqueta)">{{ e.etiqueta }} · {{ e.total }}</button>
-                }
+        <!-- Sugerencia: preguntas sin clasificar -->
+        @if (sinCategoria() > 0 && !esFiltro('sin') && categorias().length > 0) {
+            <div class="alert mb-4 flex-col sm:flex-row items-start sm:items-center gap-2" style="background-color: color-mix(in srgb, var(--warning) 15%, transparent);">
+                <span>Tienes {{ sinCategoria() }} pregunta(s) sin categoría. Clasificarlas te ayuda a encontrarlas al montar cuestionarios.</span>
+                <button type="button" class="btn btn-sm" (click)="clasificarSinCategoria()">Clasificar ahora</button>
             </div>
         }
 
+        <!-- Categorías -->
+        <div class="rounded-xl p-3 sm:p-4 mb-4" style="background-color: var(--base-200);">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-semibold opacity-80">Categorías</span>
+                <button type="button" class="badge badge-lg cursor-pointer"
+                        [class.badge-info]="esFiltro('todas')" [class.badge-outline]="!esFiltro('todas')"
+                        (click)="elegirFiltro({ tipo: 'todas' })">Todas · {{ totalPreguntasBanco() }}</button>
+                @for (c of categorias(); track c.id) {
+                    <button type="button" class="badge badge-lg cursor-pointer"
+                            [class.badge-info]="esFiltro('categoria', c.id)" [class.badge-outline]="!esFiltro('categoria', c.id)"
+                            (click)="elegirFiltro({ tipo: 'categoria', id: c.id })">{{ c.nombre }} · {{ c.total }}</button>
+                }
+                @if (sinCategoria() > 0) {
+                    <button type="button" class="badge badge-lg cursor-pointer"
+                            [class.badge-info]="esFiltro('sin')" [class.badge-outline]="!esFiltro('sin')"
+                            (click)="elegirFiltro({ tipo: 'sin' })">Sin categoría · {{ sinCategoria() }}</button>
+                }
+                @if (creandoCategoria()) {
+                    <form class="flex items-center gap-1" (ngSubmit)="crearCategoria()">
+                        <input type="text" name="nuevaCategoria" class="input input-bordered input-xs w-40" maxlength="50"
+                               placeholder="Nombre" aria-label="Nombre de la nueva categoría"
+                               [(ngModel)]="nombreNuevaCategoria" autofocus />
+                        <button type="submit" class="btn btn-xs btn-primary" [disabled]="!nombreNuevaCategoria.trim()">Crear</button>
+                        <button type="button" class="btn btn-xs btn-ghost" (click)="creandoCategoria.set(false)">✕</button>
+                    </form>
+                } @else {
+                    <button type="button" class="badge badge-lg badge-outline cursor-pointer border-dashed" (click)="empezarCategoria()">+ Nueva categoría</button>
+                }
+            </div>
+
+            @if (categoriaActiva(); as cat) {
+                <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-white/10">
+                    @if (renombrando()) {
+                        <form class="flex items-center gap-1" (ngSubmit)="renombrarCategoria()">
+                            <input type="text" name="renombrar" class="input input-bordered input-xs w-48" maxlength="50"
+                                   aria-label="Nuevo nombre" [(ngModel)]="nombreRenombrado" />
+                            <button type="submit" class="btn btn-xs btn-primary" [disabled]="!nombreRenombrado.trim()">Guardar</button>
+                            <button type="button" class="btn btn-xs btn-ghost" (click)="renombrando.set(false)">Cancelar</button>
+                        </form>
+                    } @else {
+                        <span class="text-sm">Categoría «{{ cat.nombre }}»</span>
+                        <button type="button" class="btn btn-ghost btn-xs" (click)="empezarRenombrar()">Renombrar</button>
+                        <button type="button" class="btn btn-ghost btn-xs" style="color: var(--error);" (click)="eliminarCategoria()">Eliminar categoría</button>
+                    }
+                </div>
+            }
+
+            @if (categorias().length === 0 && sinCategoria() === 0 && !creandoCategoria()) {
+                <p class="text-sm opacity-70 mt-2">Crea tu primera categoría (por ejemplo «Historia» o «Ciencia») y añade preguntas directamente dentro de ella.</p>
+            }
+        </div>
+
+        <!-- Búsqueda, dificultad y selección -->
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+            <input type="search" class="input input-bordered input-sm flex-1 min-w-[12rem]"
+                   placeholder="Buscar por texto o categoría..."
+                   [ngModel]="busqueda()" (ngModelChange)="onBusqueda($event)" />
+            <div class="flex items-center gap-1" role="group" aria-label="Filtrar por dificultad">
+                @for (d of dificultades; track d.valor) {
+                    <button type="button" class="badge badge-lg cursor-pointer"
+                            [style.background-color]="dificultadActiva() === d.valor ? d.color : 'transparent'"
+                            [style.color]="dificultadActiva() === d.valor ? 'var(--base-100)' : d.color"
+                            [style.border]="'1px solid ' + d.color"
+                            (click)="elegirDificultad(d.valor)">{{ d.etiqueta }}</button>
+                }
+            </div>
+            <button type="button" class="btn btn-sm" [class.btn-primary]="seleccionando()" (click)="alternarSeleccion()">
+                {{ seleccionando() ? 'Salir de selección' : 'Seleccionar' }}
+            </button>
+        </div>
+
+        @if (seleccionando()) {
+            <div class="flex flex-wrap items-center gap-2 mb-3 p-3 rounded-xl" style="background-color: var(--base-200);">
+                <button type="button" class="btn btn-ghost btn-xs" (click)="seleccionarTodasLasVisibles()">Marcar / desmarcar visibles</button>
+                <span class="text-sm">{{ seleccion().size }} seleccionada(s)</span>
+                <select class="select select-bordered select-sm" [(ngModel)]="destinoMover" aria-label="Mover a categoría">
+                    <option value="">Quitar categoría</option>
+                    @for (c of categorias(); track c.id) {
+                        <option [value]="c.id">Mover a «{{ c.nombre }}»</option>
+                    }
+                </select>
+                <button type="button" class="btn btn-sm btn-primary" [disabled]="seleccion().size === 0" (click)="moverSeleccion()">Aplicar</button>
+            </div>
+        }
+
+        <!-- Lista -->
         @if (cargando() && preguntas().length === 0) {
             <div class="flex justify-center py-10"><span class="loading loading-spinner loading-lg"></span></div>
         } @else if (preguntas().length === 0) {
             <div class="text-center py-10 rounded-xl" style="background-color: var(--base-200);">
-                <p class="opacity-70" style="color: var(--base-content);">
-                    {{ busqueda() || etiquetaActiva() ? 'No hay preguntas que coincidan.' : 'Tu banco está vacío. Crea tu primera pregunta o guarda una desde el editor de cuestionarios.' }}
+                <p class="opacity-70 mb-3" style="color: var(--base-content);">
+                    @if (busqueda() || dificultadActiva() || !esFiltro('todas')) {
+                        No hay preguntas que coincidan con los filtros.
+                    } @else {
+                        Tu banco está vacío. Crea tu primera pregunta o guarda una desde el editor de cuestionarios.
+                    }
                 </p>
+                @if (categoriaActiva(); as cat) {
+                    <button type="button" class="btn btn-primary btn-sm" (click)="nueva()">Añadir la primera pregunta a «{{ cat.nombre }}»</button>
+                }
             </div>
         } @else {
             <ul class="space-y-3">
                 @for (p of preguntas(); track p.id) {
                     <li class="rounded-xl shadow-md p-4" style="background-color: var(--base-200);">
-                        <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-start gap-3">
+                            @if (seleccionando()) {
+                                <input type="checkbox" class="checkbox checkbox-sm mt-1 shrink-0"
+                                       [checked]="seleccion().has(p.id)" (change)="alternarPregunta(p.id)"
+                                       [attr.aria-label]="'Seleccionar ' + p.enunciado" />
+                            }
                             <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-1 mb-1">
+                                    @if (p.categoriaNombre) {
+                                        <button type="button" class="badge badge-info badge-sm cursor-pointer"
+                                                (click)="elegirFiltro({ tipo: 'categoria', id: p.categoriaId! })">{{ p.categoriaNombre }}</button>
+                                    } @else {
+                                        <span class="badge badge-sm badge-outline opacity-70">Sin categoría</span>
+                                    }
+                                    @if (p.dificultad) {
+                                        <span class="badge badge-sm"
+                                              [style.background-color]="colorDificultad(p.dificultad)"
+                                              style="color: var(--base-100);">{{ etiquetaDificultad(p.dificultad) }}</span>
+                                    }
+                                </div>
                                 <p class="font-medium break-words" style="color: var(--base-content);">{{ p.enunciado }}</p>
                                 @if (p.imagenUrl) {
                                     <img [src]="imageUrl(p.imagenUrl)" alt="Imagen de la pregunta"
@@ -129,13 +239,6 @@
                                         </li>
                                     }
                                 </ul>
-                                @if (p.etiquetas.length > 0) {
-                                    <div class="flex flex-wrap gap-1 mt-2">
-                                        @for (t of p.etiquetas; track t) {
-                                            <button type="button" class="badge badge-sm badge-outline cursor-pointer" (click)="elegirEtiqueta(t)">{{ t }}</button>
-                                        }
-                                    </div>
-                                }
                             </div>
                             <div class="flex flex-col gap-1 shrink-0">
                                 <button type="button" class="btn btn-ghost btn-xs" (click)="editar(p)">Editar</button>

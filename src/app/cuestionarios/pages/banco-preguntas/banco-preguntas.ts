@@ -1,87 +1,106 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { BancoPreguntasService } from '../../services/banco-preguntas.service';
+import { BancoCategoriasService } from '../../services/banco-categorias.service';
 import { CuestionarioService } from '../../services/cuestionario.service';
-import { BancoPregunta, EtiquetaCount } from '../../models/cuestionario.model';
+import {
+    BancoCategoria, BancoPregunta, DIFICULTADES, Dificultad, colorDificultad, etiquetaDificultad
+} from '../../models/cuestionario.model';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
+import { CategoriaElegida, CategoriaSelectorComponent } from '../../../shared/components/categoria-selector/categoria-selector';
+import { DificultadSelectorComponent } from '../../../shared/components/dificultad-selector/dificultad-selector';
 
 /** Pregunta que se está creando o editando en el formulario. */
 interface Editor {
     id: number | null;
     enunciado: string;
     respuestas: { texto: string; esCorrecta: boolean }[];
-    /** Etiquetas separadas por comas. */
-    etiquetas: string;
+    categoriaId: number | null;
+    /** Nombre de una categoría nueva (se crea al guardar). */
+    categoriaNombre: string | null;
+    dificultad: Dificultad | null;
     imagenUrl: string | null;
     subiendoImagen: boolean;
 }
 
+/** Filtro de categoría activo: todas, una concreta o solo las que no tienen. */
+type FiltroCategoria = { tipo: 'todas' } | { tipo: 'sin' } | { tipo: 'categoria'; id: number };
+
 @Component({
     selector: 'app-banco-preguntas',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterLink],
+    imports: [CommonModule, FormsModule, RouterLink, CategoriaSelectorComponent, DificultadSelectorComponent],
     templateUrl: './banco-preguntas.html'
 })
 export class BancoPreguntasPage implements OnInit {
     private bancoService = inject(BancoPreguntasService);
+    private categoriasService = inject(BancoCategoriasService);
     private cuestionarioService = inject(CuestionarioService);
 
     private static readonly PAGE_SIZE = 20;
 
     preguntas = signal<BancoPregunta[]>([]);
     total = signal(0);
-    etiquetas = signal<EtiquetaCount[]>([]);
+    categorias = signal<BancoCategoria[]>([]);
+    sinCategoria = signal(0);
+    filtro = signal<FiltroCategoria>({ tipo: 'todas' });
+    dificultadActiva = signal<Dificultad | null>(null);
     pagina = signal(1);
     busqueda = signal('');
-    etiquetaActiva = signal<string | null>(null);
     cargando = signal(false);
     guardando = signal(false);
     errorMessage = signal<string | null>(null);
     successMessage = signal<string | null>(null);
+
+    /** Gestión de categorías: alta y renombrado en línea. */
+    creandoCategoria = signal(false);
+    nombreNuevaCategoria = '';
+    renombrando = signal(false);
+    nombreRenombrado = '';
+
+    /** Modo selección para mover preguntas a otra categoría. */
+    seleccionando = signal(false);
+    seleccion = signal<Set<number>>(new Set());
+    destinoMover: string = '';
 
     editor: Editor | null = null;
 
     private temporizador: ReturnType<typeof setTimeout> | null = null;
 
     readonly imageUrl = imageUrl;
+    readonly dificultades = DIFICULTADES;
+    readonly etiquetaDificultad = etiquetaDificultad;
+    readonly colorDificultad = colorDificultad;
+
+    /** Categoría seleccionada en el filtro (null si es "Todas" o "Sin categoría"). */
+    categoriaActiva = computed<BancoCategoria | null>(() => {
+        const f = this.filtro();
+        return f.tipo === 'categoria' ? this.categorias().find(c => c.id === f.id) ?? null : null;
+    });
+
+    totalPreguntasBanco = computed(() => this.categorias().reduce((s, c) => s + c.total, 0) + this.sinCategoria());
 
     get totalPaginas(): number {
         return Math.max(1, Math.ceil(this.total() / BancoPreguntasPage.PAGE_SIZE));
     }
 
     ngOnInit(): void {
-        this.cargarEtiquetas();
+        this.cargarCategorias();
         this.cargar();
     }
 
-    onBusqueda(valor: string): void {
-        this.busqueda.set(valor);
-        if (this.temporizador) clearTimeout(this.temporizador);
-        this.temporizador = setTimeout(() => {
-            this.pagina.set(1);
-            this.cargar();
-        }, 300);
-    }
-
-    elegirEtiqueta(etiqueta: string | null): void {
-        this.etiquetaActiva.set(etiqueta);
-        this.pagina.set(1);
-        this.cargar();
-    }
-
-    irAPagina(pagina: number): void {
-        if (pagina < 1 || pagina > this.totalPaginas) return;
-        this.pagina.set(pagina);
-        this.cargar();
-    }
+    // ===== Carga =====
 
     private cargar(): void {
         this.cargando.set(true);
+        const f = this.filtro();
         this.bancoService.listar({
             q: this.busqueda().trim() || undefined,
-            etiqueta: this.etiquetaActiva() ?? undefined,
+            categoriaId: f.tipo === 'categoria' ? f.id : null,
+            sinCategoria: f.tipo === 'sin',
+            dificultad: this.dificultadActiva(),
             page: this.pagina(),
             pageSize: BancoPreguntasPage.PAGE_SIZE
         }).subscribe({
@@ -97,29 +116,183 @@ export class BancoPreguntasPage implements OnInit {
         });
     }
 
-    private cargarEtiquetas(): void {
-        this.bancoService.obtenerEtiquetas().subscribe({
-            next: (e) => {
-                this.etiquetas.set(e);
-                // Si la etiqueta filtrada ya no existe (se borró su última pregunta), quitar el filtro
-                const activa = this.etiquetaActiva();
-                if (activa && !e.some(x => x.etiqueta === activa)) {
-                    this.etiquetaActiva.set(null);
+    private cargarCategorias(): void {
+        this.categoriasService.listar().subscribe({
+            next: (r) => {
+                this.categorias.set(r.categorias);
+                this.sinCategoria.set(r.sinCategoria);
+                // Si la categoría filtrada ya no existe (se borró), volver a "Todas"
+                const f = this.filtro();
+                if (f.tipo === 'categoria' && !r.categorias.some(c => c.id === f.id)) {
+                    this.filtro.set({ tipo: 'todas' });
+                    this.cargar();
                 }
             },
-            error: () => this.etiquetas.set([])
+            error: () => { /* el listado de preguntas informa del error */ }
+        });
+    }
+
+    private refrescar(): void {
+        this.cargarCategorias();
+        this.cargar();
+    }
+
+    // ===== Filtros =====
+
+    onBusqueda(valor: string): void {
+        this.busqueda.set(valor);
+        if (this.temporizador) clearTimeout(this.temporizador);
+        this.temporizador = setTimeout(() => {
+            this.pagina.set(1);
+            this.cargar();
+        }, 300);
+    }
+
+    elegirFiltro(filtro: FiltroCategoria): void {
+        this.filtro.set(filtro);
+        this.renombrando.set(false);
+        this.seleccion.set(new Set());
+        this.pagina.set(1);
+        this.cargar();
+    }
+
+    esFiltro(tipo: FiltroCategoria['tipo'], id?: number): boolean {
+        const f = this.filtro();
+        return f.tipo === tipo && (f.tipo !== 'categoria' || f.id === id);
+    }
+
+    elegirDificultad(d: Dificultad | null): void {
+        this.dificultadActiva.set(this.dificultadActiva() === d ? null : d);
+        this.pagina.set(1);
+        this.cargar();
+    }
+
+    irAPagina(pagina: number): void {
+        if (pagina < 1 || pagina > this.totalPaginas) return;
+        this.pagina.set(pagina);
+        this.cargar();
+    }
+
+    /** Atajo de la sugerencia: mostrar las preguntas sin categoría listas para clasificar. */
+    clasificarSinCategoria(): void {
+        this.elegirFiltro({ tipo: 'sin' });
+        this.seleccionando.set(true);
+    }
+
+    // ===== Categorías =====
+
+    empezarCategoria(): void {
+        this.nombreNuevaCategoria = '';
+        this.creandoCategoria.set(true);
+        this.errorMessage.set(null);
+    }
+
+    crearCategoria(): void {
+        const nombre = this.nombreNuevaCategoria.trim();
+        if (!nombre) return;
+
+        this.categoriasService.crear(nombre).subscribe({
+            next: (c) => {
+                this.creandoCategoria.set(false);
+                this.avisar(`Categoría «${c.nombre}» creada.`);
+                this.categorias.update(lista => [...lista, c].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+                this.elegirFiltro({ tipo: 'categoria', id: c.id });
+            },
+            error: (err) => this.errorMessage.set(err.error?.message || 'No se pudo crear la categoría.')
+        });
+    }
+
+    empezarRenombrar(): void {
+        const categoria = this.categoriaActiva();
+        if (!categoria) return;
+        this.nombreRenombrado = categoria.nombre;
+        this.renombrando.set(true);
+        this.errorMessage.set(null);
+    }
+
+    renombrarCategoria(): void {
+        const categoria = this.categoriaActiva();
+        const nombre = this.nombreRenombrado.trim();
+        if (!categoria || !nombre) return;
+
+        this.categoriasService.renombrar(categoria.id, nombre).subscribe({
+            next: () => {
+                this.renombrando.set(false);
+                this.avisar('Categoría renombrada.');
+                this.refrescar();
+            },
+            error: (err) => this.errorMessage.set(err.error?.message || 'No se pudo renombrar la categoría.')
+        });
+    }
+
+    eliminarCategoria(): void {
+        const categoria = this.categoriaActiva();
+        if (!categoria) return;
+        if (!confirm(`¿Eliminar la categoría «${categoria.nombre}»? Sus ${categoria.total} preguntas no se borran: quedan sin categoría.`)) return;
+
+        this.categoriasService.eliminar(categoria.id).subscribe({
+            next: () => {
+                this.avisar('Categoría eliminada.');
+                this.filtro.set({ tipo: 'todas' });
+                this.pagina.set(1);
+                this.refrescar();
+            },
+            error: (err) => this.errorMessage.set(err.error?.message || 'No se pudo eliminar la categoría.')
+        });
+    }
+
+    // ===== Selección y mover =====
+
+    alternarSeleccion(): void {
+        this.seleccionando.update(v => !v);
+        this.seleccion.set(new Set());
+        this.destinoMover = '';
+    }
+
+    alternarPregunta(id: number): void {
+        const nueva = new Set(this.seleccion());
+        if (nueva.has(id)) nueva.delete(id); else nueva.add(id);
+        this.seleccion.set(nueva);
+    }
+
+    seleccionarTodasLasVisibles(): void {
+        const todas = this.preguntas().map(p => p.id);
+        const todasYa = todas.every(id => this.seleccion().has(id));
+        this.seleccion.set(todasYa ? new Set() : new Set(todas));
+    }
+
+    /** Mueve las preguntas seleccionadas al destino elegido ('' = quitar la categoría, número = esa categoría). */
+    moverSeleccion(): void {
+        const ids = [...this.seleccion()];
+        if (ids.length === 0) return;
+        const destino = this.destinoMover === '' ? null : Number(this.destinoMover);
+
+        this.bancoService.asignarCategoria(ids, destino).subscribe({
+            next: (r) => {
+                const nombre = this.categorias().find(c => c.id === destino)?.nombre;
+                this.avisar(destino === null
+                    ? `${r.actualizadas} pregunta(s) sin categoría.`
+                    : `${r.actualizadas} pregunta(s) movida(s) a «${nombre}».`);
+                this.seleccion.set(new Set());
+                this.destinoMover = '';
+                this.refrescar();
+            },
+            error: (err) => this.errorMessage.set(err.error?.message || 'No se pudieron mover las preguntas.')
         });
     }
 
     // ===== Editor =====
 
+    /** Nueva pregunta; con una categoría activa en el filtro se crea directamente dentro de ella. */
     nueva(): void {
         this.errorMessage.set(null);
         this.editor = {
             id: null,
             enunciado: '',
             respuestas: [{ texto: '', esCorrecta: true }, { texto: '', esCorrecta: false }],
-            etiquetas: this.etiquetaActiva() ?? '',
+            categoriaId: this.categoriaActiva()?.id ?? null,
+            categoriaNombre: null,
+            dificultad: this.dificultadActiva(),
             imagenUrl: null,
             subiendoImagen: false
         };
@@ -131,7 +304,9 @@ export class BancoPreguntasPage implements OnInit {
             id: pregunta.id,
             enunciado: pregunta.enunciado,
             respuestas: pregunta.respuestas.map(r => ({ ...r })),
-            etiquetas: pregunta.etiquetas.join(', '),
+            categoriaId: pregunta.categoriaId ?? null,
+            categoriaNombre: null,
+            dificultad: pregunta.dificultad ?? null,
             imagenUrl: pregunta.imagenUrl ?? null,
             subiendoImagen: false
         };
@@ -139,6 +314,12 @@ export class BancoPreguntasPage implements OnInit {
 
     cancelar(): void {
         this.editor = null;
+    }
+
+    onCategoria(elegida: CategoriaElegida): void {
+        if (!this.editor) return;
+        this.editor.categoriaId = elegida.categoriaId;
+        this.editor.categoriaNombre = elegida.categoriaNombre;
     }
 
     agregarRespuesta(): void {
@@ -213,7 +394,9 @@ export class BancoPreguntasPage implements OnInit {
             enunciado,
             imagenUrl: editor.imagenUrl,
             respuestas: editor.respuestas.map(r => ({ texto: r.texto.trim(), esCorrecta: r.esCorrecta })),
-            etiquetas: editor.etiquetas.split(',').map(e => e.trim()).filter(e => e.length > 0)
+            dificultad: editor.dificultad,
+            categoriaId: editor.categoriaId,
+            categoriaNombre: editor.categoriaId ? null : (editor.categoriaNombre?.trim() || null)
         };
 
         this.guardando.set(true);
@@ -223,12 +406,12 @@ export class BancoPreguntasPage implements OnInit {
             : this.bancoService.actualizar(editor.id, request);
 
         llamada.subscribe({
-            next: () => {
+            next: (guardada) => {
                 this.guardando.set(false);
                 this.editor = null;
-                this.avisar(editor.id === null ? 'Pregunta añadida al banco.' : 'Pregunta actualizada.');
-                this.cargarEtiquetas();
-                this.cargar();
+                const dondeQueda = guardada.categoriaNombre ? ` en «${guardada.categoriaNombre}»` : ' sin categoría';
+                this.avisar(editor.id === null ? `Pregunta añadida${dondeQueda}.` : 'Pregunta actualizada.');
+                this.refrescar();
             },
             error: (err) => {
                 this.guardando.set(false);
@@ -243,12 +426,11 @@ export class BancoPreguntasPage implements OnInit {
         this.bancoService.eliminar(pregunta.id).subscribe({
             next: () => {
                 this.avisar('Pregunta eliminada.');
-                this.cargarEtiquetas();
                 // Si era la única de la última página, retroceder una
                 if (this.preguntas().length === 1 && this.pagina() > 1) {
                     this.pagina.update(p => p - 1);
                 }
-                this.cargar();
+                this.refrescar();
             },
             error: (err) => this.errorMessage.set(err.error?.message || 'No se pudo eliminar la pregunta.')
         });
@@ -256,6 +438,6 @@ export class BancoPreguntasPage implements OnInit {
 
     private avisar(mensaje: string): void {
         this.successMessage.set(mensaje);
-        setTimeout(() => this.successMessage.set(null), 3000);
+        setTimeout(() => this.successMessage.set(null), 3500);
     }
 }

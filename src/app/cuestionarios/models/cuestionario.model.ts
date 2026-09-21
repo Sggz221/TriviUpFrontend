@@ -1,3 +1,20 @@
+/** Dificultad de una pregunta; null/ausente = sin clasificar. */
+export type Dificultad = 'facil' | 'media' | 'dificil';
+
+export const DIFICULTADES: { valor: Dificultad; etiqueta: string; color: string }[] = [
+    { valor: 'facil', etiqueta: 'Fácil', color: 'var(--success)' },
+    { valor: 'media', etiqueta: 'Media', color: 'var(--warning)' },
+    { valor: 'dificil', etiqueta: 'Difícil', color: 'var(--error)' }
+];
+
+export function etiquetaDificultad(valor: string | null | undefined): string | null {
+    return DIFICULTADES.find(d => d.valor === valor)?.etiqueta ?? null;
+}
+
+export function colorDificultad(valor: string | null | undefined): string {
+    return DIFICULTADES.find(d => d.valor === valor)?.color ?? 'var(--neutral)';
+}
+
 export interface Respuesta {
     id: number;
     preguntaId: number;
@@ -16,6 +33,7 @@ export interface Pregunta {
     faseNumero?: number;
     /** Nombre libre de la fase (ronda, categoría, dificultad...). */
     faseNombre?: string | null;
+    dificultad?: Dificultad | null;
     imagenUrl?: string | null;
 }
 
@@ -46,6 +64,7 @@ export interface CreateQuizRequest {
         imagenUrl?: string;
         faseNumero: number;
         faseNombre?: string;
+        dificultad?: Dificultad;
     }[];
 }
 
@@ -69,16 +88,21 @@ export interface BancoPregunta {
     enunciado: string;
     imagenUrl?: string | null;
     respuestas: BancoRespuesta[];
-    etiquetas: string[];
+    dificultad?: Dificultad | null;
+    categoriaId?: number | null;
+    categoriaNombre?: string | null;
     fechaCreacion: string;
     fechaActualizacion: string;
 }
 
+/** Para la categoría se indica `categoriaId` (existente) o `categoriaNombre` (se crea si no existe). */
 export interface BancoPreguntaRequest {
     enunciado: string;
     imagenUrl?: string | null;
     respuestas: BancoRespuesta[];
-    etiquetas: string[];
+    dificultad?: Dificultad | null;
+    categoriaId?: number | null;
+    categoriaNombre?: string | null;
 }
 
 export interface BancoPreguntaLista {
@@ -86,7 +110,24 @@ export interface BancoPreguntaLista {
     totalCount: number;
 }
 
-export interface EtiquetaCount {
-    etiqueta: string;
+export interface BancoFiltros {
+    q?: string;
+    categoriaId?: number | null;
+    sinCategoria?: boolean;
+    dificultad?: Dificultad | null;
+    page?: number;
+    pageSize?: number;
+}
+
+/** Categoría del banco con el número de preguntas que contiene. */
+export interface BancoCategoria {
+    id: number;
+    nombre: string;
     total: number;
+}
+
+export interface BancoCategorias {
+    categorias: BancoCategoria[];
+    /** Preguntas del banco que no tienen categoría. */
+    sinCategoria: number;
 }

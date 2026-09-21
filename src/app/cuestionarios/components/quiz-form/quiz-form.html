@@ -161,7 +161,7 @@
                             <div class="flex flex-wrap items-center gap-2 mt-2">
                                 <span class="text-xs opacity-70">Atajos:</span>
                                 @for (preset of presetsFase; track preset) {
-                                    <button type="button" class="badge badge-outline cursor-pointer"
+                                    <button type="button" class="btn btn-xs btn-outline"
                                             (click)="aplicarPresetFase(preguntaIndex, preset)">{{ preset.trim() }}</button>
                                 }
                             </div>
@@ -185,6 +185,14 @@
                                             <span class="label-text-alt" style="color: var(--error);">La pregunta es requerida</span>
                                         </label>
                                     }
+
+                                    <div class="mt-3">
+                                        <span class="text-xs opacity-70 mr-2">Dificultad</span>
+                                        <app-dificultad-selector
+                                            class="inline-block"
+                                            [valor]="pregunta.get('dificultad')?.value"
+                                            (cambio)="cambiarDificultad(preguntaIndex, $event)" />
+                                    </div>
 
                                     <!-- Image Upload Section (below question on all sizes) -->
                                     <div class="mt-3">
@@ -311,70 +319,93 @@
                     }
                 </div>
 
-                <button type="button"
-                        class="w-full py-3 rounded-lg font-semibold text-base sm:text-lg transition-all cursor-pointer flex items-center justify-center gap-2 mt-6"
-                        style="background-color: transparent; border: 2px solid var(--warning); color: var(--warning);"
-                        (click)="agregarPregunta()">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                    </svg>
-                    Agregar Pregunta
-                </button>
-
-                <div class="flex flex-col sm:flex-row gap-3 mt-3">
-                    <button type="button"
-                            class="flex-1 py-2 rounded-lg font-medium cursor-pointer"
-                            style="background-color: transparent; border: 2px dashed var(--info); color: var(--info);"
-                            title="Las preguntas que añadas después de un separador pertenecen a esa fase"
-                            (click)="agregarSeparador()">
-                        + Separador de fase
-                    </button>
-                    <button type="button"
-                            class="flex-1 py-2 rounded-lg font-medium cursor-pointer"
-                            style="background-color: transparent; border: 2px solid var(--info); color: var(--info);"
-                            (click)="toggleBanco()">
-                        {{ mostrarBanco() ? 'Ocultar mi banco' : 'Añadir desde mi banco' }}
-                    </button>
-                </div>
-
                 @if (mostrarBanco()) {
                     <app-banco-picker (agregar)="agregarDesdeBanco($event)" (cerrar)="toggleBanco()" />
                 }
 
-                <div class="quiz-form-actions">
-                    <button type="button"
-                            class="w-full py-3 mb-3 rounded-lg font-semibold text-base sm:text-lg transition-all cursor-pointer flex items-center justify-center gap-2"
-                            style="background-color: transparent; border: 2px solid var(--info); color: var(--info);"
-                            [disabled]="savingDraft() || isLoading()"
-                            (click)="guardarBorrador()">
-                        {{ savingDraft() ? 'Guardando...' : (esPublicado() ? 'Guardar borrador (no cambia lo publicado)' : 'Guardar borrador') }}
-                    </button>
-
-                    <button type="submit"
-                            class="quiz-form-submit w-full py-3 rounded-lg font-semibold text-base sm:text-lg transition-all cursor-pointer flex items-center justify-center gap-2"
-                            style="background-color: var(--accent); color: var(--accent-content);"
-                            [disabled]="isLoading()">
-                        @if (isLoading()) {
-                            <svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Guardando...
-                        } @else {
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" />
-                            </svg>
-                            {{ esPublicado() ? 'Publicar cambios (v' + (version() + 1) + ')' : (isDraft() ? 'Publicar cuestionario' : 'Crear Cuestionario') }}
-                        }
-                    </button>
-
-                    <div class="mt-3 text-center">
-                        <a routerLink="/cuestionarios/mis-cuestionarios" class="text-sm hover:opacity-80 transition-opacity" style="color: var(--accent);">
-                            ← Volver a mis cuestionarios
-                        </a>
+                <!-- Barra de acciones fija: siempre visible mientras se edita, también en móvil -->
+                <div class="quiz-form-actions" role="toolbar" aria-label="Acciones del cuestionario">
+                    <div class="actions-add">
+                        <button type="button" class="btn btn-sm btn-outline" style="border-color: var(--warning); color: var(--warning);"
+                                (click)="agregarPregunta()">
+                            + <span class="sm:hidden">Pregunta</span><span class="hidden sm:inline">Agregar pregunta</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline btn-info"
+                                title="Las preguntas que añadas después de un separador pertenecen a esa fase"
+                                (click)="agregarSeparador()">
+                            + <span class="sm:hidden">Fase</span><span class="hidden sm:inline">Separador de fase</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline btn-info"
+                                [class.btn-active]="mostrarBanco()"
+                                (click)="toggleBanco()">
+                            <span class="sm:hidden">Banco</span><span class="hidden sm:inline">{{ mostrarBanco() ? 'Ocultar mi banco' : 'Añadir desde mi banco' }}</span>
+                        </button>
                     </div>
+
+                    <div class="actions-save">
+                        <button type="button"
+                                class="btn btn-outline btn-info"
+                                [disabled]="savingDraft() || isLoading()"
+                                (click)="guardarBorrador()">
+                            {{ savingDraft() ? 'Guardando...' : (esPublicado() ? 'Guardar borrador' : 'Guardar borrador') }}
+                        </button>
+
+                        <button type="submit"
+                                class="quiz-form-submit btn"
+                                style="background-color: var(--accent); color: var(--accent-content); border-color: var(--accent);"
+                                [disabled]="isLoading()">
+                            @if (isLoading()) {
+                                <span class="loading loading-spinner loading-sm"></span>
+                                Guardando...
+                            } @else {
+                                {{ esPublicado() ? 'Publicar cambios (v' + (version() + 1) + ')' : (isDraft() ? 'Publicar cuestionario' : 'Crear cuestionario') }}
+                            }
+                        </button>
+                    </div>
+                    @if (esPublicado()) {
+                        <p class="actions-note">El borrador no cambia lo publicado.</p>
+                    }
+                </div>
+
+                <div class="mt-4 text-center">
+                    <a routerLink="/cuestionarios/mis-cuestionarios" class="text-sm hover:opacity-80 transition-opacity" style="color: var(--accent);">
+                        ← Volver a mis cuestionarios
+                    </a>
                 </div>
             </form>
         </div>
     </div>
+
+@if (dialogoBanco(); as dialogo) {
+    <div class="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="titulo-al-banco">
+        <div class="modal-box" style="background-color: var(--base-200);">
+            <h3 id="titulo-al-banco" class="font-bold text-lg mb-1" style="color: var(--secondary);">Guardar en tu banco</h3>
+            <p class="text-sm opacity-70 mb-4 break-words">
+                {{ preguntasArray.at(dialogo.index).get('enunciado')?.value }}
+            </p>
+
+            <label class="block text-sm mb-1">Categoría</label>
+            <app-categoria-selector
+                [categorias]="categoriasBanco()"
+                [categoriaId]="dialogo.categoriaId"
+                [categoriaNombre]="dialogo.categoriaNombre"
+                (cambio)="onCategoriaBanco($event)" />
+
+            <div class="mt-4 flex items-center gap-2">
+                <span class="text-sm">Dificultad</span>
+                <app-dificultad-selector
+                    [valor]="preguntasArray.at(dialogo.index).get('dificultad')?.value"
+                    (cambio)="cambiarDificultad(dialogo.index, $event)" />
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost" [disabled]="dialogo.guardando" (click)="cancelarGuardarEnBanco()">Cancelar</button>
+                <button type="button" class="btn btn-primary" [disabled]="dialogo.guardando" (click)="confirmarGuardarEnBanco()">
+                    {{ dialogo.guardando ? 'Guardando...' : 'Guardar en el banco' }}
+                </button>
+            </div>
+        </div>
+        <div class="modal-backdrop" (click)="cancelarGuardarEnBanco()"></div>
+    </div>
+}
 </section>

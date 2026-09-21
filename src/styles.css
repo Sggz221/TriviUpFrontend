@@ -75,6 +75,9 @@ body {
     background-color: var(--color-base-100);
     color: var(--color-base-content);
     overflow-x: hidden;
+    /* `clip` recorta igual que `hidden` pero no crea un contenedor de scroll en html/body:
+       con `hidden`, cualquier `position: sticky` de la app se queda pegado al body y no funciona. */
+    overflow-x: clip;
     max-width: 100%;
 }
 

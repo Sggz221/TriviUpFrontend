@@ -3,9 +3,12 @@ import { CommonModule, Location } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CuestionarioService } from '../../services/cuestionario.service';
-import { Cuestionario, CreateQuizRequest, QuizVersion, BancoPregunta } from '../../models/cuestionario.model';
+import { Cuestionario, CreateQuizRequest, QuizVersion, BancoPregunta, BancoCategoria, Dificultad } from '../../models/cuestionario.model';
 import { BancoPreguntasService } from '../../services/banco-preguntas.service';
+import { BancoCategoriasService } from '../../services/banco-categorias.service';
 import { BancoPickerComponent } from '../banco-picker/banco-picker';
+import { CategoriaElegida, CategoriaSelectorComponent } from '../../../shared/components/categoria-selector/categoria-selector';
+import { DificultadSelectorComponent } from '../../../shared/components/dificultad-selector/dificultad-selector';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 
@@ -19,6 +22,7 @@ interface PreguntaFormValue {
     tipo: 'pregunta' | 'separador';
     /** Nombre de la fase (solo separadores). */
     nombre?: string;
+    dificultad?: Dificultad | null;
     enunciado: string;
     respuestas: RespuestaFormValue[];
     imagenUrl?: string;
@@ -27,7 +31,10 @@ interface PreguntaFormValue {
 @Component({
     selector: 'app-quiz-form',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, RouterLink, AnswerShapeComponent, BancoPickerComponent],
+    imports: [
+        CommonModule, ReactiveFormsModule, RouterLink, AnswerShapeComponent, BancoPickerComponent,
+        CategoriaSelectorComponent, DificultadSelectorComponent
+    ],
     templateUrl: './quiz-form.html',
     styleUrls: ['./quiz-form.css']
 })
@@ -39,6 +46,10 @@ export class QuizFormComponent {
     private location = inject(Location);
     private destroyRef = inject(DestroyRef);
     private bancoService = inject(BancoPreguntasService);
+    private categoriasService = inject(BancoCategoriasService);
+
+    /** Última categoría del banco usada al guardar una pregunta (se sugiere la siguiente vez). */
+    private static readonly ULTIMA_CATEGORIA_KEY = 'triviup:banco:ultima-categoria';
 
     /** Intervalo de autoguardado del borrador (5 min). */
     private static readonly AUTOSAVE_MS = 5 * 60 * 1000;
@@ -69,6 +80,15 @@ export class QuizFormComponent {
 
     /** Panel para añadir preguntas desde el banco personal. */
     mostrarBanco = signal(false);
+
+    /** Diálogo "Al banco": pregunta que se guarda y categoría elegida (existente o nueva). */
+    dialogoBanco = signal<{
+        index: number;
+        categoriaId: number | null;
+        categoriaNombre: string | null;
+        guardando: boolean;
+    } | null>(null);
+    categoriasBanco = signal<BancoCategoria[]>([]);
 
     // Estado de las imágenes por pregunta. La clave es el control (no el índice) para que
     // insertar, mover o borrar elementos de la lista no desincronice las imágenes.
@@ -207,7 +227,8 @@ export class QuizFormComponent {
             const grupo = this.crearPregunta({
                 enunciado: p.enunciado,
                 respuestas: p.respuestas,
-                imagenUrl: p.imagenUrl ?? null
+                imagenUrl: p.imagenUrl ?? null,
+                dificultad: p.dificultad ?? null
             });
             this.preguntasArray.push(grupo);
             if (p.imagenUrl) {
@@ -230,6 +251,7 @@ export class QuizFormComponent {
         enunciado: string;
         respuestas: { texto: string; esCorrecta: boolean }[];
         imagenUrl?: string | null;
+        dificultad?: Dificultad | null;
     }): FormGroup {
         const respuestas = datos?.respuestas ?? [
             { texto: '', esCorrecta: false },
@@ -237,6 +259,7 @@ export class QuizFormComponent {
         ];
         return this.fb.group({
             tipo: ['pregunta'],
+            dificultad: [(datos?.dificultad ?? null) as Dificultad | null],
             enunciado: [datos?.enunciado ?? '', Validators.required],
             respuestas: this.fb.array(respuestas.map(r => this.fb.group({
                 texto: [r.texto, Validators.required],
@@ -328,7 +351,8 @@ export class QuizFormComponent {
             const grupo = this.crearPregunta({
                 enunciado: p.enunciado,
                 respuestas: p.respuestas,
-                imagenUrl: p.imagenUrl ?? null
+                imagenUrl: p.imagenUrl ?? null,
+                dificultad: p.dificultad ?? null
             });
             this.preguntasArray.push(grupo);
             if (p.imagenUrl) {
@@ -350,34 +374,104 @@ export class QuizFormComponent {
             respuestas.controls.every(r => !r.get('texto')?.value?.trim());
     }
 
-    /** Guarda una copia de la pregunta en el banco personal, con etiquetas separadas por comas. */
-    guardarEnBanco(index: number): void {
-        const control = this.preguntasArray.at(index);
-        const enunciado = (control.get('enunciado')?.value ?? '').trim();
-        const respuestas = (control.get('respuestas') as FormArray).value as RespuestaFormValue[];
+    /** Cambia la dificultad de una pregunta (volver a pulsar la activa la deja sin clasificar). */
+    cambiarDificultad(index: number, dificultad: Dificultad | null): void {
+        this.preguntasArray.at(index).patchValue({ dificultad });
+        this.quizForm.markAsDirty();
+    }
 
-        if (!enunciado || respuestas.length < 2 || respuestas.some(r => !r.texto?.trim()) ||
-            respuestas.filter(r => r.esCorrecta).length !== 1) {
+    /** Abre el diálogo para guardar la pregunta en el banco eligiendo (o creando) su categoría. */
+    guardarEnBanco(index: number): void {
+        if (!this.preguntaValidaParaBanco(index)) {
             this.errorMessage.set('Completa la pregunta (enunciado, respuestas y una correcta) antes de guardarla en el banco.');
             return;
         }
 
-        const entrada = prompt('Etiquetas para esta pregunta (separadas por comas, opcional):', '');
-        if (entrada === null) return;
-
         this.errorMessage.set(null);
+        this.dialogoBanco.set({ index, categoriaId: null, categoriaNombre: null, guardando: false });
+
+        this.categoriasService.listar().subscribe({
+            next: (r) => {
+                this.categoriasBanco.set(r.categorias);
+                // Se sugiere la última categoría usada, si todavía existe
+                const ultima = this.leerUltimaCategoria();
+                const dialogo = this.dialogoBanco();
+                if (dialogo && ultima !== null && r.categorias.some(c => c.id === ultima)) {
+                    this.dialogoBanco.set({ ...dialogo, categoriaId: ultima });
+                }
+            },
+            error: () => this.categoriasBanco.set([])
+        });
+    }
+
+    onCategoriaBanco(elegida: CategoriaElegida): void {
+        const dialogo = this.dialogoBanco();
+        if (dialogo) {
+            this.dialogoBanco.set({ ...dialogo, ...elegida });
+        }
+    }
+
+    cancelarGuardarEnBanco(): void {
+        this.dialogoBanco.set(null);
+    }
+
+    confirmarGuardarEnBanco(): void {
+        const dialogo = this.dialogoBanco();
+        if (!dialogo || dialogo.guardando || !this.preguntaValidaParaBanco(dialogo.index)) return;
+
+        const control = this.preguntasArray.at(dialogo.index);
+        const respuestas = (control.get('respuestas') as FormArray).value as RespuestaFormValue[];
+        const nombreNuevo = dialogo.categoriaId ? null : (dialogo.categoriaNombre?.trim() || null);
+
+        this.dialogoBanco.set({ ...dialogo, guardando: true });
         this.bancoService.crear({
-            enunciado,
+            enunciado: (control.get('enunciado')?.value ?? '').trim(),
             imagenUrl: control.get('imagenUrl')?.value || null,
             respuestas: respuestas.map(r => ({ texto: r.texto.trim(), esCorrecta: !!r.esCorrecta })),
-            etiquetas: entrada.split(',').map(e => e.trim()).filter(e => e.length > 0)
+            dificultad: control.get('dificultad')?.value ?? null,
+            categoriaId: dialogo.categoriaId,
+            categoriaNombre: nombreNuevo
         }).subscribe({
-            next: () => {
-                this.successMessage.set('Pregunta guardada en tu banco.');
-                setTimeout(() => this.successMessage.set(null), 3000);
+            next: (guardada) => {
+                this.dialogoBanco.set(null);
+                if (guardada.categoriaId) {
+                    this.recordarUltimaCategoria(guardada.categoriaId);
+                }
+                this.successMessage.set(guardada.categoriaNombre
+                    ? `Pregunta guardada en tu banco, en «${guardada.categoriaNombre}».`
+                    : 'Pregunta guardada en tu banco sin categoría. Puedes clasificarla luego desde el banco.');
+                setTimeout(() => this.successMessage.set(null), 4000);
             },
-            error: (err) => this.errorMessage.set(err.error?.message || 'No se pudo guardar la pregunta en el banco.')
+            error: (err) => {
+                this.dialogoBanco.set({ ...dialogo, guardando: false });
+                this.errorMessage.set(err.error?.message || 'No se pudo guardar la pregunta en el banco.');
+            }
         });
+    }
+
+    private preguntaValidaParaBanco(index: number): boolean {
+        const control = this.preguntasArray.at(index);
+        const enunciado = (control.get('enunciado')?.value ?? '').trim();
+        const respuestas = (control.get('respuestas') as FormArray).value as RespuestaFormValue[];
+        return !!enunciado && respuestas.length >= 2 && respuestas.every(r => !!r.texto?.trim()) &&
+            respuestas.filter(r => r.esCorrecta).length === 1;
+    }
+
+    private leerUltimaCategoria(): number | null {
+        try {
+            const valor = Number(localStorage.getItem(QuizFormComponent.ULTIMA_CATEGORIA_KEY));
+            return Number.isFinite(valor) && valor > 0 ? valor : null;
+        } catch {
+            return null; // localStorage no disponible: simplemente no hay sugerencia
+        }
+    }
+
+    private recordarUltimaCategoria(id: number): void {
+        try {
+            localStorage.setItem(QuizFormComponent.ULTIMA_CATEGORIA_KEY, String(id));
+        } catch {
+            // no crítico
+        }
     }
 
     agregarRespuesta(preguntaIndex: number): void {
@@ -657,7 +751,8 @@ export class QuizFormComponent {
                     texto: r.texto ?? '',
                     esCorrecta: !!r.esCorrecta
                 })),
-                imagenUrl: item.imagenUrl || undefined
+                imagenUrl: item.imagenUrl || undefined,
+                dificultad: item.dificultad || undefined
             });
         }
 
