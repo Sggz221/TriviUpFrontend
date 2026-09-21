@@ -57,6 +57,26 @@ export interface TurnStartedDto {
     isMyTurn: boolean;
     question: Question;
     timeLimit: number;
+    faseNumero?: number;
+    faseNombre?: string | null;
+    totalFases?: number;
+}
+
+/** Fase en curso (solo se muestra cuando la partida tiene más de una). */
+export interface PhaseInfo {
+    numero: number;
+    nombre: string | null;
+    total: number;
+}
+
+/** Intermedio al terminar una fase: marcador y datos de la siguiente. */
+export interface PhaseCompletedDto {
+    roomCode: string;
+    faseNumero: number;
+    faseNombre?: string | null;
+    siguienteFaseNombre?: string | null;
+    totalFases: number;
+    players: Player[];
 }
 
 export interface GameLobbyState {

@@ -136,7 +136,37 @@
                 </div>
 
                 <div formArrayName="preguntas" class="space-y-6">
-                    @for (pregunta of preguntasArray.controls; track $index; let preguntaIndex = $index) {
+                    @for (pregunta of preguntasArray.controls; track pregunta; let preguntaIndex = $index) {
+                        @if (esSeparador(pregunta)) {
+                        <!-- Separador de fase: las preguntas que siguen pertenecen a esta fase -->
+                        <div class="phase-divider rounded-xl p-3 sm:p-4 border-2 border-dashed"
+                             style="border-color: var(--info); background-color: var(--base-100);"
+                             [formGroupName]="preguntaIndex">
+                            <div class="flex items-center gap-2">
+                                <span class="badge badge-info font-bold shrink-0">Fase</span>
+                                <input type="text"
+                                       formControlName="nombre"
+                                       maxlength="100"
+                                       placeholder="Nombre de la fase (ronda, categoría, dificultad...)"
+                                       aria-label="Nombre de la fase"
+                                       class="min-w-0 flex-1 px-3 py-2 rounded-lg border outline-none box-border"
+                                       style="background-color: var(--base-300); border-color: var(--neutral); color: var(--base-content);">
+                                <button type="button" class="btn btn-ghost btn-xs shrink-0" aria-label="Subir fase"
+                                        [disabled]="preguntaIndex === 0" (click)="moverElemento(preguntaIndex, -1)">▲</button>
+                                <button type="button" class="btn btn-ghost btn-xs shrink-0" aria-label="Bajar fase"
+                                        [disabled]="preguntaIndex === preguntasArray.length - 1" (click)="moverElemento(preguntaIndex, 1)">▼</button>
+                                <button type="button" class="btn btn-ghost btn-xs shrink-0" style="color: var(--error);"
+                                        aria-label="Quitar separador" (click)="eliminarPregunta(preguntaIndex)">✕</button>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 mt-2">
+                                <span class="text-xs opacity-70">Atajos:</span>
+                                @for (preset of presetsFase; track preset) {
+                                    <button type="button" class="badge badge-outline cursor-pointer"
+                                            (click)="aplicarPresetFase(preguntaIndex, preset)">{{ preset.trim() }}</button>
+                                }
+                            </div>
+                        </div>
+                        } @else {
                         <div class="question-card rounded-xl shadow-md p-3 sm:p-6" style="background-color: var(--base-100);" [formGroupName]="preguntaIndex">
                             <div class="question-header">
                                 <div class="badge badge-lg font-bold text-lg sm:text-xl w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0"
@@ -205,7 +235,22 @@
                                     </div>
                                 </div>
 
-                                @if (preguntasArray.length > 1) {
+                                <div class="flex flex-col items-center shrink-0">
+                                    <button type="button" class="btn btn-ghost btn-xs" aria-label="Subir pregunta"
+                                            [disabled]="preguntaIndex === 0" (click)="moverElemento(preguntaIndex, -1)">▲</button>
+                                    <button type="button" class="btn btn-ghost btn-xs" aria-label="Bajar pregunta"
+                                            [disabled]="preguntaIndex === preguntasArray.length - 1" (click)="moverElemento(preguntaIndex, 1)">▼</button>
+                                </div>
+
+                                <button type="button"
+                                        class="btn btn-ghost btn-xs shrink-0"
+                                        style="color: var(--info);"
+                                        title="Guardar una copia en tu banco de preguntas"
+                                        (click)="guardarEnBanco(preguntaIndex)">
+                                    Al banco
+                                </button>
+
+                                @if (puedeEliminar(preguntaIndex)) {
                                     <button type="button"
                                             class="btn btn-circle btn-ghost btn-sm shrink-0"
                                             style="color: var(--error);"
@@ -262,6 +307,7 @@
                                 }
                             </div>
                         </div>
+                        }
                     }
                 </div>
 
@@ -274,6 +320,26 @@
                     </svg>
                     Agregar Pregunta
                 </button>
+
+                <div class="flex flex-col sm:flex-row gap-3 mt-3">
+                    <button type="button"
+                            class="flex-1 py-2 rounded-lg font-medium cursor-pointer"
+                            style="background-color: transparent; border: 2px dashed var(--info); color: var(--info);"
+                            title="Las preguntas que añadas después de un separador pertenecen a esa fase"
+                            (click)="agregarSeparador()">
+                        + Separador de fase
+                    </button>
+                    <button type="button"
+                            class="flex-1 py-2 rounded-lg font-medium cursor-pointer"
+                            style="background-color: transparent; border: 2px solid var(--info); color: var(--info);"
+                            (click)="toggleBanco()">
+                        {{ mostrarBanco() ? 'Ocultar mi banco' : 'Añadir desde mi banco' }}
+                    </button>
+                </div>
+
+                @if (mostrarBanco()) {
+                    <app-banco-picker (agregar)="agregarDesdeBanco($event)" (cerrar)="toggleBanco()" />
+                }
 
                 <div class="quiz-form-actions">
                     <button type="button"

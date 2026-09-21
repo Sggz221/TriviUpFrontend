@@ -87,6 +87,9 @@
                 <div class="space-y-4">
                     <h2 class="text-xl font-bold" style="color: var(--secondary);">Preguntas</h2>
                     @for (pregunta of cuestionario()!.preguntas; track pregunta.id) {
+                        @if (cabeceraFase($index); as cabecera) {
+                            <h3 class="text-lg font-bold pt-4" style="color: var(--info);">{{ cabecera }}</h3>
+                        }
                         <div class="rounded-xl shadow-md p-6" style="background-color: var(--base-200);">
                             <!-- Question Header -->
                             <div class="flex items-start gap-4 mb-4">

@@ -4,6 +4,7 @@ import { Auth } from './auth/auth';
 import { AuthCallback } from './auth/auth-callback';
 import { CrearCuestionarioPage } from './cuestionarios/pages/crear-cuestionario/crear-cuestionario';
 import { QuizListComponent } from './cuestionarios/components/quiz-list/quiz-list';
+import { BancoPreguntasPage } from './cuestionarios/pages/banco-preguntas/banco-preguntas';
 import { QuizDetailComponent } from './cuestionarios/components/quiz-detail/quiz-detail';
 import { QuizzesPublicComponent } from './cuestionarios/components/quizzes-public/quizzes-public.component';
 import { Profile } from './user/pages/profile/profile';
@@ -27,6 +28,7 @@ export const routes: Routes = [
     { path: 'cuestionarios/crear', component: CrearCuestionarioPage },
     { path: 'cuestionarios/editar/:id', component: CrearCuestionarioPage },
     { path: 'cuestionarios/mis-cuestionarios', component: QuizListComponent },
+    { path: 'banco-preguntas', component: BancoPreguntasPage },
     { path: 'quizzes/public', component: QuizzesPublicComponent },
     { path: 'cuestionarios/:id', component: QuizDetailComponent },
     { path: 'game/history', component: GameHistoryComponent },

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, OnDestroy } from '@angular/core';
+import { Component, OnInit, signal, inject, OnDestroy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -7,7 +7,7 @@ import { GameSignalrService } from '../../services/game-signalr.service';
 import { AuthService } from '../../../auth/auth.service';
 import { GameLobbyComponent } from '../../components/game-lobby/game-lobby.component';
 import { GameScoreboardComponent } from '../../components/game-scoreboard/game-scoreboard.component';
-import { Player, Question, TurnResult, GameResult } from '../../models/game.models';
+import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto } from '../../models/game.models';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AudioService } from '../../../shared/services/audio.service';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
@@ -55,6 +55,30 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     turnTimeLimit = signal<number>(0);
     /** Nombre mostrado en el banner "Turno de: ..." (null = oculto). */
     turnBanner = signal<string | null>(null);
+    /** Fase en curso (null si la partida no tiene varias fases). */
+    phase = signal<PhaseInfo | null>(null);
+    /** Intermedio entre fases: marcador a la espera de que el anfitrión continúe. */
+    phaseBreak = signal<PhaseCompletedDto | null>(null);
+    isContinuing = signal<boolean>(false);
+    /** Marcador del intermedio: solo jugadores (el anfitrión no puntúa), ordenados por puntos. */
+    phaseBreakResults = computed(() => {
+        const players = (this.phaseBreak()?.players ?? [])
+            .filter(p => !p.isOwner)
+            .sort((a, b) => b.score - a.score);
+        return players.map((p) => {
+            const total = p.correctAnswers + p.wrongAnswers;
+            return {
+                userId: p.userId,
+                username: p.username,
+                // Empates comparten puesto
+                rank: 1 + players.filter(o => o.score > p.score).length,
+                finalScore: p.score,
+                correctAnswers: p.correctAnswers,
+                wrongAnswers: p.wrongAnswers,
+                correctPercentage: total > 0 ? (p.correctAnswers / total) * 100 : 0
+            };
+        });
+    });
     private bannerTimeout: ReturnType<typeof setTimeout> | null = null;
     /** Evita unirse dos veces (Enter + clic) y crear dos conexiones con ids distintos. */
     isJoining = signal<boolean>(false);
@@ -222,9 +246,15 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                     this.turnTimeLimit.set(this.gameSignalrService.timeRemaining());
                     this.gameState.set('playing');
                     this.isPaused.set(this.gameSignalrService.isPaused());
+                    this.phase.set(this.gameSignalrService.currentPhase());
                     if (this.isMyTurn() && !this.isPaused()) {
                         this.startLocalTimer(this.gameSignalrService.timeRemaining());
                     }
+                }
+                const phaseBreak = this.gameSignalrService.phaseBreak();
+                if (phaseBreak) {
+                    this.phaseBreak.set(phaseBreak);
+                    this.gameState.set('playing');
                 }
                 return;
             }
@@ -418,11 +448,28 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.selectedAnswer.set(null);
             this.showTurnResult.set(false);
             this.turnTimeLimit.set(data.timeLimit);
+            this.phaseBreak.set(null);
+            this.isContinuing.set(false);
+            this.phase.set(data.totalFases && data.totalFases > 1
+                ? { numero: data.faseNumero ?? 1, nombre: data.faseNombre ?? null, total: data.totalFases }
+                : null);
             this.showTurnBanner();
             if (isMyTurn) {
                 this.audioService.playTurnStart();
                 this.startLocalTimer(data.timeLimit);
             }
+        });
+
+        // Intermedio entre fases
+        this.gameSignalrService.onPhaseCompleted.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+            console.log('[GameRoom] Phase completed:', data);
+            this.clearTimerInterval();
+            this.gameState.set('playing');
+            this.isMyTurn.set(false);
+            this.isContinuing.set(false);
+            this.phaseBreak.set(data);
+            this.players.set(data.players);
+            this.syncOwnershipFromPlayers(data.players);
         });
 
         // Turn result
@@ -490,6 +537,17 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.errorMessage.set('Error al iniciar la partida');
         }).finally(() => {
             this.isStarting.set(false);
+        });
+    }
+
+    /** El anfitrión sale del intermedio y arranca la siguiente fase. */
+    onContinuePhase(): void {
+        if (this.isContinuing()) return;
+        this.isContinuing.set(true);
+        this.gameSignalrService.continuePhase(this.roomCode()).catch((error) => {
+            console.error('[GameRoom] Error al continuar a la siguiente fase:', error);
+            this.errorMessage.set('No se pudo continuar a la siguiente fase');
+            this.isContinuing.set(false);
         });
     }
 

@@ -1,0 +1,158 @@
+<section class="min-h-screen px-4 py-12"
+    style="background: linear-gradient(to bottom right, var(--base-100), var(--base-200), var(--base-300));">
+    <div class="max-w-4xl mx-auto">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-bold tracking-tight" style="color: var(--secondary);">Banco de preguntas</h1>
+                <p class="text-sm opacity-70" style="color: var(--base-content);">
+                    Tus preguntas sin cuestionario. Añádelas a cualquier cuestionario desde el editor.
+                </p>
+            </div>
+            <div class="flex gap-2">
+                <a routerLink="/cuestionarios/mis-cuestionarios" class="btn btn-ghost btn-sm">Mis cuestionarios</a>
+                <button type="button" class="btn btn-primary btn-sm" (click)="nueva()">Nueva pregunta</button>
+            </div>
+        </div>
+
+        @if (errorMessage()) {
+            <div class="alert alert-error mb-4"><span>{{ errorMessage() }}</span></div>
+        }
+        @if (successMessage()) {
+            <div class="alert alert-success mb-4"><span>{{ successMessage() }}</span></div>
+        }
+
+        @if (editor) {
+            <div class="rounded-xl shadow-xl p-4 sm:p-6 mb-6" style="background-color: var(--base-200);">
+                <h2 class="text-lg font-bold mb-3" style="color: var(--secondary);">
+                    {{ editor.id === null ? 'Nueva pregunta' : 'Editar pregunta' }}
+                </h2>
+
+                <textarea class="textarea textarea-bordered w-full" rows="2" maxlength="1000"
+                          placeholder="Escribe la pregunta..."
+                          [(ngModel)]="editor.enunciado"></textarea>
+
+                <div class="mt-3">
+                    @if (editor.imagenUrl) {
+                        <div class="flex items-center gap-3">
+                            <img [src]="imageUrl(editor.imagenUrl)" alt="Imagen de la pregunta"
+                                 class="rounded-lg max-w-[150px] max-h-[100px] object-cover" />
+                            <button type="button" class="btn btn-ghost btn-sm" style="color: var(--error);" (click)="quitarImagen()">Quitar imagen</button>
+                        </div>
+                    } @else if (editor.subiendoImagen) {
+                        <span class="loading loading-spinner loading-sm"></span> <span class="text-sm opacity-70">Subiendo...</span>
+                    } @else {
+                        <label class="cursor-pointer text-sm" style="color: var(--info);">
+                            + Añadir imagen
+                            <input type="file" accept="image/*" class="hidden" (change)="onImagenElegida($event)" />
+                        </label>
+                    }
+                </div>
+
+                <div class="space-y-2 mt-4">
+                    @for (r of editor.respuestas; track $index; let i = $index) {
+                        <div class="flex items-center gap-2">
+                            <input type="radio" name="correcta" class="radio radio-success shrink-0"
+                                   [checked]="r.esCorrecta" (change)="marcarCorrecta(i)"
+                                   aria-label="Respuesta correcta" />
+                            <input type="text" class="input input-bordered flex-1 min-w-0" maxlength="500"
+                                   placeholder="Respuesta..." [(ngModel)]="r.texto" />
+                            @if (editor.respuestas.length > 2) {
+                                <button type="button" class="btn btn-ghost btn-xs shrink-0" style="color: var(--error);"
+                                        aria-label="Quitar respuesta" (click)="quitarRespuesta(i)">✕</button>
+                            }
+                        </div>
+                    }
+                    @if (editor.respuestas.length < 4) {
+                        <button type="button" class="btn btn-ghost btn-sm" style="color: var(--info);" (click)="agregarRespuesta()">+ Agregar respuesta</button>
+                    }
+                </div>
+
+                <div class="mt-4">
+                    <label class="block text-sm mb-1" style="color: var(--base-content);">Etiquetas (separadas por comas)</label>
+                    <input type="text" class="input input-bordered w-full" placeholder="geografía, europa, fácil"
+                           [(ngModel)]="editor.etiquetas" />
+                </div>
+
+                <div class="flex justify-end gap-2 mt-5">
+                    <button type="button" class="btn btn-ghost" (click)="cancelar()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" [disabled]="guardando() || editor.subiendoImagen" (click)="guardar()">
+                        {{ guardando() ? 'Guardando...' : 'Guardar' }}
+                    </button>
+                </div>
+            </div>
+        }
+
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+            <input type="search" class="input input-bordered input-sm flex-1 min-w-[12rem]"
+                   placeholder="Buscar por texto o etiqueta..."
+                   [ngModel]="busqueda()" (ngModelChange)="onBusqueda($event)" />
+        </div>
+
+        @if (etiquetas().length > 0) {
+            <div class="flex flex-wrap gap-2 mb-4">
+                <button type="button" class="badge badge-lg cursor-pointer"
+                        [class.badge-info]="!etiquetaActiva()" [class.badge-outline]="!!etiquetaActiva()"
+                        (click)="elegirEtiqueta(null)">Todas</button>
+                @for (e of etiquetas(); track e.etiqueta) {
+                    <button type="button" class="badge badge-lg cursor-pointer"
+                            [class.badge-info]="etiquetaActiva() === e.etiqueta"
+                            [class.badge-outline]="etiquetaActiva() !== e.etiqueta"
+                            (click)="elegirEtiqueta(e.etiqueta)">{{ e.etiqueta }} · {{ e.total }}</button>
+                }
+            </div>
+        }
+
+        @if (cargando() && preguntas().length === 0) {
+            <div class="flex justify-center py-10"><span class="loading loading-spinner loading-lg"></span></div>
+        } @else if (preguntas().length === 0) {
+            <div class="text-center py-10 rounded-xl" style="background-color: var(--base-200);">
+                <p class="opacity-70" style="color: var(--base-content);">
+                    {{ busqueda() || etiquetaActiva() ? 'No hay preguntas que coincidan.' : 'Tu banco está vacío. Crea tu primera pregunta o guarda una desde el editor de cuestionarios.' }}
+                </p>
+            </div>
+        } @else {
+            <ul class="space-y-3">
+                @for (p of preguntas(); track p.id) {
+                    <li class="rounded-xl shadow-md p-4" style="background-color: var(--base-200);">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0 flex-1">
+                                <p class="font-medium break-words" style="color: var(--base-content);">{{ p.enunciado }}</p>
+                                @if (p.imagenUrl) {
+                                    <img [src]="imageUrl(p.imagenUrl)" alt="Imagen de la pregunta"
+                                         class="rounded-lg max-w-[150px] max-h-[100px] object-cover mt-2" />
+                                }
+                                <ul class="mt-2 text-sm space-y-1">
+                                    @for (r of p.respuestas; track $index) {
+                                        <li [style.color]="r.esCorrecta ? 'var(--success)' : 'var(--base-content)'"
+                                            [style.opacity]="r.esCorrecta ? 1 : 0.7">
+                                            {{ r.esCorrecta ? '✔' : '•' }} {{ r.texto }}
+                                        </li>
+                                    }
+                                </ul>
+                                @if (p.etiquetas.length > 0) {
+                                    <div class="flex flex-wrap gap-1 mt-2">
+                                        @for (t of p.etiquetas; track t) {
+                                            <button type="button" class="badge badge-sm badge-outline cursor-pointer" (click)="elegirEtiqueta(t)">{{ t }}</button>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            <div class="flex flex-col gap-1 shrink-0">
+                                <button type="button" class="btn btn-ghost btn-xs" (click)="editar(p)">Editar</button>
+                                <button type="button" class="btn btn-ghost btn-xs" style="color: var(--error);" (click)="eliminar(p)">Eliminar</button>
+                            </div>
+                        </div>
+                    </li>
+                }
+            </ul>
+
+            @if (totalPaginas > 1) {
+                <div class="flex items-center justify-center gap-3 mt-6">
+                    <button type="button" class="btn btn-sm" [disabled]="pagina() === 1" (click)="irAPagina(pagina() - 1)">Anterior</button>
+                    <span class="text-sm">Página {{ pagina() }} de {{ totalPaginas }}</span>
+                    <button type="button" class="btn btn-sm" [disabled]="pagina() === totalPaginas" (click)="irAPagina(pagina() + 1)">Siguiente</button>
+                </div>
+            }
+        }
+    </div>
+</section>

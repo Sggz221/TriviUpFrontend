@@ -93,6 +93,21 @@ export class QuizDetailComponent implements OnInit {
         return pregunta.respuestas.find(r => r.esCorrecta);
     }
 
+    /** Título de la fase si la pregunta abre una (null si sigue en la misma fase o el cuestionario no tiene fases). */
+    cabeceraFase(index: number): string | null {
+        const preguntas = this.cuestionario()?.preguntas ?? [];
+        const actual = preguntas[index];
+        if (!actual) return null;
+
+        const fase = actual.faseNumero ?? 1;
+        if (index > 0 && (preguntas[index - 1].faseNumero ?? 1) === fase) return null;
+
+        const hayVariasFases = new Set(preguntas.map(p => p.faseNumero ?? 1)).size > 1;
+        if (!hayVariasFases && !actual.faseNombre) return null;
+
+        return actual.faseNombre ? `Fase ${fase} · ${actual.faseNombre}` : `Fase ${fase}`;
+    }
+
     obtenerLetraRespuesta(index: number): string {
         return String.fromCharCode(65 + index); // A, B, C, D...
     }

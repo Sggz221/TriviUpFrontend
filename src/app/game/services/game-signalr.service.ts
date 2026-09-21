@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState } from '../models/game.models';
+import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo } from '../models/game.models';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 import { AuthService } from '../../auth/auth.service';
 
@@ -63,6 +63,7 @@ export class GameSignalrService {
     private gamePaused$ = new Subject<{ roomCode: string }>();
     private gameResumed$ = new Subject<{ roomCode: string; timeRemaining: number }>();
     private error$ = new Subject<{ code: string; message: string }>();
+    private phaseCompleted$ = new Subject<PhaseCompletedDto>();
 
     // State signals
     isConnected = signal(false);
@@ -76,6 +77,10 @@ export class GameSignalrService {
     quizTitle = signal<string>('');
     gameResults = signal<GameResult | null>(null);
     isPaused = signal<boolean>(false);
+    /** Fase en curso; null si la partida no tiene fases. */
+    currentPhase = signal<PhaseInfo | null>(null);
+    /** Intermedio entre fases pendiente de que el anfitrión continúe. */
+    phaseBreak = signal<PhaseCompletedDto | null>(null);
     isOwner = signal<boolean>(false);
     players = signal<Player[]>([]);
     currentUserId = signal<number | null>(null);
@@ -99,6 +104,7 @@ export class GameSignalrService {
     onGamePaused = this.gamePaused$.asObservable();
     onGameResumed = this.gameResumed$.asObservable();
     onError = this.error$.asObservable();
+    onPhaseCompleted = this.phaseCompleted$.asObservable();
 
     /**
      * Connect with JWT authentication (for logged-in users)
@@ -299,7 +305,16 @@ export class GameSignalrService {
             this.currentTurnPlayerId.set(data.currentPlayerId);
             this.isMyTurn.set(data.isMyTurn);
             this.timeRemaining.set(data.timeLimit);
+            this.phaseBreak.set(null);
+            this.currentPhase.set(data.totalFases && data.totalFases > 1
+                ? { numero: data.faseNumero ?? 1, nombre: data.faseNombre ?? null, total: data.totalFases }
+                : null);
             this.turnStarted$.next(data);
+        });
+        this.hubConnection.on('PhaseCompleted', (data: PhaseCompletedDto) => {
+            console.log('[GameSignalr] Event: PhaseCompleted', data);
+            this.phaseBreak.set(data);
+            this.phaseCompleted$.next(data);
         });
         this.hubConnection.on('TurnTimeout', (data: { playerId: number }) => {
             console.log('[GameSignalr] Event: TurnTimeout', data);
@@ -422,6 +437,14 @@ export class GameSignalrService {
     }
 
     /**
+     * Continue to the next phase from the intermission (requires owner)
+     */
+    async continuePhase(roomCode: string): Promise<void> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        return this.hubConnection.invoke('ContinuePhase', roomCode);
+    }
+
+    /**
      * Pause the game (requires owner)
      */
     async pauseGame(roomCode: string): Promise<void> {
@@ -473,6 +496,8 @@ export class GameSignalrService {
         this.isMyTurn.set(false);
         this.gameResults.set(null);
         this.isPaused.set(false);
+        this.currentPhase.set(null);
+        this.phaseBreak.set(null);
         this.players.set([]);
         this.currentUserId.set(null);
         this.currentUsername.set(null);

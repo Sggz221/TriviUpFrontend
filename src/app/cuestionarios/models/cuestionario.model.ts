@@ -12,6 +12,10 @@ export interface Pregunta {
     numeroPregunta: number;
     enunciado: string;
     respuestas: Respuesta[];
+    /** Fase (bloque) a la que pertenece, empezando en 1. */
+    faseNumero?: number;
+    /** Nombre libre de la fase (ronda, categoría, dificultad...). */
+    faseNombre?: string | null;
     imagenUrl?: string | null;
 }
 
@@ -40,6 +44,8 @@ export interface CreateQuizRequest {
         enunciado: string;
         respuestas: { texto: string; esCorrecta: boolean }[];
         imagenUrl?: string;
+        faseNumero: number;
+        faseNombre?: string;
     }[];
 }
 
@@ -50,4 +56,37 @@ export interface QuizVersion {
     estado: 'Publicada' | 'Borrador' | 'Archivada';
     nombre: string;
     fecha: string;
+}
+
+export interface BancoRespuesta {
+    texto: string;
+    esCorrecta: boolean;
+}
+
+/** Pregunta guardada en el banco personal (no pertenece a ningún cuestionario). */
+export interface BancoPregunta {
+    id: number;
+    enunciado: string;
+    imagenUrl?: string | null;
+    respuestas: BancoRespuesta[];
+    etiquetas: string[];
+    fechaCreacion: string;
+    fechaActualizacion: string;
+}
+
+export interface BancoPreguntaRequest {
+    enunciado: string;
+    imagenUrl?: string | null;
+    respuestas: BancoRespuesta[];
+    etiquetas: string[];
+}
+
+export interface BancoPreguntaLista {
+    preguntas: BancoPregunta[];
+    totalCount: number;
+}
+
+export interface EtiquetaCount {
+    etiqueta: string;
+    total: number;
 }

@@ -3,7 +3,9 @@ import { CommonModule, Location } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CuestionarioService } from '../../services/cuestionario.service';
-import { Cuestionario, CreateQuizRequest, QuizVersion } from '../../models/cuestionario.model';
+import { Cuestionario, CreateQuizRequest, QuizVersion, BancoPregunta } from '../../models/cuestionario.model';
+import { BancoPreguntasService } from '../../services/banco-preguntas.service';
+import { BancoPickerComponent } from '../banco-picker/banco-picker';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 
@@ -12,7 +14,11 @@ interface RespuestaFormValue {
     esCorrecta: boolean;
 }
 
+/** Elemento de la lista del builder: una pregunta o un separador de fase. */
 interface PreguntaFormValue {
+    tipo: 'pregunta' | 'separador';
+    /** Nombre de la fase (solo separadores). */
+    nombre?: string;
     enunciado: string;
     respuestas: RespuestaFormValue[];
     imagenUrl?: string;
@@ -21,7 +27,7 @@ interface PreguntaFormValue {
 @Component({
     selector: 'app-quiz-form',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, RouterLink, AnswerShapeComponent],
+    imports: [CommonModule, ReactiveFormsModule, RouterLink, AnswerShapeComponent, BancoPickerComponent],
     templateUrl: './quiz-form.html',
     styleUrls: ['./quiz-form.css']
 })
@@ -32,6 +38,7 @@ export class QuizFormComponent {
     private route = inject(ActivatedRoute);
     private location = inject(Location);
     private destroyRef = inject(DestroyRef);
+    private bancoService = inject(BancoPreguntasService);
 
     /** Intervalo de autoguardado del borrador (5 min). */
     private static readonly AUTOSAVE_MS = 5 * 60 * 1000;
@@ -57,9 +64,15 @@ export class QuizFormComponent {
     errorMessage = signal<string | null>(null);
     successMessage = signal<string | null>(null);
 
-    // Track image uploads per question
-    questionImages = signal<Map<number, { uploading: boolean; url: string | null; preview: string | null }>>(new Map());
-    uploadingQuestionIndex = signal<number | null>(null);
+    /** Atajos para nombrar una fase con la taxonomía que se prefiera (solo rellenan el nombre). */
+    readonly presetsFase = ['Ronda', 'Categoría: ', 'Dificultad: '];
+
+    /** Panel para añadir preguntas desde el banco personal. */
+    mostrarBanco = signal(false);
+
+    // Estado de las imágenes por pregunta. La clave es el control (no el índice) para que
+    // insertar, mover o borrar elementos de la lista no desincronice las imágenes.
+    questionImages = signal<Map<AbstractControl, { uploading: boolean; url: string | null; preview: string | null }>>(new Map());
 
     quizForm: FormGroup;
 
@@ -175,25 +188,34 @@ export class QuizFormComponent {
     private rellenarFormulario(quiz: Cuestionario): void {
         this.quizForm.patchValue({ nombre: quiz.nombre, esPublico: quiz.esPublico ?? false });
         this.preguntasArray.clear();
-        const images = new Map<number, { uploading: boolean; url: string | null; preview: string | null }>();
+        const images = new Map<AbstractControl, { uploading: boolean; url: string | null; preview: string | null }>();
 
-        [...quiz.preguntas]
-            .sort((a, b) => a.numeroPregunta - b.numeroPregunta)
-            .forEach((p, index) => {
-                this.preguntasArray.push(this.fb.group({
-                    enunciado: [p.enunciado, Validators.required],
-                    respuestas: this.fb.array(p.respuestas.map(r => this.fb.group({
-                        texto: [r.texto, Validators.required],
-                        esCorrecta: [r.esCorrecta]
-                    }))),
-                    imagenUrl: [p.imagenUrl ?? null]
-                }));
-                if (p.imagenUrl) {
-                    images.set(index, { uploading: false, url: imageUrl(p.imagenUrl), preview: null });
+        const ordenadas = [...quiz.preguntas].sort((a, b) => a.numeroPregunta - b.numeroPregunta);
+        // Con una sola fase sin nombre no hace falta separador; en el resto, uno antes de cada fase
+        const hayVariasFases = new Set(ordenadas.map(p => p.faseNumero ?? 1)).size > 1;
+        let faseAnterior: number | null = null;
+
+        ordenadas.forEach((p) => {
+            const fase = p.faseNumero ?? 1;
+            if (fase !== faseAnterior) {
+                if (hayVariasFases || p.faseNombre) {
+                    this.preguntasArray.push(this.crearSeparador(p.faseNombre ?? ''));
                 }
-            });
+                faseAnterior = fase;
+            }
 
-        if (this.preguntasArray.length === 0) {
+            const grupo = this.crearPregunta({
+                enunciado: p.enunciado,
+                respuestas: p.respuestas,
+                imagenUrl: p.imagenUrl ?? null
+            });
+            this.preguntasArray.push(grupo);
+            if (p.imagenUrl) {
+                images.set(grupo, { uploading: false, url: imageUrl(p.imagenUrl), preview: null });
+            }
+        });
+
+        if (this.cantidadPreguntas === 0) {
             this.agregarPregunta();
         }
         this.questionImages.set(images);
@@ -204,22 +226,158 @@ export class QuizFormComponent {
         return this.quizForm.get('preguntas') as FormArray;
     }
 
-    agregarPregunta(): void {
-        const preguntaGroup = this.fb.group({
-            enunciado: ['', Validators.required],
-            respuestas: this.fb.array([
-                this.fb.group({ texto: ['', Validators.required], esCorrecta: [false] }),
-                this.fb.group({ texto: ['', Validators.required], esCorrecta: [false] })
-            ]),
-            imagenUrl: [null as string | null]
+    private crearPregunta(datos?: {
+        enunciado: string;
+        respuestas: { texto: string; esCorrecta: boolean }[];
+        imagenUrl?: string | null;
+    }): FormGroup {
+        const respuestas = datos?.respuestas ?? [
+            { texto: '', esCorrecta: false },
+            { texto: '', esCorrecta: false }
+        ];
+        return this.fb.group({
+            tipo: ['pregunta'],
+            enunciado: [datos?.enunciado ?? '', Validators.required],
+            respuestas: this.fb.array(respuestas.map(r => this.fb.group({
+                texto: [r.texto, Validators.required],
+                esCorrecta: [r.esCorrecta]
+            }))),
+            imagenUrl: [(datos?.imagenUrl ?? null) as string | null]
         });
-        this.preguntasArray.push(preguntaGroup);
     }
 
+    private crearSeparador(nombre = ''): FormGroup {
+        return this.fb.group({
+            tipo: ['separador'],
+            nombre: [nombre]
+        });
+    }
+
+    agregarPregunta(): void {
+        this.preguntasArray.push(this.crearPregunta());
+    }
+
+    /** Añade un separador de fase al final; las preguntas que se añadan después pertenecen a la nueva fase. */
+    agregarSeparador(): void {
+        this.preguntasArray.push(this.crearSeparador());
+        this.quizForm.markAsDirty();
+    }
+
+    esSeparador(control: AbstractControl): boolean {
+        return control.get('tipo')?.value === 'separador';
+    }
+
+    /** Número de preguntas (sin contar separadores). */
+    get cantidadPreguntas(): number {
+        return this.preguntasArray.controls.filter(c => !this.esSeparador(c)).length;
+    }
+
+    /** Elimina una pregunta (siempre debe quedar al menos una) o un separador. */
     eliminarPregunta(index: number): void {
-        if (this.preguntasArray.length > 1) {
-            this.preguntasArray.removeAt(index);
+        const control = this.preguntasArray.at(index);
+        if (!this.esSeparador(control) && this.cantidadPreguntas <= 1) return;
+
+        this.preguntasArray.removeAt(index);
+        const images = new Map(this.questionImages());
+        images.delete(control);
+        this.questionImages.set(images);
+        this.quizForm.markAsDirty();
+    }
+
+    puedeEliminar(index: number): boolean {
+        return this.esSeparador(this.preguntasArray.at(index)) || this.cantidadPreguntas > 1;
+    }
+
+    /** Sube (-1) o baja (+1) un elemento; mover una pregunta al otro lado de un separador la cambia de fase. */
+    moverElemento(index: number, delta: -1 | 1): void {
+        const destino = index + delta;
+        if (destino < 0 || destino >= this.preguntasArray.length) return;
+
+        const control = this.preguntasArray.at(index);
+        this.preguntasArray.removeAt(index);
+        this.preguntasArray.insert(destino, control);
+        this.quizForm.markAsDirty();
+    }
+
+    /** Aplica un atajo de taxonomía al nombre del separador ("Ronda" pasa a "Ronda 2" según su posición). */
+    aplicarPresetFase(index: number, preset: string): void {
+        const numeroSeparador = this.preguntasArray.controls
+            .slice(0, index + 1)
+            .filter(c => this.esSeparador(c)).length;
+        const nombre = preset === 'Ronda' ? `Ronda ${numeroSeparador}` : preset;
+        this.preguntasArray.at(index).patchValue({ nombre });
+        this.quizForm.markAsDirty();
+    }
+
+    // ===== Banco de preguntas =====
+
+    toggleBanco(): void {
+        this.mostrarBanco.update(v => !v);
+    }
+
+    /** Copia al final del cuestionario las preguntas elegidas en el banco (no quedan enlazadas). */
+    agregarDesdeBanco(preguntas: BancoPregunta[]): void {
+        const images = new Map(this.questionImages());
+
+        // Si el formulario solo tiene la pregunta vacía inicial, se sustituye
+        if (this.preguntasArray.length === 1 && this.preguntaVacia(this.preguntasArray.at(0))) {
+            this.preguntasArray.clear();
         }
+
+        for (const p of preguntas) {
+            const grupo = this.crearPregunta({
+                enunciado: p.enunciado,
+                respuestas: p.respuestas,
+                imagenUrl: p.imagenUrl ?? null
+            });
+            this.preguntasArray.push(grupo);
+            if (p.imagenUrl) {
+                images.set(grupo, { uploading: false, url: imageUrl(p.imagenUrl), preview: null });
+            }
+        }
+
+        this.questionImages.set(images);
+        this.quizForm.markAsDirty();
+        this.mostrarBanco.set(false);
+        this.successMessage.set(`${preguntas.length} pregunta(s) añadida(s) desde el banco.`);
+        setTimeout(() => this.successMessage.set(null), 3000);
+    }
+
+    private preguntaVacia(control: AbstractControl): boolean {
+        if (this.esSeparador(control)) return false;
+        const respuestas = control.get('respuestas') as FormArray;
+        return !control.get('enunciado')?.value?.trim() &&
+            respuestas.controls.every(r => !r.get('texto')?.value?.trim());
+    }
+
+    /** Guarda una copia de la pregunta en el banco personal, con etiquetas separadas por comas. */
+    guardarEnBanco(index: number): void {
+        const control = this.preguntasArray.at(index);
+        const enunciado = (control.get('enunciado')?.value ?? '').trim();
+        const respuestas = (control.get('respuestas') as FormArray).value as RespuestaFormValue[];
+
+        if (!enunciado || respuestas.length < 2 || respuestas.some(r => !r.texto?.trim()) ||
+            respuestas.filter(r => r.esCorrecta).length !== 1) {
+            this.errorMessage.set('Completa la pregunta (enunciado, respuestas y una correcta) antes de guardarla en el banco.');
+            return;
+        }
+
+        const entrada = prompt('Etiquetas para esta pregunta (separadas por comas, opcional):', '');
+        if (entrada === null) return;
+
+        this.errorMessage.set(null);
+        this.bancoService.crear({
+            enunciado,
+            imagenUrl: control.get('imagenUrl')?.value || null,
+            respuestas: respuestas.map(r => ({ texto: r.texto.trim(), esCorrecta: !!r.esCorrecta })),
+            etiquetas: entrada.split(',').map(e => e.trim()).filter(e => e.length > 0)
+        }).subscribe({
+            next: () => {
+                this.successMessage.set('Pregunta guardada en tu banco.');
+                setTimeout(() => this.successMessage.set(null), 3000);
+            },
+            error: (err) => this.errorMessage.set(err.error?.message || 'No se pudo guardar la pregunta en el banco.')
+        });
     }
 
     agregarRespuesta(preguntaIndex: number): void {
@@ -318,8 +476,9 @@ export class QuizFormComponent {
         return respuestas.at(respuestaIndex).get('esCorrecta')?.value === true;
     }
 
+    /** Número de la pregunta en el cuestionario (los separadores no cuentan). */
     obtenerNumeroPregunta(index: number): number {
-        return index + 1;
+        return this.preguntasArray.controls.slice(0, index + 1).filter(c => !this.esSeparador(c)).length;
     }
 
     obtenerNumeroRespuesta(preguntaIndex: number, index: number): string {
@@ -338,6 +497,7 @@ export class QuizFormComponent {
 
     // Image handling
     onImageSelected(event: Event, preguntaIndex: number): void {
+        const control = this.preguntasArray.at(preguntaIndex);
         const input = event.target as HTMLInputElement;
         const file = input.files?.[0];
         if (!file) return;
@@ -360,27 +520,24 @@ export class QuizFormComponent {
 
             // Update local state with preview
             const newMap = new Map(this.questionImages());
-            newMap.set(preguntaIndex, { uploading: true, url: null, preview });
+            newMap.set(control, { uploading: true, url: null, preview });
             this.questionImages.set(newMap);
-            this.uploadingQuestionIndex.set(preguntaIndex);
 
             // Upload immediately
             this.cuestionarioService.subirImagenPregunta(file).subscribe({
                 next: (response) => {
                     const updatedMap = new Map(this.questionImages());
-                    updatedMap.set(preguntaIndex, { uploading: false, url: imageUrl(response.path), preview: null });
+                    updatedMap.set(control, { uploading: false, url: imageUrl(response.path), preview: null });
                     this.questionImages.set(updatedMap);
-                    this.uploadingQuestionIndex.set(null);
 
                     // Store the path (relative URL) in the form
-                    this.preguntasArray.at(preguntaIndex).patchValue({ imagenUrl: response.path });
+                    control.patchValue({ imagenUrl: response.path });
                     this.quizForm.markAsDirty();
                 },
                 error: (err) => {
                     const updatedMap = new Map(this.questionImages());
-                    updatedMap.delete(preguntaIndex);
+                    updatedMap.delete(control);
                     this.questionImages.set(updatedMap);
-                    this.uploadingQuestionIndex.set(null);
                     this.errorMessage.set('No se pudo subir la imagen. Inténtalo de nuevo.');
                 }
             });
@@ -389,18 +546,19 @@ export class QuizFormComponent {
     }
 
     removeImage(preguntaIndex: number): void {
+        const control = this.preguntasArray.at(preguntaIndex);
         const newMap = new Map(this.questionImages());
-        newMap.delete(preguntaIndex);
+        newMap.delete(control);
         this.questionImages.set(newMap);
-        this.preguntasArray.at(preguntaIndex).patchValue({ imagenUrl: null });
+        control.patchValue({ imagenUrl: null });
     }
 
     getQuestionImageData(preguntaIndex: number) {
-        return this.questionImages().get(preguntaIndex);
+        return this.questionImages().get(this.preguntasArray.at(preguntaIndex));
     }
 
     isUploadingImageFor(preguntaIndex: number): boolean {
-        return this.uploadingQuestionIndex() === preguntaIndex;
+        return this.questionImages().get(this.preguntasArray.at(preguntaIndex))?.uploading === true;
     }
 
     validarFormulario(): boolean {
@@ -411,7 +569,7 @@ export class QuizFormComponent {
             return false;
         }
 
-        if (this.preguntasArray.length === 0) {
+        if (this.cantidadPreguntas === 0) {
             this.errorMessage.set('Agrega al menos una pregunta.');
             return false;
         }
@@ -419,16 +577,31 @@ export class QuizFormComponent {
         // Validate each question has at least 2 answers and one correct
         for (let i = 0; i < this.preguntasArray.length; i++) {
             const pregunta = this.preguntasArray.at(i);
+            if (this.esSeparador(pregunta)) continue;
+
+            const numero = this.obtenerNumeroPregunta(i);
             const respuestas = pregunta.get('respuestas') as FormArray;
-            
+
             if (respuestas.length < 2) {
-                this.errorMessage.set(`La pregunta ${i + 1} debe tener al menos 2 respuestas.`);
+                this.errorMessage.set(`La pregunta ${numero} debe tener al menos 2 respuestas.`);
                 return false;
             }
 
             const tieneCorrecta = respuestas.controls.some((r: AbstractControl) => r.get('esCorrecta')?.value === true);
             if (!tieneCorrecta) {
-                this.errorMessage.set(`La pregunta ${i + 1} debe tener una respuesta correcta marcada.`);
+                this.errorMessage.set(`La pregunta ${numero} debe tener una respuesta correcta marcada.`);
+                return false;
+            }
+        }
+
+        // Una fase sin preguntas (dos separadores seguidos, o uno al final) no se puede publicar
+        const controles = this.preguntasArray.controls;
+        for (let i = 0; i < controles.length; i++) {
+            if (!this.esSeparador(controles[i])) continue;
+            const siguiente = controles[i + 1];
+            if (!siguiente || this.esSeparador(siguiente)) {
+                const nombre = (controles[i].get('nombre')?.value ?? '').trim();
+                this.errorMessage.set(`La fase${nombre ? ' "' + nombre + '"' : ''} no tiene preguntas. Añade alguna o quita el separador.`);
                 return false;
             }
         }
@@ -449,16 +622,46 @@ export class QuizFormComponent {
             nombre: nombre || 'Borrador sin título',
             esPublico: formValue.esPublico ?? false,
             esBorrador,
-            preguntas: formValue.preguntas.map((pregunta: PreguntaFormValue, index: number) => ({
-                numeroPregunta: index + 1,
-                enunciado: pregunta.enunciado ?? '',
-                respuestas: pregunta.respuestas.map((r: RespuestaFormValue) => ({
+            preguntas: this.aplanarPreguntas(formValue.preguntas)
+        };
+    }
+
+    /**
+     * Recorre la lista del builder: cada separador abre una fase nueva (un separador inicial solo
+     * nombra la primera) y todas las preguntas hasta el siguiente separador la comparten.
+     * Los separadores sin preguntas detrás no generan fase, para que la numeración sea consecutiva.
+     */
+    private aplanarPreguntas(items: PreguntaFormValue[]): CreateQuizRequest['preguntas'] {
+        const resultado: CreateQuizRequest['preguntas'] = [];
+        let fase = 1;
+        let faseNombre: string | undefined;
+        let preguntasEnFase = 0;
+
+        for (const item of items) {
+            if (item.tipo === 'separador') {
+                if (preguntasEnFase > 0) {
+                    fase++;
+                    preguntasEnFase = 0;
+                }
+                faseNombre = (item.nombre ?? '').trim() || undefined;
+                continue;
+            }
+
+            preguntasEnFase++;
+            resultado.push({
+                numeroPregunta: resultado.length + 1,
+                faseNumero: fase,
+                faseNombre,
+                enunciado: item.enunciado ?? '',
+                respuestas: item.respuestas.map((r: RespuestaFormValue) => ({
                     texto: r.texto ?? '',
                     esCorrecta: !!r.esCorrecta
                 })),
-                imagenUrl: pregunta.imagenUrl || undefined
-            }))
-        };
+                imagenUrl: item.imagenUrl || undefined
+            });
+        }
+
+        return resultado;
     }
 
     private guardar(request: CreateQuizRequest) {

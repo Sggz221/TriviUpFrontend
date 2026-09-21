@@ -88,6 +88,27 @@
                 </div>
             </div>
         </div>
+    } @else if (phaseBreak()) {
+        <!-- Intermedio entre fases -->
+        <div class="game-results">
+            <div class="results-panel">
+                <app-game-scoreboard
+                    [playerResults]="phaseBreakResults()"
+                    [headline]="'Fase ' + phaseBreak()!.faseNumero + ' de ' + phaseBreak()!.totalFases + ' completada' + (phaseBreak()!.faseNombre ? ': ' + phaseBreak()!.faseNombre : '')"
+                    [quizTitle]="phaseBreak()!.siguienteFaseNombre ? 'Siguiente: ' + phaseBreak()!.siguienteFaseNombre : ''"
+                />
+
+                <div class="results-actions">
+                    @if (isOwner()) {
+                        <button class="btn btn-primary results-leave-btn" [disabled]="isContinuing()" (click)="onContinuePhase()">
+                            {{ isContinuing() ? 'Continuando...' : 'Continuar con la siguiente fase' }}
+                        </button>
+                    } @else {
+                        <p class="opacity-70">Esperando a que el anfitrión continúe...</p>
+                    }
+                </div>
+            </div>
+        </div>
     } @else if (currentQuestion()) {
         <!-- Game Playing -->
         <div class="game-board">
@@ -119,6 +140,12 @@
                         </svg>
                     }
                 </button>
+            }
+
+            @if (phase()) {
+                <div class="phase-badge" aria-label="Fase actual">
+                    Fase {{ phase()!.numero }}/{{ phase()!.total }}@if (phase()!.nombre) { · {{ phase()!.nombre }}}
+                </div>
             }
 
             <div class="question-card">
