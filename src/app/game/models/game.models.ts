@@ -1,5 +1,8 @@
 export type GameState = 'Waiting' | 'Starting' | 'Playing' | 'Finished';
 
+/** Presencial: el anfitrión marca y confirma las respuestas; los jugadores solo usan comodines. */
+export type GameMode = 'Normal' | 'Presencial';
+
 export interface Player {
     userId: number;
     username: string;
@@ -58,6 +61,7 @@ export interface GameStateDto {
     players: Player[];
     currentQuestionIndex: number;
     totalQuestions: number;
+    mode?: GameMode;
 }
 
 export interface TurnStartedDto {
@@ -76,6 +80,21 @@ export interface TurnStartedDto {
     doubleOrNothingPlayers?: number[] | null;
     bets?: Bet[] | null;
     stolenById?: number | null;
+    mode?: GameMode;
+    /** Presencial: opción marcada por el anfitrión y aún sin confirmar. */
+    markedAnswerIndex?: number | null;
+}
+
+/** Presencial: el anfitrión marcó (o desmarcó, con null) una opción. */
+export interface AnswerMarkedDto {
+    questionId: number;
+    answerIndex: number | null;
+}
+
+/** Presencial: respuesta correcta de la pregunta en curso (solo le llega al anfitrión). */
+export interface HostQuestionInfoDto {
+    questionId: number;
+    correctAnswerIndex: number;
 }
 
 /** Fase en curso (solo se muestra cuando la partida tiene más de una). */
@@ -107,6 +126,7 @@ export interface GameLobbyState {
     isOwner: boolean;
     myUserId: number;
     myUsername: string;
+    mode?: GameMode;
 }
 
 export type ComodinTipo = 'Ruleta' | 'DobleONada' | 'Robo' | 'Apuesta';

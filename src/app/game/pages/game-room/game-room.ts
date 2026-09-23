@@ -50,6 +50,10 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     currentTurnPlayerId = signal<number | null>(null);
     selectedAnswer = signal<number | null>(null);
     showTurnResult = signal<boolean>(false);
+    /** Capa grande de "¡Correcto!/Incorrecto"; en presencial se quita sola para ver la correcta en el tablero. */
+    showResultOverlay = signal<boolean>(false);
+    private resultOverlayTimeout: ReturnType<typeof setTimeout> | null = null;
+    private static readonly PRESENCIAL_OVERLAY_MS = 2500;
     lastTurnResult = signal<TurnResult | null>(null);
     gameResults = signal<GameResult | null>(null);
     isMuted = signal<boolean>(false);
@@ -94,12 +98,26 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     static readonly RULETA_HUECOS = [1, 2, 0, 1, 2, 1, 2, 3, 1, 2, 1, 2, 0, 1, 2, 1, 2, 3, 1, 2];
     readonly ruletaSegmentos = GameRoomComponent.buildRuletaSegmentos();
 
+    // ---- Modo presencial: el anfitrión marca y confirma; selectedAnswer es la opción marcada ----
+    isPresencial = computed(() => this.gameSignalrService.gameMode() === 'Presencial');
+    /** El anfitrión de una partida presencial, que es quien responde por los jugadores. */
+    isHostMarking = computed(() => this.isPresencial() && this.isOwner());
+    /** Respuesta correcta de la pregunta en curso (solo la conoce el anfitrión en presencial). */
+    hostCorrectIndex = computed(() => {
+        const info = this.gameSignalrService.hostQuestionInfo();
+        return this.isHostMarking() && info && info.questionId === this.currentQuestion()?.id ? info.correctAnswerIndex : null;
+    });
+    isConfirming = signal<boolean>(false);
+    isAdvancing = signal<boolean>(false);
+
     private me = computed(() => this.players().find(p => p.userId === this.myUserId()));
     myComodines = computed<ComodinTipo[]>(() => this.me()?.availableComodines ?? []);
     /** Jugador (no anfitrión ni espectador) con una pregunta activa y sin pausa ni resultado en pantalla. */
     canUseComodines = computed(() =>
         !!this.me() && !this.isOwner() && !this.isSpectator() && !!this.currentQuestion()
-        && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak() && this.selectedAnswer() === null);
+        && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak()
+        // En presencial la marca del anfitrión no bloquea: solo confirmar cierra la pregunta.
+        && (this.isPresencial() || this.selectedAnswer() === null));
     private iBet = computed(() => this.bets().some(b => b.userId === this.myUserId()));
     canUseRuleta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('Ruleta') && !this.ruletaSpin());
     canUseDobleONada = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('DobleONada')
@@ -189,6 +207,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.activityTimer) clearInterval(this.activityTimer);
         if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
         if (this.phaseBannerTimeout) clearTimeout(this.phaseBannerTimeout);
+        if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
         this.ruletaTimeouts.forEach(t => clearTimeout(t));
         // DON'T call leaveGame() or disconnect() here
@@ -319,7 +338,15 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                     this.isPaused.set(this.gameSignalrService.isPaused());
                     this.phase.set(this.gameSignalrService.currentPhase());
                     const lastTurn = this.gameSignalrService.lastTurnStarted();
-                    if (lastTurn) this.applyTurnState(lastTurn);
+                    if (lastTurn) {
+                        this.applyTurnState(lastTurn);
+                        this.selectedAnswer.set(lastTurn.markedAnswerIndex ?? null);
+                    }
+                    const pendingResult = this.gameSignalrService.pendingTurnResult();
+                    if (pendingResult) {
+                        this.lastTurnResult.set(pendingResult);
+                        this.showTurnResult.set(true);
+                    }
                     if (this.isMyTurn() && !this.isPaused()) {
                         this.startLocalTimer(this.gameSignalrService.timeRemaining());
                     }
@@ -520,8 +547,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.isMyTurn.set(isMyTurn);
             this.gameState.set('playing');
             this.isPaused.set(false);
-            this.selectedAnswer.set(null);
+            // Presencial: la marca del anfitrión (p. ej. al reconectar); en modo normal siempre null.
+            this.selectedAnswer.set(data.markedAnswerIndex ?? null);
             this.showTurnResult.set(false);
+            this.hideResultOverlay();
+            this.isConfirming.set(false);
+            this.isAdvancing.set(false);
             this.turnTimeLimit.set(data.timeLimit);
             this.phaseBreak.set(null);
             this.isContinuing.set(false);
@@ -567,6 +598,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             console.log('[GameRoom] Turn result:', result);
             this.lastTurnResult.set(result);
             this.showTurnResult.set(true);
+            this.showResultOverlay.set(true);
+            if (this.isPresencial()) {
+                // El resultado sigue en el tablero (correcta en verde) hasta que el anfitrión pasa de pregunta.
+                if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
+                this.resultOverlayTimeout = setTimeout(() => this.showResultOverlay.set(false), GameRoomComponent.PRESENCIAL_OVERLAY_MS);
+            }
             this.clearTimerInterval();
             if (result.isCorrect) {
                 this.audioService.playCorrect();
@@ -580,6 +617,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.gameSignalrService.onTurnTimeout.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             console.log('[GameRoom] Turn timeout for player:', data.playerId);
             this.applyTurnOutcome(data, true);
+        });
+
+        // Presencial: el anfitrión marca o desmarca una opción
+        this.gameSignalrService.onAnswerMarked.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+            if (data.questionId !== this.currentQuestion()?.id || this.showTurnResult()) return;
+            this.selectedAnswer.set(data.answerIndex);
         });
 
         // Comodín usado por cualquier jugador
@@ -685,6 +728,56 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 this.selectedAnswer.set(null);
                 this.showToast(this.hubErrorMessage(error, 'No se pudo enviar la respuesta'), 'error');
             });
+    }
+
+    onAnswerClick(answerIndex: number): void {
+        if (this.isHostMarking()) {
+            this.markAnswer(answerIndex);
+        } else {
+            this.submitAnswer(answerIndex);
+        }
+    }
+
+    /** Presencial: el anfitrión marca la opción dicha en voz alta (otro clic en la misma la desmarca). */
+    private markAnswer(answerIndex: number): void {
+        const question = this.currentQuestion();
+        if (!question || this.isEliminated(answerIndex) || this.isConfirming()) return;
+        const previous = this.selectedAnswer();
+        const next = previous === answerIndex ? null : answerIndex;
+        this.selectedAnswer.set(next);
+        this.gameSignalrService.markAnswer(this.roomCode(), question.id, next).catch((error) => {
+            console.error('[GameRoom] Error al marcar la respuesta:', error);
+            this.selectedAnswer.set(previous);
+            this.showToast(this.hubErrorMessage(error, 'No se pudo marcar la respuesta'), 'error');
+        });
+    }
+
+    onConfirmAnswer(): void {
+        const question = this.currentQuestion();
+        if (!question || this.selectedAnswer() === null || this.isConfirming()) return;
+        this.isConfirming.set(true);
+        this.gameSignalrService.confirmAnswer(this.roomCode(), question.id)
+            .catch((error) => {
+                console.error('[GameRoom] Error al confirmar la respuesta:', error);
+                this.showToast(this.hubErrorMessage(error, 'No se pudo confirmar la respuesta'), 'error');
+            })
+            .finally(() => this.isConfirming.set(false));
+    }
+
+    onNextQuestion(): void {
+        if (this.isAdvancing()) return;
+        this.isAdvancing.set(true);
+        this.gameSignalrService.nextQuestion(this.roomCode()).catch((error) => {
+            console.error('[GameRoom] Error al pasar de pregunta:', error);
+            this.showToast(this.hubErrorMessage(error, 'No se pudo pasar a la siguiente pregunta'), 'error');
+            this.isAdvancing.set(false);
+        });
+    }
+
+    private hideResultOverlay(): void {
+        if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
+        this.resultOverlayTimeout = null;
+        this.showResultOverlay.set(false);
     }
 
     getCurrentTurnPlayerName(): string {

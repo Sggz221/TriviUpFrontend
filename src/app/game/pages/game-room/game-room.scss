@@ -490,6 +490,28 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
             }
         }
 
+        // Presencial: solo el anfitrión ve cuál es la correcta
+        &.host-correct {
+            outline: 3px dashed var(--success);
+            outline-offset: 3px;
+        }
+
+        .host-correct-badge {
+            position: absolute;
+            top: -0.7rem;
+            right: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.1rem 0.5rem;
+            border-radius: 999px;
+            background: var(--success);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+            pointer-events: none;
+        }
+
         &.selected {
             transform: scale(1.02);
             box-shadow: 0 0 0 4px var(--primary), 0 10px 30px rgba(225, 29, 72, 0.3);
@@ -550,6 +572,26 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
             word-wrap: break-word;
             overflow-wrap: break-word;
         }
+    }
+}
+
+// ============ Presencial: controles del anfitrión ============
+.host-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+
+    .btn {
+        min-width: min(100%, 16rem);
+    }
+
+    .host-controls-hint {
+        color: var(--base-content);
+        opacity: 0.7;
+        font-size: 0.9rem;
+        text-align: center;
     }
 }
 

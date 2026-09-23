@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto } from '../models/game.models';
+import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, HostQuestionInfoDto } from '../models/game.models';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 import { colorDeFase } from '../../cuestionarios/models/fase-color';
 import { AuthService } from '../../auth/auth.service';
@@ -66,6 +66,7 @@ export class GameSignalrService {
     private error$ = new Subject<{ code: string; message: string }>();
     private phaseCompleted$ = new Subject<PhaseCompletedDto>();
     private comodinUsed$ = new Subject<ComodinUsedDto>();
+    private answerMarked$ = new Subject<AnswerMarkedDto>();
 
     // State signals
     isConnected = signal(false);
@@ -87,6 +88,11 @@ export class GameSignalrService {
     players = signal<Player[]>([]);
     currentUserId = signal<number | null>(null);
     currentUsername = signal<string | null>(null);
+    gameMode = signal<GameMode>('Normal');
+    /** Presencial: respuesta correcta de la pregunta en curso (solo la recibe el anfitrión). */
+    hostQuestionInfo = signal<HostQuestionInfoDto | null>(null);
+    /** Resultado recibido y aún en pantalla (presencial: hasta que el anfitrión pasa de pregunta). */
+    pendingTurnResult = signal<TurnResult | null>(null);
 
     // Observable getters for components
     onGameCreated = this.gameCreated$.asObservable();
@@ -108,6 +114,7 @@ export class GameSignalrService {
     onError = this.error$.asObservable();
     onPhaseCompleted = this.phaseCompleted$.asObservable();
     onComodinUsed = this.comodinUsed$.asObservable();
+    onAnswerMarked = this.answerMarked$.asObservable();
     /** Último TurnStarted recibido (para recuperar robo/comodines si el componente se suscribe tarde). */
     lastTurnStarted = signal<TurnStartedDto | null>(null);
 
@@ -270,6 +277,7 @@ export class GameSignalrService {
             this.players.set(data.players || []);
             this.currentUserId.set(data.myUserId);
             this.currentUsername.set(data.myUsername);
+            this.gameMode.set(data.mode ?? 'Normal');
             this.gameCreated$.next(data);
         });
         this.hubConnection.on('PlayerJoined', (data: Player) => {
@@ -302,11 +310,14 @@ export class GameSignalrService {
         });
         this.hubConnection.on('GameStarted', (data: GameStateDto) => {
             console.log('[GameSignalr] Event: GameStarted', data);
+            this.gameMode.set(data.mode ?? 'Normal');
             this.gameStarted$.next(data);
         });
         this.hubConnection.on('TurnStarted', (data: TurnStartedDto) => {
             console.log('[GameSignalr] Event: TurnStarted', data);
             this.lastTurnStarted.set(data);
+            this.gameMode.set(data.mode ?? 'Normal');
+            this.pendingTurnResult.set(null);
             this.currentQuestion.set(data.question);
             this.currentTurnPlayerId.set(data.currentPlayerId);
             this.isMyTurn.set(data.isMyTurn);
@@ -323,6 +334,15 @@ export class GameSignalrService {
                 p.userId === data.userId ? { ...p, availableComodines: data.availableComodines } : p));
             this.comodinUsed$.next(data);
         });
+        this.hubConnection.on('AnswerMarked', (data: AnswerMarkedDto) => {
+            console.log('[GameSignalr] Event: AnswerMarked', data);
+            this.lastTurnStarted.update(t => t && t.question.id === data.questionId ? { ...t, markedAnswerIndex: data.answerIndex } : t);
+            this.answerMarked$.next(data);
+        });
+        this.hubConnection.on('HostQuestionInfo', (data: HostQuestionInfoDto) => {
+            console.log('[GameSignalr] Event: HostQuestionInfo', data);
+            this.hostQuestionInfo.set(data);
+        });
         this.hubConnection.on('PhaseCompleted', (data: PhaseCompletedDto) => {
             console.log('[GameSignalr] Event: PhaseCompleted', data);
             this.phaseBreak.set(data);
@@ -338,6 +358,7 @@ export class GameSignalrService {
         });
         this.hubConnection.on('TurnResult', (data: TurnResult) => {
             console.log('[GameSignalr] Event: TurnResult', data);
+            this.pendingTurnResult.set(data);
             this.turnResult$.next(data);
         });
         this.hubConnection.on('PlayerScoresUpdated', (data: Player[]) => {
@@ -378,9 +399,10 @@ export class GameSignalrService {
     /**
      * Create a new game room (requires authenticated user)
      */
-    async createGame(quizId: number, turnTimeLimitSeconds: number | null = null): Promise<string> {
+    async createGame(quizId: number, turnTimeLimitSeconds: number | null = null, mode: GameMode = 'Normal'): Promise<string> {
         if (!this.hubConnection) throw new Error('Hub not connected');
-        const roomCode = await this.hubConnection.invoke<string>('CreateGame', quizId, turnTimeLimitSeconds);
+        const roomCode = await this.hubConnection.invoke<string>('CreateGame', quizId, turnTimeLimitSeconds, mode);
+        this.gameMode.set(mode);
         this.currentRoomCode.set(roomCode);
         return roomCode;
     }
@@ -465,6 +487,30 @@ export class GameSignalrService {
     }
 
     /**
+     * Presencial: mark (or clear with null) the answer the player said out loud (requires owner)
+     */
+    async markAnswer(roomCode: string, questionId: number, answerIndex: number | null): Promise<void> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        return this.hubConnection.invoke('MarkAnswer', roomCode, questionId, answerIndex);
+    }
+
+    /**
+     * Presencial: confirm the marked answer (requires owner)
+     */
+    async confirmAnswer(roomCode: string, questionId: number): Promise<TurnResult> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        return this.hubConnection.invoke<TurnResult>('ConfirmAnswer', roomCode, questionId);
+    }
+
+    /**
+     * Presencial: move on to the next question after showing the result (requires owner)
+     */
+    async nextQuestion(roomCode: string): Promise<void> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        return this.hubConnection.invoke('NextQuestion', roomCode);
+    }
+
+    /**
      * Continue to the next phase from the intermission (requires owner)
      */
     async continuePhase(roomCode: string): Promise<void> {
@@ -538,5 +584,8 @@ export class GameSignalrService {
         this.players.set([]);
         this.currentUserId.set(null);
         this.currentUsername.set(null);
+        this.gameMode.set('Normal');
+        this.hostQuestionInfo.set(null);
+        this.pendingTurnResult.set(null);
     }
 }

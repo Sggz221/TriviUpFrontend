@@ -56,12 +56,27 @@
                 <!-- Create Game Room Button -->
                 <div class="flex flex-col items-center gap-3">
                     <label class="flex items-center gap-3 text-sm" style="color: var(--base-content);">
+                        <span class="opacity-80">Modo</span>
+                        <select class="select select-bordered select-sm"
+                                [value]="modoJuego()"
+                                (change)="onModoJuegoChange($event)">
+                            <option value="Normal" [selected]="modoJuego() === 'Normal'">Online</option>
+                            <option value="Presencial" [selected]="modoJuego() === 'Presencial'">Presencial</option>
+                        </select>
+                    </label>
+                    @if (modoJuego() === 'Presencial') {
+                        <p class="text-xs opacity-70 text-center max-w-sm" style="color: var(--base-content);">
+                            Los jugadores dicen la respuesta en voz alta y tú la marcas y confirmas. Ellos solo usan comodines desde su móvil.
+                        </p>
+                    }
+                    <label class="flex items-center gap-3 text-sm" style="color: var(--base-content);">
                         <span class="opacity-80">Tiempo por turno</span>
                         <select class="select select-bordered select-sm"
-                                [value]="tiempoTurno()"
+                                [value]="modoJuego() === 'Presencial' ? 0 : tiempoTurno()"
+                                [disabled]="modoJuego() === 'Presencial'"
                                 (change)="onTiempoTurnoChange($event)">
                             @for (op of opcionesTiempo; track op.valor) {
-                                <option [value]="op.valor" [selected]="op.valor === tiempoTurno()">{{ op.etiqueta }}</option>
+                                <option [value]="op.valor" [selected]="op.valor === (modoJuego() === 'Presencial' ? 0 : tiempoTurno())">{{ op.etiqueta }}</option>
                             }
                         </select>
                     </label>

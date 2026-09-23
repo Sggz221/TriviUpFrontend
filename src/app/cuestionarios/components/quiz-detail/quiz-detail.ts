@@ -5,6 +5,7 @@ import { CuestionarioService } from '../../services/cuestionario.service';
 import { Cuestionario, Pregunta, Respuesta, colorDificultad, etiquetaDificultad } from '../../models/cuestionario.model';
 import { colorDeFase } from '../../models/fase-color';
 import { GameSignalrService } from '../../../game/services/game-signalr.service';
+import { GameMode } from '../../../game/models/game.models';
 import { AuthService } from '../../../auth/auth.service';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
@@ -162,6 +163,13 @@ export class QuizDetailComponent implements OnInit {
         { valor: 0, etiqueta: 'Sin tiempo' }
     ];
 
+    /** Presencial: el anfitrión marca y confirma las respuestas que los jugadores dicen en voz alta. */
+    modoJuego = signal<GameMode>('Normal');
+
+    onModoJuegoChange(event: Event): void {
+        this.modoJuego.set((event.target as HTMLSelectElement).value as GameMode);
+    }
+
     onTiempoTurnoChange(event: Event): void {
         this.tiempoTurno.set(Number((event.target as HTMLSelectElement).value));
     }
@@ -182,7 +190,9 @@ export class QuizDetailComponent implements OnInit {
 
         this.gameSignalrService.connect(token).then(() => {
             // Invocar CreateGame en el hub
-            return this.gameSignalrService.createGame(quiz.id, this.tiempoTurno());
+            // En modo presencial no hay tiempo por turno (el servidor también lo fuerza).
+            const presencial = this.modoJuego() === 'Presencial';
+            return this.gameSignalrService.createGame(quiz.id, presencial ? 0 : this.tiempoTurno(), this.modoJuego());
         }).then((roomCode) => {
             console.log('[QuizDetail] ★★★ Sala creada:', roomCode);
             // Indicar que este usuario es el owner
