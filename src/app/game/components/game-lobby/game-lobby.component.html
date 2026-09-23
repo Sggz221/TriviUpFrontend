@@ -58,8 +58,22 @@
                         @if (player.isOwner) {
                             <span class="owner-badge"><app-icon name="crown" [size]="12" /> Anfitrión</span>
                         }
+                        @if (player.isSpectator) {
+                            <span class="spectator-badge"><app-icon name="eye" [size]="12" /> Espectador</span>
+                        }
                     </div>
                     @if (isOwnerSignal() && !player.isOwner && player.userId !== myUserIdSignal()) {
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-circle spectator-btn"
+                            [class.btn-info]="player.isSpectator"
+                            [class.btn-ghost]="!player.isSpectator"
+                            (click)="onToggleSpectator(player)"
+                            [title]="player.isSpectator ? 'Volver a jugador' : 'Hacer espectador'"
+                            [attr.aria-pressed]="!!player.isSpectator"
+                        >
+                            <app-icon name="eye" [size]="14" />
+                        </button>
                         <button
                             type="button"
                             class="btn btn-sm btn-circle btn-error kick-btn"
@@ -82,7 +96,7 @@
             <button
                 type="button"
                 class="btn btn-primary btn-start"
-                [disabled]="playerCount() < 2 || isStartingSignal()"
+                [disabled]="nonSpectatorCount() < 2 || isStartingSignal()"
                 (click)="onStartGame()"
             >
                 @if (isStartingSignal()) {
@@ -91,8 +105,8 @@
                     Iniciar Partida
                 }
             </button>
-            @if (playerCount() < 2) {
-                <p class="hint">Necesitas al menos 2 jugadores para comenzar</p>
+            @if (nonSpectatorCount() < 2) {
+                <p class="hint">Necesitas al menos 1 jugador (sin contar espectadores) para comenzar</p>
             }
         }
 

@@ -37,6 +37,7 @@ export class GameLobbyComponent {
     @Output() startGame = new EventEmitter<void>();
     @Output() leaveGame = new EventEmitter<void>();
     @Output() kickPlayer = new EventEmitter<number>();
+    @Output() toggleSpectator = new EventEmitter<{ userId: number; isSpectator: boolean }>();
 
     roomCodeSignal = signal<string>('');
     playersSignal = signal<Player[]>([]);
@@ -47,6 +48,8 @@ export class GameLobbyComponent {
     isStartingSignal = signal<boolean>(false);
 
     playerCount = computed(() => this.playersSignal().length);
+    /** Participantes que cuentan para iniciar (anfitrión incluido, espectadores no), igual que el backend. */
+    nonSpectatorCount = computed(() => this.playersSignal().filter(p => !p.isSpectator && p.isConnected).length);
 
     copied = signal(false);
 
@@ -90,5 +93,9 @@ export class GameLobbyComponent {
 
     onKickPlayer(playerId: number): void {
         this.kickPlayer.emit(playerId);
+    }
+
+    onToggleSpectator(player: Player): void {
+        this.toggleSpectator.emit({ userId: player.userId, isSpectator: !player.isSpectator });
     }
 }

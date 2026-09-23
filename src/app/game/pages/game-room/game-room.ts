@@ -34,6 +34,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     players = signal<Player[]>([]);
     isOwner = signal<boolean>(false);
     myUserId = signal<number>(0);
+    /** Espectador asignado por el anfitrión: ve la partida pero nunca tiene turno. */
+    isSpectator = computed(() => !!this.players().find(p => p.userId === this.myUserId())?.isSpectator);
     myUsername = signal<string>('');
     quizTitle = signal<string>('');
     errorMessage = signal<string | null>(null);
@@ -433,9 +435,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         });
 
         // Cuando el anfitrión cierra la sala (salió explícitamente mientras se esperaba)
-        this.gameSignalrService.onRoomClosed.pipe(takeUntil(this.destroy$)).subscribe(() => {
-            console.log('[GameRoom] La sala fue cerrada por el anfitrión');
-            this.errorMessage.set('El anfitrión cerró la sala');
+        this.gameSignalrService.onRoomClosed.pipe(takeUntil(this.destroy$)).subscribe(({ reason }) => {
+            console.log('[GameRoom] La sala fue cerrada:', reason);
+            this.errorMessage.set(reason === 'NO_PLAYERS'
+                ? 'La sala se cerró: el anfitrión se fue y solo quedaban espectadores'
+                : 'El anfitrión cerró la sala');
             setTimeout(() => {
                 this.router.navigate(['/']);
             }, 2000);
@@ -587,6 +591,13 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     onKickPlayer(playerId: number): void {
         console.log('[GameRoom] Kicking player:', playerId);
         this.gameSignalrService.kickPlayer(this.roomCode(), playerId);
+    }
+
+    onToggleSpectator({ userId, isSpectator }: { userId: number; isSpectator: boolean }): void {
+        this.gameSignalrService.setSpectator(this.roomCode(), userId, isSpectator).catch(err => {
+            console.error('[GameRoom] Error cambiando rol de espectador:', err);
+            this.errorMessage.set('No se pudo cambiar el rol del jugador');
+        });
     }
 
     submitAnswer(answerIndex: number): void {

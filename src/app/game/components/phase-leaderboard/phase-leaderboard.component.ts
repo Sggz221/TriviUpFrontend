@@ -107,7 +107,7 @@ export class PhaseLeaderboardComponent implements OnInit {
     terminado = computed(() => this.progreso() >= 1);
 
     filas = computed<Fila[]>(() => {
-        const actuales = this.players().filter(p => !p.isOwner);
+        const actuales = this.players().filter(p => !p.isOwner && !p.isSpectator);
         const previos = this.previous();
         const previoPor = new Map((previos ?? []).map(p => [p.userId, p]));
 

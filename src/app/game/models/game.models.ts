@@ -9,6 +9,7 @@ export interface Player {
     isCurrentTurn: boolean;
     isOwner: boolean;
     isConnected: boolean;
+    isSpectator?: boolean;
 }
 
 export interface Question {

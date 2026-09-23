@@ -475,6 +475,14 @@ export class GameSignalrService {
     }
 
     /**
+     * Mark a player as spectator or back to player (requires owner, lobby only)
+     */
+    async setSpectator(roomCode: string, userId: number, isSpectator: boolean): Promise<void> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        return this.hubConnection.invoke('SetSpectator', roomCode, userId, isSpectator);
+    }
+
+    /**
      * Set whether the current user is the owner of the room
      */
     setIsOwner(value: boolean): void {

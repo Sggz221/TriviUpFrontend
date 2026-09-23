@@ -219,7 +219,10 @@
             </div>
 
             <div class="turn-info">
-                @if (isMyTurn()) {
+                @if (isSpectator()) {
+                    <span class="badge badge-info badge-sm mb-1">Modo espectador</span><br />
+                    <span class="waiting">Turno de {{ getCurrentTurnPlayerName() }}</span>
+                } @else if (isMyTurn()) {
                     <span class="your-turn">¡Es tu turno!</span>
                 } @else {
                     <span class="waiting">Esperando a {{ getCurrentTurnPlayerName() }}...</span>
@@ -277,7 +280,8 @@
             [isStarting]="isStarting()"
             (startGame)="onStartGame()"
             (leaveGame)="onLeaveGame()"
-            (kickPlayer)="onKickPlayer($event)">
+            (kickPlayer)="onKickPlayer($event)"
+            (toggleSpectator)="onToggleSpectator($event)">
         </app-game-lobby>
     }
 
