@@ -21,7 +21,7 @@ import { clearAnonymousIdentity, getOrCreateAnonymousUserId, getSavedAnonymousId
     standalone: true,
     imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent],
     templateUrl: './game-room.html',
-    styleUrls: ['./game-room.scss']
+    styleUrls: ['./game-room.scss', './game-room-comodines.scss']
 })
 export class GameRoomComponent implements OnInit, OnDestroy {
     private route = inject(ActivatedRoute);
