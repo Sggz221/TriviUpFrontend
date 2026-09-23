@@ -442,11 +442,13 @@ export class GameSignalrService {
      */
     async submitAnswer(roomCode: string, questionId: number, answerIndex: number): Promise<void> {
         if (!this.hubConnection) throw new Error('Hub not connected');
-        if (this.anonymousUserId === null) {
-            throw new Error('Anonymous user not configured');
+        // Jugador anónimo o con sesión iniciada (este último no tiene anonymousUserId)
+        const userId = this.anonymousUserId ?? this.currentUserId();
+        if (userId === null) {
+            throw new Error('User not configured');
         }
         // El bonus de tiempo lo calcula el servidor a partir de su propio deadline.
-        return this.hubConnection.invoke('SubmitAnswer', roomCode, this.anonymousUserId, questionId, answerIndex);
+        return this.hubConnection.invoke('SubmitAnswer', roomCode, userId, questionId, answerIndex);
     }
 
     /**

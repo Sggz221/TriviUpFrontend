@@ -14,8 +14,11 @@
 
     # index.html no lleva hash: nunca debe cachearse, si no el navegador puede
     # quedarse con una versión vieja que apunta a bundles que ya no existen.
+    # Se aplica a todo lo que no es un asset con hash, no solo a "/" e "/index.html":
+    # las rutas de la SPA (/game/ABC123, /perfil...) también devuelven index.html por el
+    # try_files de abajo y sin esta cabecera el navegador lo cacheaba.
     @index {
-        path /index.html /
+        not path_regexp \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$
     }
     header @index Cache-Control "no-cache, no-store, must-revalidate"
 

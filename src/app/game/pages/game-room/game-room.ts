@@ -81,9 +81,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     toasts = signal<{ id: number; text: string; tone: 'info' | 'success' | 'error' }[]>([]);
     private toastSeq = 0;
     /** Duración total por defecto (el servidor manda la suya en RuletaDuracionMs) y parte final con la rueda ya parada. */
-    private static readonly RULETA_TOTAL_MS = 9000;
+    private static readonly RULETA_TOTAL_MS = 17000;
     private static readonly RULETA_REVEAL_MS = 2000;
-    private static readonly RULETA_VUELTAS = 7;
+    private static readonly RULETA_VUELTAS = 10;
     /**
      * Huecos de la rueda en sentido horario desde arriba: cuántas respuestas elimina cada uno.
      * Copia exacta de ComodinReglas.HuecosRuleta del backend (el servidor sortea el hueco).
@@ -677,6 +677,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             .catch((error) => {
                 console.error('[GameRoom] Error al responder:', error);
                 this.selectedAnswer.set(null);
+                this.showToast(this.hubErrorMessage(error, 'No se pudo enviar la respuesta'), 'error');
             });
     }
 
@@ -769,9 +770,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         const totalMs = data.ruletaDuracionMs ?? GameRoomComponent.RULETA_TOTAL_MS;
         const spinMs = totalMs - GameRoomComponent.RULETA_REVEAL_MS;
 
-        // Parar cerca del borde del hueco a veces: que se arrastre hasta el último momento
+        // Parar a veces cerca del borde del hueco: que se arrastre hasta el último momento
         const ancho = hueco.end - hueco.start;
-        const jitter = (Math.random() - 0.5) * ancho * 0.85;
+        const jitter = (Math.random() - 0.5) * ancho * 0.6;
         const rotation = 360 * GameRoomComponent.RULETA_VUELTAS - (hueco.center + jitter);
         this.ruletaSpin.set({ username: data.username, resultado, valor: hueco.valor, revealed: false });
 
@@ -797,17 +798,19 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         }, totalMs);
     }
 
-    /** Bucle de animación de la rueda: aplica el giro con easing y marca cada hueco que cruza el puntero. */
+    /** Bucle de animación de la rueda: aplica el movimiento y marca cada hueco que cruza el puntero. */
     private animateRuleta(rotation: number, durationMs: number): void {
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
         const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
         const duration = reduceMotion ? 1 : durationMs;
+        const angleAt = GameRoomComponent.buildRuletaMotion(rotation, duration);
         const start = performance.now();
         let lastHueco = -1;
 
         const frame = (now: number) => {
-            const t = Math.min(1, (now - start) / duration);
-            const angle = rotation * GameRoomComponent.ruletaEase(t);
+            const elapsed = Math.min(duration, now - start);
+            const t = elapsed / duration;
+            const angle = reduceMotion ? rotation : angleAt(elapsed);
             const wheel = this.ruletaWheel?.nativeElement;
             if (wheel) wheel.style.transform = `rotate(${angle}deg)`;
 
@@ -840,11 +843,45 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     /**
-     * Frenado largo: sale disparada y pasa gran parte del tiempo arrastrándose por los
-     * últimos huecos (cuártica de salida: el último 30 % del tiempo recorre apenas un hueco).
+     * Movimiento de la rueda como una de verdad, en cuatro tramos:
+     *  1. Impulso: retrocede un poco, como cuando se coge la rueda para lanzarla.
+     *  2. Giro: acelera hasta la velocidad máxima (~2-3 s) y frena muy despacio; los
+     *     últimos segundos se arrastra hueco a hueco. La velocidad sigue u^a·(1-u)^b
+     *     (arranca y acaba en 0), integrada numéricamente para tener la posición.
+     *  3. Se pasa un poco del punto final...
+     *  4. ...y vuelve hacia atrás para recolocarse en él.
+     * Devuelve el ángulo (grados) en cada milisegundo del giro; en durationMs vale `rotation`.
      */
-    private static ruletaEase(t: number): number {
-        return 1 - Math.pow(1 - t, 4);
+    private static buildRuletaMotion(rotation: number, durationMs: number): (ms: number) => number {
+        const IMPULSO_MS = Math.min(700, durationMs * 0.05);
+        const RECOLOCAR_MS = Math.min(1100, durationMs * 0.08);
+        const GIRO_MS = durationMs - IMPULSO_MS - RECOLOCAR_MS;
+        const RETROCESO = 12;  // grados hacia atrás al coger impulso
+        const PASADA = 7;      // grados que se pasa antes de recolocarse (~1/3 de hueco)
+
+        // Tabla de la posición normalizada del tramo de giro (integral de la velocidad)
+        const N = 2000, a = 0.7, b = 1.8;
+        const tabla = new Float64Array(N + 1);
+        for (let i = 1; i <= N; i++) {
+            const u = (i - 0.5) / N;
+            tabla[i] = tabla[i - 1] + Math.pow(u, a) * Math.pow(1 - u, b);
+        }
+        const total = tabla[N];
+        const giro = (u: number) => {
+            const x = Math.max(0, Math.min(1, u)) * N;
+            const i = Math.floor(x);
+            const siguiente = tabla[Math.min(N, i + 1)];
+            return (tabla[i] + (siguiente - tabla[i]) * (x - i)) / total;
+        };
+        const suave = (u: number) => (1 - Math.cos(Math.PI * Math.max(0, Math.min(1, u)))) / 2;
+
+        const desde = -RETROCESO;
+        const hasta = rotation + PASADA;
+        return (ms: number) => {
+            if (ms <= IMPULSO_MS) return -RETROCESO * suave(ms / IMPULSO_MS);
+            if (ms <= IMPULSO_MS + GIRO_MS) return desde + (hasta - desde) * giro((ms - IMPULSO_MS) / GIRO_MS);
+            return hasta - PASADA * suave((ms - IMPULSO_MS - GIRO_MS) / RECOLOCAR_MS);
+        };
     }
 
     /** Puntuaciones, apuestas y avisos al resolverse una respuesta (o un timeout). */
