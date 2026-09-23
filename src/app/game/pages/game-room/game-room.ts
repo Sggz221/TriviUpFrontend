@@ -78,6 +78,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     @ViewChild('ruletaWheel') private ruletaWheel?: ElementRef<HTMLElement>;
     @ViewChild('ruletaPointer') private ruletaPointer?: ElementRef<HTMLElement>;
     private ruletaFrame: number | null = null;
+    private ruletaTimeouts: ReturnType<typeof setTimeout>[] = [];
+    /** Aplica el resultado de la ruleta en curso (para cancelarla sin perderlo). */
+    private ruletaCancel: (() => void) | null = null;
     toasts = signal<{ id: number; text: string; tone: 'info' | 'success' | 'error' }[]>([]);
     private toastSeq = 0;
     /** Duración total por defecto (el servidor manda la suya en RuletaDuracionMs) y parte final con la rueda ya parada. */
@@ -187,6 +190,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
         if (this.phaseBannerTimeout) clearTimeout(this.phaseBannerTimeout);
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
+        this.ruletaTimeouts.forEach(t => clearTimeout(t));
         // DON'T call leaveGame() or disconnect() here
         // When navigating to game-play, we want to KEEP the SignalR connection
         // The user is still in the game, just viewing a different page
@@ -526,6 +530,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 ? { numero: data.faseNumero ?? 1, nombre: data.faseNombre ?? null, total: data.totalFases, color: colorDeFase(data.faseNumero, data.faseColor) }
                 : null;
             this.phase.set(fase);
+            // Si cambia el turno con la ruleta aún en pantalla (p. ej. un robo), quitarla ya
+            if (this.ruletaSpin()) this.cancelRuleta();
             this.applyTurnState(data);
             this.betPickerOpen.set(false);
             if (data.isSteal) {
@@ -762,6 +768,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
      * golpe del puntero en cada hueco los hace el bucle de animación, no CSS.
      */
     private spinRuleta(data: ComodinUsedDto): void {
+        this.cancelRuleta();
         const resultado = data.ruletaResultado ?? data.eliminatedAnswerIndexes?.length ?? 0;
         const huecos = this.ruletaSegmentos;
         const hueco = data.ruletaHueco != null && data.ruletaHueco < huecos.length
@@ -783,26 +790,47 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
         // La animación es solo visual (requestAnimationFrame se congela con la pestaña en segundo
         // plano): el resultado se aplica con un temporizador aunque la rueda no llegue a pintarse.
+        const aplicarResultado = () =>
+            this.eliminatedAnswers.update(prev => [...new Set([...prev, ...(data.eliminatedAnswerIndexes ?? [])])]);
+        this.ruletaCancel = aplicarResultado;
         this.animateRuleta(rotation, spinMs);
-        setTimeout(() => {
+        this.ruletaTimeouts.push(setTimeout(() => {
             this.stopRuleta(rotation);
             this.audioService.playRuletaStop();
-            this.eliminatedAnswers.update(prev => [...new Set([...prev, ...(data.eliminatedAnswerIndexes ?? [])])]);
+            aplicarResultado();
             this.ruletaSpin.update(s => s ? { ...s, revealed: true } : s);
-        }, spinMs);
-        setTimeout(() => {
+        }, spinMs));
+        this.ruletaTimeouts.push(setTimeout(() => {
+            this.ruletaTimeouts = [];
+            this.ruletaCancel = null;
             this.ruletaSpin.set(null);
             if (pausaTimer && this.isMyTurn() && !this.isPaused() && !this.showTurnResult()) {
                 this.startLocalTimer(restante);
             }
-        }, totalMs);
+        }, totalMs));
+    }
+
+    /**
+     * Quita la ruleta de en medio al instante (aplicando ya su resultado) si el turno cambia
+     * mientras gira, p. ej. un robo: la capa de la rueda nunca debe tapar a quien responde.
+     */
+    private cancelRuleta(): void {
+        this.ruletaTimeouts.forEach(t => clearTimeout(t));
+        this.ruletaTimeouts = [];
+        if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
+        this.ruletaFrame = null;
+        this.ruletaCancel?.();
+        this.ruletaCancel = null;
+        this.ruletaSpin.set(null);
     }
 
     /** Bucle de animación de la rueda: aplica el movimiento y marca cada hueco que cruza el puntero. */
     private animateRuleta(rotation: number, durationMs: number): void {
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
-        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-        const duration = reduceMotion ? 1 : durationMs;
+        // Siempre se anima, aunque el sistema pida reducir movimiento (Windows con "Efectos de
+        // animación" desactivados): el giro es parte del juego y debe verse igual en todos los
+        // dispositivos. Saltar al final dejaba la rueda quieta 17 s tapando las respuestas.
+        const duration = durationMs;
         const angleAt = GameRoomComponent.buildRuletaMotion(rotation, duration);
         const start = performance.now();
         let lastHueco = -1;
@@ -810,14 +838,14 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         const frame = (now: number) => {
             const elapsed = Math.min(duration, now - start);
             const t = elapsed / duration;
-            const angle = reduceMotion ? rotation : angleAt(elapsed);
+            const angle = angleAt(elapsed);
             const wheel = this.ruletaWheel?.nativeElement;
             if (wheel) wheel.style.transform = `rotate(${angle}deg)`;
 
             // Hueco bajo el puntero (arriba): el ángulo de la rueda recorrido en sentido contrario
             const bajoPuntero = Math.floor((((360 - (angle % 360)) % 360) / 360) * this.ruletaSegmentos.length);
             if (bajoPuntero !== lastHueco) {
-                if (lastHueco !== -1 && !reduceMotion) {
+                if (lastHueco !== -1) {
                     this.audioService.playRuletaTick();
                     const pointer = this.ruletaPointer?.nativeElement;
                     if (pointer) {
