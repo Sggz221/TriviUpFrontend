@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, OnDestroy, computed } from '@angular/core';
+import { Component, OnInit, signal, inject, OnDestroy, computed, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -73,13 +73,22 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     stolenById = signal<number | null>(null);
     usingComodin = signal<boolean>(false);
     betPickerOpen = signal<boolean>(false);
-    /** Ruleta girando: resultado final y giro de la rueda hasta él. */
-    ruletaSpin = signal<{ username: string; resultado: number; rotation: number; revealed: boolean } | null>(null);
+    /** Ruleta girando: resultado (respuestas eliminadas), valor del hueco en el que cae y si ya se paró. */
+    ruletaSpin = signal<{ username: string; resultado: number; valor: number; revealed: boolean } | null>(null);
+    @ViewChild('ruletaWheel') private ruletaWheel?: ElementRef<HTMLElement>;
+    @ViewChild('ruletaPointer') private ruletaPointer?: ElementRef<HTMLElement>;
+    private ruletaFrame: number | null = null;
     toasts = signal<{ id: number; text: string; tone: 'info' | 'success' | 'error' }[]>([]);
     private toastSeq = 0;
-    private static readonly RULETA_SPIN_MS = 1400;
-    /** Porcentaje de la rueda para eliminar 0, 1, 2 y 3 respuestas (mismos pesos que el servidor). */
-    static readonly RULETA_PESOS = [10, 30, 45, 15];
+    /** Duración total por defecto (el servidor manda la suya en RuletaDuracionMs) y parte final con la rueda ya parada. */
+    private static readonly RULETA_TOTAL_MS = 9000;
+    private static readonly RULETA_REVEAL_MS = 2000;
+    private static readonly RULETA_VUELTAS = 7;
+    /**
+     * Huecos de la rueda en sentido horario desde arriba: cuántas respuestas elimina cada uno.
+     * Copia exacta de ComodinReglas.HuecosRuleta del backend (el servidor sortea el hueco).
+     */
+    static readonly RULETA_HUECOS = [1, 2, 0, 1, 2, 1, 2, 3, 1, 2, 1, 2, 0, 1, 2, 1, 2, 3, 1, 2];
     readonly ruletaSegmentos = GameRoomComponent.buildRuletaSegmentos();
 
     private me = computed(() => this.players().find(p => p.userId === this.myUserId()));
@@ -177,6 +186,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.activityTimer) clearInterval(this.activityTimer);
         if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
         if (this.phaseBannerTimeout) clearTimeout(this.phaseBannerTimeout);
+        if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
         // DON'T call leaveGame() or disconnect() here
         // When navigating to game-play, we want to KEEP the SignalR connection
         // The user is still in the game, just viewing a different page
@@ -745,21 +755,96 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         }
     }
 
-    /** Anima la rueda hasta el resultado del servidor y después tacha las respuestas. */
+    /**
+     * Anima la rueda hasta el hueco que sorteó el servidor y después tacha las respuestas.
+     * Giro rápido que se frena poco a poco y se arrastra por los últimos huecos; el clic y el
+     * golpe del puntero en cada hueco los hace el bucle de animación, no CSS.
+     */
     private spinRuleta(data: ComodinUsedDto): void {
         const resultado = data.ruletaResultado ?? data.eliminatedAnswerIndexes?.length ?? 0;
-        const segmento = this.ruletaSegmentos[Math.min(resultado, this.ruletaSegmentos.length - 1)];
-        // El puntero está arriba: girar varias vueltas y dejar el centro del segmento bajo él
-        const jitter = (Math.random() - 0.5) * (segmento.end - segmento.start) * 0.6;
-        const rotation = 360 * 5 - (segmento.center + jitter);
-        const nombre = data.username;
-        this.ruletaSpin.set({ username: nombre, resultado, rotation, revealed: false });
+        const huecos = this.ruletaSegmentos;
+        const hueco = data.ruletaHueco != null && data.ruletaHueco < huecos.length
+            ? huecos[data.ruletaHueco]
+            : huecos.find(h => h.valor === resultado) ?? huecos[0];
+        const totalMs = data.ruletaDuracionMs ?? GameRoomComponent.RULETA_TOTAL_MS;
+        const spinMs = totalMs - GameRoomComponent.RULETA_REVEAL_MS;
 
+        // Parar cerca del borde del hueco a veces: que se arrastre hasta el último momento
+        const ancho = hueco.end - hueco.start;
+        const jitter = (Math.random() - 0.5) * ancho * 0.85;
+        const rotation = 360 * GameRoomComponent.RULETA_VUELTAS - (hueco.center + jitter);
+        this.ruletaSpin.set({ username: data.username, resultado, valor: hueco.valor, revealed: false });
+
+        // El servidor alarga el turno lo que dura la ruleta: congelar también el contador local
+        const pausaTimer = data.userId === this.myUserId() && this.isMyTurn() && this.turnTimeLimit() > 0;
+        const restante = this.localTimeRemaining();
+        if (pausaTimer) this.clearTimerInterval();
+
+        // La animación es solo visual (requestAnimationFrame se congela con la pestaña en segundo
+        // plano): el resultado se aplica con un temporizador aunque la rueda no llegue a pintarse.
+        this.animateRuleta(rotation, spinMs);
         setTimeout(() => {
+            this.stopRuleta(rotation);
+            this.audioService.playRuletaStop();
             this.eliminatedAnswers.update(prev => [...new Set([...prev, ...(data.eliminatedAnswerIndexes ?? [])])]);
             this.ruletaSpin.update(s => s ? { ...s, revealed: true } : s);
-        }, GameRoomComponent.RULETA_SPIN_MS);
-        setTimeout(() => this.ruletaSpin.set(null), GameRoomComponent.RULETA_SPIN_MS + 900);
+        }, spinMs);
+        setTimeout(() => {
+            this.ruletaSpin.set(null);
+            if (pausaTimer && this.isMyTurn() && !this.isPaused() && !this.showTurnResult()) {
+                this.startLocalTimer(restante);
+            }
+        }, totalMs);
+    }
+
+    /** Bucle de animación de la rueda: aplica el giro con easing y marca cada hueco que cruza el puntero. */
+    private animateRuleta(rotation: number, durationMs: number): void {
+        if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
+        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        const duration = reduceMotion ? 1 : durationMs;
+        const start = performance.now();
+        let lastHueco = -1;
+
+        const frame = (now: number) => {
+            const t = Math.min(1, (now - start) / duration);
+            const angle = rotation * GameRoomComponent.ruletaEase(t);
+            const wheel = this.ruletaWheel?.nativeElement;
+            if (wheel) wheel.style.transform = `rotate(${angle}deg)`;
+
+            // Hueco bajo el puntero (arriba): el ángulo de la rueda recorrido en sentido contrario
+            const bajoPuntero = Math.floor((((360 - (angle % 360)) % 360) / 360) * this.ruletaSegmentos.length);
+            if (bajoPuntero !== lastHueco) {
+                if (lastHueco !== -1 && !reduceMotion) {
+                    this.audioService.playRuletaTick();
+                    const pointer = this.ruletaPointer?.nativeElement;
+                    if (pointer) {
+                        pointer.classList.remove('kick');
+                        void pointer.offsetWidth; // reiniciar la animación CSS
+                        pointer.classList.add('kick');
+                    }
+                }
+                lastHueco = bajoPuntero;
+            }
+
+            this.ruletaFrame = t < 1 ? requestAnimationFrame(frame) : null;
+        };
+        this.ruletaFrame = requestAnimationFrame(frame);
+    }
+
+    /** Deja la rueda en su posición final y corta el bucle de animación si seguía vivo. */
+    private stopRuleta(rotation: number): void {
+        if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
+        this.ruletaFrame = null;
+        const wheel = this.ruletaWheel?.nativeElement;
+        if (wheel) wheel.style.transform = `rotate(${rotation}deg)`;
+    }
+
+    /**
+     * Frenado largo: sale disparada y pasa gran parte del tiempo arrastrándose por los
+     * últimos huecos (cuártica de salida: el último 30 % del tiempo recorre apenas un hueco).
+     */
+    private static ruletaEase(t: number): number {
+        return 1 - Math.pow(1 - t, 4);
     }
 
     /** Puntuaciones, apuestas y avisos al resolverse una respuesta (o un timeout). */
@@ -810,20 +895,23 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         return idx >= 0 ? message.slice(idx + 'HubException:'.length).trim() : fallback;
     }
 
-    private static buildRuletaSegmentos(): { valor: number; start: number; end: number; center: number; color: string }[] {
-        const colores = ['#64748b', '#0ea5e9', '#c757ba', '#ed5381'];
-        const total = GameRoomComponent.RULETA_PESOS.reduce((a, b) => a + b, 0);
-        let acumulado = 0;
-        return GameRoomComponent.RULETA_PESOS.map((peso, valor) => {
-            const start = (acumulado / total) * 360;
-            acumulado += peso;
-            const end = (acumulado / total) * 360;
-            return { valor, start, end, center: (start + end) / 2, color: colores[valor] };
+    private static buildRuletaSegmentos(): { indice: number; valor: number; start: number; end: number; center: number; color: string; texto: string }[] {
+        // 0 rojo, 1 azul, 2 verde, 3 amarillo
+        const colores = ['#e53935', '#1e88e5', '#43a047', '#fdd835'];
+        const textos = ['#ffffff', '#ffffff', '#ffffff', '#1f2937'];
+        const ancho = 360 / GameRoomComponent.RULETA_HUECOS.length;
+        return GameRoomComponent.RULETA_HUECOS.map((valor, indice) => {
+            const start = indice * ancho;
+            return { indice, valor, start, end: start + ancho, center: start + ancho / 2, color: colores[valor], texto: textos[valor] };
         });
     }
 
+    /** Huecos de colores separados por una línea blanca fina. */
     ruletaGradient(): string {
-        return `conic-gradient(${this.ruletaSegmentos.map(s => `${s.color} ${s.start}deg ${s.end}deg`).join(', ')})`;
+        const gap = 0.6;
+        const stops = this.ruletaSegmentos.map(s =>
+            `#ffffff ${s.start}deg ${s.start + gap}deg, ${s.color} ${s.start + gap}deg ${s.end}deg`);
+        return `conic-gradient(${stops.join(', ')})`;
     }
 
     getImageUrl(url: string | null | undefined): string {

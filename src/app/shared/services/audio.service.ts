@@ -68,6 +68,17 @@ export class AudioService {
         }
     }
 
+    /** Clic corto de la ruleta al pasar el puntero por cada hueco. */
+    playRuletaTick(): void {
+        this.playTone(1400, 0.03, 'square', 0.06);
+    }
+
+    /** Golpe final al detenerse la ruleta. */
+    playRuletaStop(): void {
+        this.playTone(220, 0.25, 'triangle', 0.3);
+        setTimeout(() => this.playTone(440, 0.3, 'sine', 0.2), 90);
+    }
+
     playCorrect(): void {
         // Pleasant ascending tones for correct answer
         this.playTone(523.25, 0.1, 'sine', 0.25); // C5

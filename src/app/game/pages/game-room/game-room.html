@@ -383,18 +383,22 @@
     <div class="ruleta-overlay" aria-live="assertive">
         <div class="ruleta-card">
             <p class="ruleta-title">Ruleta de {{ spin.username }}</p>
-            <div class="ruleta-wheel-wrap">
-                <span class="ruleta-pointer" aria-hidden="true"></span>
-                <div class="ruleta-wheel" [style.background]="ruletaGradient()" [style.--spin-to]="spin.rotation + 'deg'">
-                    @for (seg of ruletaSegmentos; track seg.valor) {
-                        <span class="ruleta-label" [style.--angle]="seg.center + 'deg'">{{ seg.valor }}</span>
+            <div class="ruleta-wheel-wrap" [class.stopped]="spin.revealed">
+                <span #ruletaPointer class="ruleta-pointer" aria-hidden="true"></span>
+                <div #ruletaWheel class="ruleta-wheel" [style.background]="ruletaGradient()" aria-hidden="true">
+                    @for (seg of ruletaSegmentos; track seg.indice) {
+                        <span class="ruleta-label" [style.--angle]="seg.center + 'deg'" [style.color]="seg.texto">{{ seg.valor }}</span>
                     }
+                    <span class="ruleta-hub"></span>
                 </div>
             </div>
             <p class="ruleta-result" [class.visible]="spin.revealed">
                 @if (spin.resultado === 0) { Sin suerte: no elimina ninguna }
                 @else if (spin.resultado === 1) { ¡Elimina 1 respuesta! }
                 @else { ¡Elimina {{ spin.resultado }} respuestas! }
+                @if (spin.resultado < spin.valor) {
+                    <small class="ruleta-note">Salió {{ spin.valor }}, pero no quedaban más incorrectas</small>
+                }
             </p>
         </div>
     </div>

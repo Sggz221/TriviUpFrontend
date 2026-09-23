@@ -137,4 +137,8 @@ export interface ComodinUsedDto {
     ruletaResultado?: number | null;
     predictsCorrect?: boolean | null;
     stolenFromPlayerId?: number | null;
+    /** Hueco de la ruleta en el que cae (índice en RULETA_HUECOS). */
+    ruletaHueco?: number | null;
+    /** Lo que dura la animación; el servidor alarga el turno este tiempo. */
+    ruletaDuracionMs?: number | null;
 }

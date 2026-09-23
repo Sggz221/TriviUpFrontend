@@ -108,39 +108,60 @@
     align-items: center;
     justify-content: center;
     padding: 1rem;
-    background: color-mix(in oklab, var(--base-100) 70%, transparent);
-    animation: fadeIn 0.2s ease;
+    background: color-mix(in oklab, var(--base-100) 82%, transparent);
+    backdrop-filter: blur(3px);
+    animation: fadeIn 0.3s ease;
 }
 
 .ruleta-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    gap: 1.25rem;
     text-align: center;
 }
 
 .ruleta-title {
-    font-size: clamp(1.1rem, 4vw, 1.5rem);
-    font-weight: 700;
+    font-size: clamp(1.25rem, 5vw, 1.75rem);
+    font-weight: 800;
 }
 
 .ruleta-wheel-wrap {
     position: relative;
-    width: min(260px, 70vw);
+    width: min(340px, 82vw);
     aspect-ratio: 1;
+
+    // Destello al pararse
+    &.stopped .ruleta-wheel {
+        box-shadow: 0 0 0 6px var(--secondary), 0 0 50px color-mix(in oklab, var(--secondary) 70%, transparent);
+        transition: box-shadow 0.3s ease;
+    }
 }
 
+// Puntero arriba, apuntando hacia abajo; da un golpe al pasar cada hueco
 .ruleta-pointer {
     position: absolute;
-    top: -6px;
+    top: -14px;
     left: 50%;
-    z-index: 1;
-    transform: translateX(-50%);
-    border-left: 14px solid transparent;
-    border-right: 14px solid transparent;
-    border-top: 24px solid var(--base-content);
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+    z-index: 2;
+    width: 0;
+    height: 0;
+    margin-left: -16px;
+    border-left: 16px solid transparent;
+    border-right: 16px solid transparent;
+    border-top: 34px solid #f97316;
+    filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.45));
+    transform-origin: 50% 0;
+
+    &.kick {
+        animation: ruleta-kick 0.12s ease-out;
+    }
+}
+
+@keyframes ruleta-kick {
+    0% { transform: rotate(0deg); }
+    35% { transform: rotate(-16deg); }
+    100% { transform: rotate(0deg); }
 }
 
 .ruleta-wheel {
@@ -148,40 +169,57 @@
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    border: 6px solid var(--base-content);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
-    animation: ruleta-spin 1.4s cubic-bezier(0.15, 0.7, 0.2, 1) forwards;
+    border: 8px solid #f8fafc;
+    box-shadow: 0 0 0 3px #1f2937, 0 16px 48px rgba(0, 0, 0, 0.35);
+    will-change: transform;
 }
 
+// Número de cada hueco, en radial hacia el borde (como una ruleta de verdad)
 .ruleta-label {
     position: absolute;
     top: 50%;
     left: 50%;
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: white;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(-160%) rotate(calc(-1 * var(--angle)));
+    font-size: clamp(0.95rem, 4vw, 1.35rem);
+    font-weight: 900;
+    line-height: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateY(calc(min(340px, 82vw) * -0.4));
+}
+
+.ruleta-hub {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12%;
+    height: 12%;
+    border-radius: 50%;
+    background: #f8fafc;
+    border: 3px solid #1f2937;
+    transform: translate(-50%, -50%);
 }
 
 .ruleta-result {
-    min-height: 2rem;
-    font-size: clamp(1.25rem, 5vw, 1.75rem);
-    font-weight: 800;
+    min-height: 3.5rem;
+    font-size: clamp(1.4rem, 6vw, 2rem);
+    font-weight: 900;
     color: var(--secondary);
     opacity: 0;
-    transform: scale(0.8);
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    transform: scale(0.6);
+    transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.2, 1.6, 0.4, 1);
 
     &.visible {
         opacity: 1;
         transform: scale(1);
     }
-}
 
-@keyframes ruleta-spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(var(--spin-to)); }
+    .ruleta-note {
+        display: block;
+        margin-top: 0.25rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--base-content);
+        opacity: 0.75;
+    }
 }
 
 // Avisos de comodines
@@ -215,6 +253,3 @@
     &.tone-error { background: #b91c1c; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .ruleta-wheel { animation-duration: 0.01s; }
-}
