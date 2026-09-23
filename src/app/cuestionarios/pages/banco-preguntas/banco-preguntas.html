@@ -26,73 +26,80 @@
             <div class="alert alert-success mb-4"><span>{{ successMessage() }}</span></div>
         }
 
-        @if (editor) {
+        <!-- Formulario de alta/edición: se reutiliza tanto arriba (pregunta nueva) como dentro
+             de la propia pregunta en la lista (edición), para que editar no salte a la parte
+             superior de la página y rompa el scroll donde estaba el usuario. -->
+        <ng-template #editorForm>
+            <h2 class="text-lg font-bold mb-3" style="color: var(--secondary);">
+                {{ editor!.id === null ? 'Nueva pregunta' : 'Editar pregunta' }}
+            </h2>
+
+            <textarea class="textarea textarea-bordered w-full" rows="2" maxlength="1000"
+                      placeholder="Escribe la pregunta..."
+                      [(ngModel)]="editor!.enunciado"></textarea>
+
+            <div class="mt-3">
+                @if (editor!.imagenUrl) {
+                    <div class="flex items-center gap-3">
+                        <img [src]="imageUrl(editor!.imagenUrl)" alt="Imagen de la pregunta"
+                             class="rounded-lg max-w-[150px] max-h-[100px] object-cover" />
+                        <button type="button" class="btn btn-ghost btn-sm" style="color: var(--error);" (click)="quitarImagen()">Quitar imagen</button>
+                    </div>
+                } @else if (editor!.subiendoImagen) {
+                    <span class="loading loading-spinner loading-sm"></span> <span class="text-sm opacity-70">Subiendo...</span>
+                } @else {
+                    <label class="cursor-pointer text-sm" style="color: var(--info);">
+                        + Añadir imagen
+                        <input type="file" accept="image/*" class="hidden" (change)="onImagenElegida($event)" />
+                    </label>
+                }
+            </div>
+
+            <div class="space-y-2 mt-4">
+                @for (r of editor!.respuestas; track $index; let i = $index) {
+                    <div class="flex items-center gap-2">
+                        <input type="radio" name="correcta" class="radio radio-success shrink-0"
+                               [checked]="r.esCorrecta" (change)="marcarCorrecta(i)"
+                               aria-label="Respuesta correcta" />
+                        <input type="text" class="input input-bordered flex-1 min-w-0" maxlength="500"
+                               placeholder="Respuesta..." [(ngModel)]="r.texto" />
+                        @if (editor!.respuestas.length > 2) {
+                            <button type="button" class="btn btn-ghost btn-xs shrink-0" style="color: var(--error);"
+                                    aria-label="Quitar respuesta" (click)="quitarRespuesta(i)">✕</button>
+                        }
+                    </div>
+                }
+                @if (editor!.respuestas.length < 4) {
+                    <button type="button" class="btn btn-ghost btn-sm" style="color: var(--info);" (click)="agregarRespuesta()">+ Agregar respuesta</button>
+                }
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2 mt-4">
+                <div>
+                    <label class="block text-sm mb-1" style="color: var(--base-content);">Categoría</label>
+                    <app-categoria-selector
+                        [categorias]="categorias()"
+                        [categoriaId]="editor!.categoriaId"
+                        [categoriaNombre]="editor!.categoriaNombre"
+                        (cambio)="onCategoria($event)" />
+                </div>
+                <div>
+                    <label class="block text-sm mb-1" style="color: var(--base-content);">Dificultad</label>
+                    <app-dificultad-selector [valor]="editor!.dificultad" (cambio)="editor!.dificultad = $event" />
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-5">
+                <button type="button" class="btn btn-ghost" (click)="cancelar()">Cancelar</button>
+                <button type="button" class="btn btn-primary" [disabled]="guardando() || editor!.subiendoImagen" (click)="guardar()">
+                    {{ guardando() ? 'Guardando...' : 'Guardar' }}
+                </button>
+            </div>
+        </ng-template>
+
+        @if (editor && editor.id === null) {
             <div class="rounded-xl shadow-xl p-4 sm:p-6 mb-6" style="background-color: var(--base-200);">
-                <h2 class="text-lg font-bold mb-3" style="color: var(--secondary);">
-                    {{ editor.id === null ? 'Nueva pregunta' : 'Editar pregunta' }}
-                </h2>
-
-                <textarea class="textarea textarea-bordered w-full" rows="2" maxlength="1000"
-                          placeholder="Escribe la pregunta..."
-                          [(ngModel)]="editor.enunciado"></textarea>
-
-                <div class="mt-3">
-                    @if (editor.imagenUrl) {
-                        <div class="flex items-center gap-3">
-                            <img [src]="imageUrl(editor.imagenUrl)" alt="Imagen de la pregunta"
-                                 class="rounded-lg max-w-[150px] max-h-[100px] object-cover" />
-                            <button type="button" class="btn btn-ghost btn-sm" style="color: var(--error);" (click)="quitarImagen()">Quitar imagen</button>
-                        </div>
-                    } @else if (editor.subiendoImagen) {
-                        <span class="loading loading-spinner loading-sm"></span> <span class="text-sm opacity-70">Subiendo...</span>
-                    } @else {
-                        <label class="cursor-pointer text-sm" style="color: var(--info);">
-                            + Añadir imagen
-                            <input type="file" accept="image/*" class="hidden" (change)="onImagenElegida($event)" />
-                        </label>
-                    }
-                </div>
-
-                <div class="space-y-2 mt-4">
-                    @for (r of editor.respuestas; track $index; let i = $index) {
-                        <div class="flex items-center gap-2">
-                            <input type="radio" name="correcta" class="radio radio-success shrink-0"
-                                   [checked]="r.esCorrecta" (change)="marcarCorrecta(i)"
-                                   aria-label="Respuesta correcta" />
-                            <input type="text" class="input input-bordered flex-1 min-w-0" maxlength="500"
-                                   placeholder="Respuesta..." [(ngModel)]="r.texto" />
-                            @if (editor.respuestas.length > 2) {
-                                <button type="button" class="btn btn-ghost btn-xs shrink-0" style="color: var(--error);"
-                                        aria-label="Quitar respuesta" (click)="quitarRespuesta(i)">✕</button>
-                            }
-                        </div>
-                    }
-                    @if (editor.respuestas.length < 4) {
-                        <button type="button" class="btn btn-ghost btn-sm" style="color: var(--info);" (click)="agregarRespuesta()">+ Agregar respuesta</button>
-                    }
-                </div>
-
-                <div class="grid gap-4 sm:grid-cols-2 mt-4">
-                    <div>
-                        <label class="block text-sm mb-1" style="color: var(--base-content);">Categoría</label>
-                        <app-categoria-selector
-                            [categorias]="categorias()"
-                            [categoriaId]="editor.categoriaId"
-                            [categoriaNombre]="editor.categoriaNombre"
-                            (cambio)="onCategoria($event)" />
-                    </div>
-                    <div>
-                        <label class="block text-sm mb-1" style="color: var(--base-content);">Dificultad</label>
-                        <app-dificultad-selector [valor]="editor.dificultad" (cambio)="editor.dificultad = $event" />
-                    </div>
-                </div>
-
-                <div class="flex justify-end gap-2 mt-5">
-                    <button type="button" class="btn btn-ghost" (click)="cancelar()">Cancelar</button>
-                    <button type="button" class="btn btn-primary" [disabled]="guardando() || editor.subiendoImagen" (click)="guardar()">
-                        {{ guardando() ? 'Guardando...' : 'Guardar' }}
-                    </button>
-                </div>
+                <ng-container *ngTemplateOutlet="editorForm"></ng-container>
             </div>
         }
 
@@ -209,6 +216,9 @@
             <ul class="space-y-3">
                 @for (p of preguntas(); track p.id) {
                     <li class="rounded-xl shadow-md p-4" style="background-color: var(--base-200);">
+                        @if (editor && editor.id === p.id) {
+                            <ng-container *ngTemplateOutlet="editorForm"></ng-container>
+                        } @else {
                         <div class="flex items-start gap-3">
                             @if (seleccionando()) {
                                 <input type="checkbox" class="checkbox checkbox-sm mt-1 shrink-0"
@@ -248,6 +258,7 @@
                                 <button type="button" class="btn btn-ghost btn-xs" style="color: var(--error);" (click)="eliminar(p)">Eliminar</button>
                             </div>
                         </div>
+                        }
                     </li>
                 }
             </ul>
