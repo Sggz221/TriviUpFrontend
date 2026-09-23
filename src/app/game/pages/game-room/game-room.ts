@@ -8,7 +8,7 @@ import { AuthService } from '../../../auth/auth.service';
 import { GameLobbyComponent } from '../../components/game-lobby/game-lobby.component';
 import { GameScoreboardComponent } from '../../components/game-scoreboard/game-scoreboard.component';
 import { PhaseLeaderboardComponent } from '../../components/phase-leaderboard/phase-leaderboard.component';
-import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto } from '../../models/game.models';
+import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto, Bet, ComodinTipo, ComodinUsedDto, TurnStartedDto } from '../../models/game.models';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { colorDeFase, textoSobreColor } from '../../../cuestionarios/models/fase-color';
 import { AudioService } from '../../../shared/services/audio.service';
@@ -59,6 +59,48 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     turnTimeLimit = signal<number>(0);
     /** Nombre mostrado en el banner "Turno de: ..." (null = oculto). */
     turnBanner = signal<string | null>(null);
+    /** Etiqueta del banner de turno ("Turno de:" o "¡Robo!"). */
+    turnBannerLabel = signal<string>('Turno de:');
+
+    // ---- Comodines (estado de la pregunta en curso) ----
+    /** Respuestas eliminadas por la ruleta. */
+    eliminatedAnswers = signal<number[]>([]);
+    doubleOrNothingPlayers = signal<number[]>([]);
+    bets = signal<Bet[]>([]);
+    /** Jugador al que le tocaba la pregunta (currentTurnPlayerId es quien responde: el ladrón durante un robo). */
+    turnOwnerId = signal<number | null>(null);
+    isSteal = signal<boolean>(false);
+    stolenById = signal<number | null>(null);
+    usingComodin = signal<boolean>(false);
+    betPickerOpen = signal<boolean>(false);
+    /** Ruleta girando: resultado final y giro de la rueda hasta él. */
+    ruletaSpin = signal<{ username: string; resultado: number; rotation: number; revealed: boolean } | null>(null);
+    toasts = signal<{ id: number; text: string; tone: 'info' | 'success' | 'error' }[]>([]);
+    private toastSeq = 0;
+    private static readonly RULETA_SPIN_MS = 1400;
+    /** Porcentaje de la rueda para eliminar 0, 1, 2 y 3 respuestas (mismos pesos que el servidor). */
+    static readonly RULETA_PESOS = [10, 30, 45, 15];
+    readonly ruletaSegmentos = GameRoomComponent.buildRuletaSegmentos();
+
+    private me = computed(() => this.players().find(p => p.userId === this.myUserId()));
+    myComodines = computed<ComodinTipo[]>(() => this.me()?.availableComodines ?? []);
+    /** Jugador (no anfitrión ni espectador) con una pregunta activa y sin pausa ni resultado en pantalla. */
+    canUseComodines = computed(() =>
+        !!this.me() && !this.isOwner() && !this.isSpectator() && !!this.currentQuestion()
+        && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak() && this.selectedAnswer() === null);
+    private iBet = computed(() => this.bets().some(b => b.userId === this.myUserId()));
+    canUseRuleta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('Ruleta') && !this.ruletaSpin());
+    canUseDobleONada = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('DobleONada')
+        && !this.doubleOrNothingPlayers().includes(this.myUserId()));
+    canRobar = computed(() => this.canUseComodines() && !this.isMyTurn() && this.hasComodin('Robo')
+        && this.stolenById() === null && !this.iBet() && this.turnOwnerId() !== this.myUserId());
+    canApostar = computed(() => this.canUseComodines() && !this.isMyTurn() && this.hasComodin('Apuesta')
+        && !this.isSteal() && this.stolenById() !== this.myUserId() && !this.iBet() && this.turnOwnerId() !== this.myUserId());
+    /** Doble o nada activo para quien responde ahora. */
+    answererDoubleOrNothing = computed(() => {
+        const id = this.currentTurnPlayerId();
+        return id !== null && this.doubleOrNothingPlayers().includes(id);
+    });
     /** Fase en curso (null si la partida no tiene varias fases). */
     phase = signal<PhaseInfo | null>(null);
     /** Intermedio entre fases: marcador a la espera de que el anfitrión continúe. */
@@ -156,11 +198,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         }
     }
 
-    private showTurnBanner(retrasoMs = 0): void {
+    private showTurnBanner(retrasoMs = 0, label = 'Turno de:', texto?: string): void {
         if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
         this.turnBanner.set(null);
         this.bannerTimeout = setTimeout(() => {
-            this.turnBanner.set(this.getCurrentTurnPlayerName());
+            this.turnBannerLabel.set(label);
+            this.turnBanner.set(texto ?? this.getCurrentTurnPlayerName());
             this.bannerTimeout = setTimeout(() => this.turnBanner.set(null), 2000);
         }, retrasoMs);
     }
@@ -261,6 +304,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                     this.gameState.set('playing');
                     this.isPaused.set(this.gameSignalrService.isPaused());
                     this.phase.set(this.gameSignalrService.currentPhase());
+                    const lastTurn = this.gameSignalrService.lastTurnStarted();
+                    if (lastTurn) this.applyTurnState(lastTurn);
                     if (this.isMyTurn() && !this.isPaused()) {
                         this.startLocalTimer(this.gameSignalrService.timeRemaining());
                     }
@@ -471,7 +516,13 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 ? { numero: data.faseNumero ?? 1, nombre: data.faseNombre ?? null, total: data.totalFases, color: colorDeFase(data.faseNumero, data.faseColor) }
                 : null;
             this.phase.set(fase);
-            this.showTurnBanner(this.mostrarBannerFase(fase));
+            this.applyTurnState(data);
+            this.betPickerOpen.set(false);
+            if (data.isSteal) {
+                this.showTurnBanner(0, '¡Robo!', `${this.playerName(data.currentPlayerId)} roba a ${this.playerName(data.turnOwnerId)}`);
+            } else {
+                this.showTurnBanner(this.mostrarBannerFase(fase));
+            }
             if (isMyTurn) {
                 this.audioService.playTurnStart();
                 this.startLocalTimer(data.timeLimit);
@@ -506,11 +557,19 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             } else {
                 this.audioService.playWrong();
             }
+            this.applyTurnOutcome(result, false);
         });
 
         // Turn timeout
         this.gameSignalrService.onTurnTimeout.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             console.log('[GameRoom] Turn timeout for player:', data.playerId);
+            this.applyTurnOutcome(data, true);
+        });
+
+        // Comodín usado por cualquier jugador
+        this.gameSignalrService.onComodinUsed.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+            console.log('[GameRoom] Comodín usado:', data);
+            this.onComodinUsed(data);
         });
 
         // Game finished
@@ -601,21 +660,170 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     submitAnswer(answerIndex: number): void {
-        if (!this.currentQuestion()) return;
+        if (!this.currentQuestion() || this.isEliminated(answerIndex) || this.ruletaSpin()) return;
         this.selectedAnswer.set(answerIndex);
-        this.gameSignalrService.submitAnswer(
-            this.roomCode(),
-            this.currentQuestion()!.id,
-            answerIndex,
-            this.turnTimeLimit() > 0 ? this.localTimeRemaining() : 0
-        );
+        this.betPickerOpen.set(false);
+        this.gameSignalrService.submitAnswer(this.roomCode(), this.currentQuestion()!.id, answerIndex)
+            .catch((error) => {
+                console.error('[GameRoom] Error al responder:', error);
+                this.selectedAnswer.set(null);
+            });
     }
 
     getCurrentTurnPlayerName(): string {
-        const currentId = this.currentTurnPlayerId();
-        if (!currentId) return 'jugador';
-        const player = this.players().find(p => p.userId === currentId);
-        return player?.username || 'jugador';
+        return this.playerName(this.currentTurnPlayerId());
+    }
+
+    playerName(userId: number | null | undefined): string {
+        if (!userId) return 'jugador';
+        return this.players().find(p => p.userId === userId)?.username || 'jugador';
+    }
+
+    // ============ Comodines ============
+
+    hasComodin(tipo: ComodinTipo): boolean {
+        return this.myComodines().includes(tipo);
+    }
+
+    isEliminated(index: number): boolean {
+        return this.eliminatedAnswers().includes(index);
+    }
+
+    useComodin(tipo: ComodinTipo, predictsCorrect: boolean | null = null): void {
+        const question = this.currentQuestion();
+        if (!question || this.usingComodin()) return;
+        this.usingComodin.set(true);
+        this.betPickerOpen.set(false);
+        this.gameSignalrService.useComodin(this.roomCode(), tipo, question.id, predictsCorrect)
+            .catch((error) => {
+                console.error('[GameRoom] Error al usar comodín:', error);
+                this.showToast(this.hubErrorMessage(error, 'No se pudo usar el comodín'), 'error');
+            })
+            .finally(() => this.usingComodin.set(false));
+    }
+
+    toggleBetPicker(): void {
+        this.betPickerOpen.update(open => !open);
+    }
+
+    betLabel(bet: Bet): string {
+        return `${this.playerName(bet.userId)}: ${bet.predictsCorrect ? 'acierta' : 'falla'}`;
+    }
+
+    /** Estado de comodines que trae cada TurnStarted (nuevo turno, robo, vuelta al original o reconexión). */
+    private applyTurnState(data: TurnStartedDto): void {
+        this.turnOwnerId.set(data.turnOwnerId ?? data.currentPlayerId);
+        this.isSteal.set(!!data.isSteal);
+        this.stolenById.set(data.stolenById ?? null);
+        this.eliminatedAnswers.set(data.eliminatedAnswerIndexes ?? []);
+        this.doubleOrNothingPlayers.set(data.doubleOrNothingPlayers ?? []);
+        this.bets.set(data.bets ?? []);
+    }
+
+    private onComodinUsed(data: ComodinUsedDto): void {
+        this.players.update(list => list.map(p =>
+            p.userId === data.userId ? { ...p, availableComodines: data.availableComodines } : p));
+        if (data.questionId !== this.currentQuestion()?.id) return;
+
+        const nombre = data.username;
+        switch (data.tipo) {
+            case 'Ruleta':
+                this.spinRuleta(data);
+                break;
+            case 'DobleONada':
+                this.doubleOrNothingPlayers.update(ids => [...ids, data.userId]);
+                this.showToast(`${nombre}: ¡Doble o nada! (+200 / −100)`, 'info');
+                break;
+            case 'Robo':
+                this.stolenById.set(data.userId);
+                this.showToast(`${nombre} roba la pregunta a ${this.playerName(data.stolenFromPlayerId)}`, 'info');
+                break;
+            case 'Apuesta':
+                this.bets.update(b => [...b, { userId: data.userId, predictsCorrect: !!data.predictsCorrect }]);
+                this.showToast(`${nombre} apuesta a que ${this.playerName(this.turnOwnerId())} ${data.predictsCorrect ? 'acierta' : 'falla'}`, 'info');
+                break;
+        }
+    }
+
+    /** Anima la rueda hasta el resultado del servidor y después tacha las respuestas. */
+    private spinRuleta(data: ComodinUsedDto): void {
+        const resultado = data.ruletaResultado ?? data.eliminatedAnswerIndexes?.length ?? 0;
+        const segmento = this.ruletaSegmentos[Math.min(resultado, this.ruletaSegmentos.length - 1)];
+        // El puntero está arriba: girar varias vueltas y dejar el centro del segmento bajo él
+        const jitter = (Math.random() - 0.5) * (segmento.end - segmento.start) * 0.6;
+        const rotation = 360 * 5 - (segmento.center + jitter);
+        const nombre = data.username;
+        this.ruletaSpin.set({ username: nombre, resultado, rotation, revealed: false });
+
+        setTimeout(() => {
+            this.eliminatedAnswers.update(prev => [...new Set([...prev, ...(data.eliminatedAnswerIndexes ?? [])])]);
+            this.ruletaSpin.update(s => s ? { ...s, revealed: true } : s);
+        }, GameRoomComponent.RULETA_SPIN_MS);
+        setTimeout(() => this.ruletaSpin.set(null), GameRoomComponent.RULETA_SPIN_MS + 900);
+    }
+
+    /** Puntuaciones, apuestas y avisos al resolverse una respuesta (o un timeout). */
+    private applyTurnOutcome(result: TurnResult, timedOut: boolean): void {
+        const scores = new Map<number, number>([[result.playerId, result.newTotalScore]]);
+        for (const bet of result.bets ?? []) scores.set(bet.userId, bet.newTotalScore);
+        const refunded = new Set((result.bets ?? []).filter(b => b.refunded).map(b => b.userId));
+        this.players.update(list => list.map(p => {
+            if (!scores.has(p.userId) && !refunded.has(p.userId)) return p;
+            const comodines = p.availableComodines ?? [];
+            return {
+                ...p,
+                score: scores.get(p.userId) ?? p.score,
+                availableComodines: refunded.has(p.userId) && !comodines.includes('Apuesta') ? [...comodines, 'Apuesta'] : comodines
+            };
+        }));
+
+        const nombre = this.playerName(result.playerId);
+        if (result.isSteal && !result.isCorrect) {
+            const motivo = timedOut ? 'se quedó sin tiempo en' : 'falló';
+            this.showToast(`${nombre} ${motivo} el robo (${result.pointsEarned} pts). La pregunta vuelve a ${this.playerName(result.returnsToPlayerId)}`, 'error');
+        } else if (result.doubleOrNothing && !result.isCorrect && result.pointsEarned < 0) {
+            this.showToast(`${nombre}: Doble o nada fallido (${result.pointsEarned} pts)`, 'error');
+        }
+
+        for (const bet of result.bets ?? []) {
+            const quien = this.playerName(bet.userId);
+            if (bet.refunded) {
+                this.showToast(`Apuesta de ${quien} anulada: se devuelve el comodín`, 'info');
+            } else if (bet.won) {
+                this.showToast(`${quien} gana la apuesta (+${bet.pointsEarned})`, 'success');
+            } else {
+                this.showToast(`${quien} pierde la apuesta`, 'error');
+            }
+        }
+    }
+
+    private showToast(text: string, tone: 'info' | 'success' | 'error'): void {
+        const id = ++this.toastSeq;
+        this.toasts.update(t => [...t.slice(-3), { id, text, tone }]);
+        setTimeout(() => this.toasts.update(t => t.filter(x => x.id !== id)), 3500);
+    }
+
+    /** Extrae el mensaje de una HubException ("... HubException: mensaje"). */
+    private hubErrorMessage(error: unknown, fallback: string): string {
+        const message = error instanceof Error ? error.message : String(error ?? '');
+        const idx = message.lastIndexOf('HubException:');
+        return idx >= 0 ? message.slice(idx + 'HubException:'.length).trim() : fallback;
+    }
+
+    private static buildRuletaSegmentos(): { valor: number; start: number; end: number; center: number; color: string }[] {
+        const colores = ['#64748b', '#0ea5e9', '#c757ba', '#ed5381'];
+        const total = GameRoomComponent.RULETA_PESOS.reduce((a, b) => a + b, 0);
+        let acumulado = 0;
+        return GameRoomComponent.RULETA_PESOS.map((peso, valor) => {
+            const start = (acumulado / total) * 360;
+            acumulado += peso;
+            const end = (acumulado / total) * 360;
+            return { valor, start, end, center: (start + end) / 2, color: colores[valor] };
+        });
+    }
+
+    ruletaGradient(): string {
+        return `conic-gradient(${this.ruletaSegmentos.map(s => `${s.color} ${s.start}deg ${s.end}deg`).join(', ')})`;
     }
 
     getImageUrl(url: string | null | undefined): string {

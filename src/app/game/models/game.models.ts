@@ -10,6 +10,8 @@ export interface Player {
     isOwner: boolean;
     isConnected: boolean;
     isSpectator?: boolean;
+    /** Comodines que aún puede usar (vacío para anfitrión y espectadores). */
+    availableComodines?: ComodinTipo[] | null;
 }
 
 export interface Question {
@@ -25,6 +27,11 @@ export interface TurnResult {
     correctAnswerIndex: number;
     pointsEarned: number;
     newTotalScore: number;
+    isSteal?: boolean;
+    doubleOrNothing?: boolean;
+    /** Robo fallido: jugador al que vuelve la pregunta. */
+    returnsToPlayerId?: number | null;
+    bets?: BetResult[] | null;
 }
 
 export interface GameResult {
@@ -62,6 +69,13 @@ export interface TurnStartedDto {
     faseNombre?: string | null;
     totalFases?: number;
     faseColor?: string | null;
+    /** Jugador al que le tocaba el turno (currentPlayerId es quien responde: el ladrón durante un robo). */
+    turnOwnerId?: number | null;
+    isSteal?: boolean;
+    eliminatedAnswerIndexes?: number[] | null;
+    doubleOrNothingPlayers?: number[] | null;
+    bets?: Bet[] | null;
+    stolenById?: number | null;
 }
 
 /** Fase en curso (solo se muestra cuando la partida tiene más de una). */
@@ -93,4 +107,34 @@ export interface GameLobbyState {
     isOwner: boolean;
     myUserId: number;
     myUsername: string;
+}
+
+export type ComodinTipo = 'Ruleta' | 'DobleONada' | 'Robo' | 'Apuesta';
+
+/** Comodines que se usan en el turno propio; el resto, fuera de él. */
+export const COMODINES_DE_TURNO: readonly ComodinTipo[] = ['Ruleta', 'DobleONada'];
+
+export interface Bet {
+    userId: number;
+    predictsCorrect: boolean;
+}
+
+export interface BetResult extends Bet {
+    won: boolean;
+    /** Anulada porque el ladrón acertó: se devuelve el comodín. */
+    refunded: boolean;
+    pointsEarned: number;
+    newTotalScore: number;
+}
+
+export interface ComodinUsedDto {
+    userId: number;
+    username: string;
+    tipo: ComodinTipo;
+    questionId: number;
+    availableComodines: ComodinTipo[];
+    eliminatedAnswerIndexes?: number[] | null;
+    ruletaResultado?: number | null;
+    predictsCorrect?: boolean | null;
+    stolenFromPlayerId?: number | null;
 }

@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo } from '../models/game.models';
+import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto } from '../models/game.models';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 import { colorDeFase } from '../../cuestionarios/models/fase-color';
 import { AuthService } from '../../auth/auth.service';
@@ -55,7 +55,7 @@ export class GameSignalrService {
     private gameStarting$ = new Subject<number>();
     private gameStarted$ = new Subject<GameStateDto>();
     private turnStarted$ = new Subject<TurnStartedDto>();
-    private turnTimeout$ = new Subject<{ playerId: number }>();
+    private turnTimeout$ = new Subject<TurnResult>();
     private answerSubmitted$ = new Subject<{ playerId: number }>();
     private turnResult$ = new Subject<TurnResult>();
     private playerScoresUpdated$ = new Subject<Player[]>();
@@ -65,6 +65,7 @@ export class GameSignalrService {
     private gameResumed$ = new Subject<{ roomCode: string; timeRemaining: number }>();
     private error$ = new Subject<{ code: string; message: string }>();
     private phaseCompleted$ = new Subject<PhaseCompletedDto>();
+    private comodinUsed$ = new Subject<ComodinUsedDto>();
 
     // State signals
     isConnected = signal(false);
@@ -106,6 +107,9 @@ export class GameSignalrService {
     onGameResumed = this.gameResumed$.asObservable();
     onError = this.error$.asObservable();
     onPhaseCompleted = this.phaseCompleted$.asObservable();
+    onComodinUsed = this.comodinUsed$.asObservable();
+    /** Último TurnStarted recibido (para recuperar robo/comodines si el componente se suscribe tarde). */
+    lastTurnStarted = signal<TurnStartedDto | null>(null);
 
     /**
      * Connect with JWT authentication (for logged-in users)
@@ -302,6 +306,7 @@ export class GameSignalrService {
         });
         this.hubConnection.on('TurnStarted', (data: TurnStartedDto) => {
             console.log('[GameSignalr] Event: TurnStarted', data);
+            this.lastTurnStarted.set(data);
             this.currentQuestion.set(data.question);
             this.currentTurnPlayerId.set(data.currentPlayerId);
             this.isMyTurn.set(data.isMyTurn);
@@ -312,12 +317,18 @@ export class GameSignalrService {
                 : null);
             this.turnStarted$.next(data);
         });
+        this.hubConnection.on('ComodinUsed', (data: ComodinUsedDto) => {
+            console.log('[GameSignalr] Event: ComodinUsed', data);
+            this.players.update(list => list.map(p =>
+                p.userId === data.userId ? { ...p, availableComodines: data.availableComodines } : p));
+            this.comodinUsed$.next(data);
+        });
         this.hubConnection.on('PhaseCompleted', (data: PhaseCompletedDto) => {
             console.log('[GameSignalr] Event: PhaseCompleted', data);
             this.phaseBreak.set(data);
             this.phaseCompleted$.next(data);
         });
-        this.hubConnection.on('TurnTimeout', (data: { playerId: number }) => {
+        this.hubConnection.on('TurnTimeout', (data: TurnResult) => {
             console.log('[GameSignalr] Event: TurnTimeout', data);
             this.turnTimeout$.next(data);
         });
@@ -429,12 +440,26 @@ export class GameSignalrService {
     /**
      * Submit an answer (anonymous - passes userId as parameter)
      */
-    async submitAnswer(roomCode: string, questionId: number, answerIndex: number, timeRemaining: number): Promise<void> {
+    async submitAnswer(roomCode: string, questionId: number, answerIndex: number): Promise<void> {
         if (!this.hubConnection) throw new Error('Hub not connected');
         if (this.anonymousUserId === null) {
             throw new Error('Anonymous user not configured');
         }
-        return this.hubConnection.invoke('SubmitAnswer', roomCode, this.anonymousUserId, questionId, answerIndex, timeRemaining);
+        // El bonus de tiempo lo calcula el servidor a partir de su propio deadline.
+        return this.hubConnection.invoke('SubmitAnswer', roomCode, this.anonymousUserId, questionId, answerIndex);
+    }
+
+    /**
+     * Use a comodín on the current question (anonymous - passes userId as parameter).
+     * predictsCorrect only applies to 'Apuesta'.
+     */
+    async useComodin(roomCode: string, tipo: ComodinTipo, questionId: number, predictsCorrect: boolean | null = null): Promise<ComodinUsedDto> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        const userId = this.anonymousUserId ?? this.currentUserId();
+        if (userId === null) {
+            throw new Error('User not configured');
+        }
+        return this.hubConnection.invoke<ComodinUsedDto>('UseComodin', roomCode, userId, tipo, questionId, predictsCorrect);
     }
 
     /**
@@ -501,6 +526,7 @@ export class GameSignalrService {
         this.quizTitle.set('');
         this.currentQuestion.set(null);
         this.currentTurnPlayerId.set(null);
+        this.lastTurnStarted.set(null);
         this.timeRemaining.set(0);
         this.isMyTurn.set(false);
         this.gameResults.set(null);

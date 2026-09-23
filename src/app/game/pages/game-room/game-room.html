@@ -201,6 +201,20 @@
                 </div>
             }
 
+            @if (isSteal() || answererDoubleOrNothing() || bets().length > 0) {
+                <div class="comodin-status" aria-live="polite">
+                    @if (isSteal()) {
+                        <span class="comodin-chip chip-robo">Robada por {{ getCurrentTurnPlayerName() }}</span>
+                    }
+                    @if (answererDoubleOrNothing()) {
+                        <span class="comodin-chip chip-doble">Doble o nada</span>
+                    }
+                    @for (bet of bets(); track bet.userId) {
+                        <span class="comodin-chip chip-apuesta" [class.bet-yes]="bet.predictsCorrect" [class.bet-no]="!bet.predictsCorrect">{{ betLabel(bet) }}</span>
+                    }
+                </div>
+            }
+
             <div class="answer-options">
                 @for (option of currentQuestion()!.options; track option; let i = $index) {
                     <button
@@ -209,14 +223,54 @@
                         [class.btn-success]="showTurnResult() && lastTurnResult()!.correctAnswerIndex === i"
                         [class.btn-error]="showTurnResult() && selectedAnswer() === i && lastTurnResult()!.correctAnswerIndex !== i"
                         [class.selected]="selectedAnswer() === i"
-                        [class.my-turn-active]="isMyTurn() && !showTurnResult() && !isPaused()"
-                        [disabled]="!isMyTurn() || showTurnResult() || isPaused()"
+                        [class.eliminated]="isEliminated(i)"
+                        [class.my-turn-active]="isMyTurn() && !showTurnResult() && !isPaused() && !isEliminated(i)"
+                        [disabled]="!isMyTurn() || showTurnResult() || isPaused() || isEliminated(i)"
+                        [attr.aria-label]="isEliminated(i) ? option + ' (eliminada por la ruleta)' : null"
                         (click)="submitAnswer(i)">
                         <app-answer-shape [shape]="getShapeType(i)" [selected]="selectedAnswer() === i" />
                         <span class="answer-text">{{ option }}</span>
                     </button>
                 }
             </div>
+
+            @if (canUseComodines() && myComodines().length > 0) {
+                <div class="comodines-bar" role="group" aria-label="Comodines">
+                    @if (isMyTurn()) {
+                        <button class="comodin-btn" type="button" [disabled]="!canUseRuleta() || usingComodin()"
+                                title="Elimina entre 0 y 3 respuestas incorrectas" (click)="useComodin('Ruleta')">
+                            <span class="comodin-icon" aria-hidden="true">🎡</span>
+                            <span class="comodin-name">Ruleta</span>
+                        </button>
+                        <button class="comodin-btn" type="button" [disabled]="!canUseDobleONada() || usingComodin()"
+                                title="Acierto: +200 · Fallo: −100" (click)="useComodin('DobleONada')">
+                            <span class="comodin-icon" aria-hidden="true">🎲</span>
+                            <span class="comodin-name">Doble o nada</span>
+                        </button>
+                    } @else {
+                        <button class="comodin-btn" type="button" [disabled]="!canRobar() || usingComodin()"
+                                title="Responde tú. Si fallas: −50 y vuelve al jugador original" (click)="useComodin('Robo')">
+                            <span class="comodin-icon" aria-hidden="true">🥷</span>
+                            <span class="comodin-name">Robar</span>
+                        </button>
+                        <div class="comodin-apuesta">
+                            <button class="comodin-btn" type="button" [disabled]="!canApostar() || usingComodin()"
+                                    [attr.aria-expanded]="betPickerOpen()"
+                                    title="Acierta tu apuesta: +50" (click)="toggleBetPicker()">
+                                <span class="comodin-icon" aria-hidden="true">💰</span>
+                                <span class="comodin-name">Apostar</span>
+                            </button>
+                            @if (betPickerOpen() && canApostar()) {
+                                <div class="bet-picker">
+                                    <span class="bet-picker-label">{{ playerName(turnOwnerId()) }}...</span>
+                                    <button class="btn btn-sm btn-success" type="button" (click)="useComodin('Apuesta', true)">Acierta</button>
+                                    <button class="btn btn-sm btn-error" type="button" (click)="useComodin('Apuesta', false)">Falla</button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
 
             <div class="turn-info">
                 @if (isSpectator()) {
@@ -233,6 +287,8 @@
                 <div class="turn-result-overlay">
                     @if (lastTurnResult()!.isCorrect) {
                         <div class="result-correct">¡Correcto! +{{ lastTurnResult()!.pointsEarned }} puntos</div>
+                    } @else if (lastTurnResult()!.pointsEarned < 0) {
+                        <div class="result-incorrect">Incorrecto {{ lastTurnResult()!.pointsEarned }} puntos</div>
                     } @else {
                         <div class="result-incorrect">Incorrecto</div>
                     }
@@ -317,9 +373,38 @@
 @if (turnBanner()) {
     <div class="turn-banner" aria-live="assertive">
         <div class="turn-banner-text">
-            <span class="turn-banner-label">Turno de:</span>
+            <span class="turn-banner-label">{{ turnBannerLabel() }}</span>
             <span class="turn-banner-name">{{ turnBanner() }}</span>
         </div>
+    </div>
+}
+
+@if (ruletaSpin(); as spin) {
+    <div class="ruleta-overlay" aria-live="assertive">
+        <div class="ruleta-card">
+            <p class="ruleta-title">Ruleta de {{ spin.username }}</p>
+            <div class="ruleta-wheel-wrap">
+                <span class="ruleta-pointer" aria-hidden="true"></span>
+                <div class="ruleta-wheel" [style.background]="ruletaGradient()" [style.--spin-to]="spin.rotation + 'deg'">
+                    @for (seg of ruletaSegmentos; track seg.valor) {
+                        <span class="ruleta-label" [style.--angle]="seg.center + 'deg'">{{ seg.valor }}</span>
+                    }
+                </div>
+            </div>
+            <p class="ruleta-result" [class.visible]="spin.revealed">
+                @if (spin.resultado === 0) { Sin suerte: no elimina ninguna }
+                @else if (spin.resultado === 1) { ¡Elimina 1 respuesta! }
+                @else { ¡Elimina {{ spin.resultado }} respuestas! }
+            </p>
+        </div>
+    </div>
+}
+
+@if (toasts().length > 0) {
+    <div class="comodin-toasts" aria-live="polite">
+        @for (toast of toasts(); track toast.id) {
+            <div class="comodin-toast" [class]="'tone-' + toast.tone">{{ toast.text }}</div>
+        }
     </div>
 }
 
