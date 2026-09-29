@@ -55,48 +55,69 @@
 
                 <!-- Create Game Room Button -->
                 <div class="flex flex-col items-center gap-3">
-                    <label class="flex items-center gap-3 text-sm" style="color: var(--base-content);">
-                        <span class="opacity-80">Modo</span>
-                        <select class="select select-bordered select-sm"
-                                [value]="modoJuego()"
-                                (change)="onModoJuegoChange($event)">
-                            <option value="Normal" [selected]="modoJuego() === 'Normal'">Online</option>
-                            <option value="Presencial" [selected]="modoJuego() === 'Presencial'">Presencial</option>
-                        </select>
-                    </label>
-                    @if (modoJuego() === 'Presencial') {
-                        <p class="text-xs opacity-70 text-center max-w-sm" style="color: var(--base-content);">
-                            Los jugadores dicen la respuesta en voz alta y tú la marcas y confirmas. Ellos solo usan comodines desde su móvil.
-                        </p>
-                    }
-                    <label class="flex items-center gap-3 text-sm" style="color: var(--base-content);">
-                        <span class="opacity-80">Tiempo por turno</span>
-                        <select class="select select-bordered select-sm"
-                                [value]="modoJuego() === 'Presencial' ? 0 : tiempoTurno()"
-                                [disabled]="modoJuego() === 'Presencial'"
-                                (change)="onTiempoTurnoChange($event)">
-                            @for (op of opcionesTiempo; track op.valor) {
-                                <option [value]="op.valor" [selected]="op.valor === (modoJuego() === 'Presencial' ? 0 : tiempoTurno())">{{ op.etiqueta }}</option>
-                            }
-                        </select>
-                    </label>
                     <button
                         class="btn btn-lg gap-2"
                         style="background-color: var(--primary); color: var(--primary-content);"
-                        (click)="crearSalaJuego()"
+                        (click)="abrirSelectorModo()"
                         [disabled]="creandoSala()">
-                        @if (creandoSala()) {
-                            <span class="loading loading-spinner loading-sm"></span>
-                            Creando sala...
-                        } @else {
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Crear Sala de Juego
-                        }
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Crear Sala de Juego
                     </button>
                 </div>
+
+                <!-- Paso previo: elegir el modo de juego -->
+                @if (eligiendoModo()) {
+                    <div class="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="modo-titulo"
+                         (click)="cerrarSelectorModo()" (keydown.escape)="cerrarSelectorModo()">
+                        <div class="modal-box max-w-2xl" style="background: var(--base-200); color: var(--base-content);"
+                             (click)="$event.stopPropagation()">
+                            <h3 id="modo-titulo" class="text-xl font-bold mb-1" style="color: var(--secondary);">¿Cómo quieres jugar?</h3>
+                            <p class="text-sm opacity-70 mb-4">Elige el modo antes de crear la sala.</p>
+
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <div class="rounded-xl border-2 p-4 flex flex-col gap-2" style="border-color: color-mix(in oklab, var(--base-content) 20%, transparent);">
+                                    <span class="text-2xl" aria-hidden="true">📱</span>
+                                    <h4 class="font-bold">Online</h4>
+                                    <p class="text-sm opacity-80 flex-1">Cada jugador responde desde su móvil, contra el reloj.</p>
+                                    <label class="flex items-center gap-2 text-sm">
+                                        <span class="opacity-80">Tiempo por turno</span>
+                                        <select class="select select-bordered select-sm"
+                                                [value]="tiempoTurno()"
+                                                (change)="onTiempoTurnoChange($event)">
+                                            @for (op of opcionesTiempo; track op.valor) {
+                                                <option [value]="op.valor" [selected]="op.valor === tiempoTurno()">{{ op.etiqueta }}</option>
+                                            }
+                                        </select>
+                                    </label>
+                                    <button class="btn btn-primary" type="button" [disabled]="creandoSala()" (click)="crearSalaJuego('Normal')">
+                                        @if (creandoSala()) { <span class="loading loading-spinner loading-sm"></span> }
+                                        Crear sala online
+                                    </button>
+                                </div>
+
+                                <div class="rounded-xl border-2 p-4 flex flex-col gap-2" style="border-color: color-mix(in oklab, var(--base-content) 20%, transparent);">
+                                    <span class="text-2xl" aria-hidden="true">🎤</span>
+                                    <h4 class="font-bold">Presencial</h4>
+                                    <p class="text-sm opacity-80 flex-1">
+                                        Jugáis juntos en persona. Los jugadores dicen la respuesta en voz alta y tú, como anfitrión, la marcas y confirmas.
+                                        Ellos solo usan comodines desde su móvil. Sin límite de tiempo.
+                                    </p>
+                                    <button class="btn btn-primary" type="button" [disabled]="creandoSala()" (click)="crearSalaJuego('Presencial')">
+                                        @if (creandoSala()) { <span class="loading loading-spinner loading-sm"></span> }
+                                        Crear sala presencial
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="modal-action">
+                                <button class="btn btn-ghost btn-sm" type="button" [disabled]="creandoSala()" (click)="cerrarSelectorModo()">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                }
 
                 <!-- Questions Section -->
                 <div class="space-y-4">

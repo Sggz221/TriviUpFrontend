@@ -163,20 +163,25 @@ export class QuizDetailComponent implements OnInit {
         { valor: 0, etiqueta: 'Sin tiempo' }
     ];
 
-    /** Presencial: el anfitrión marca y confirma las respuestas que los jugadores dicen en voz alta. */
-    modoJuego = signal<GameMode>('Normal');
+    /** Paso previo a crear la sala: el anfitrión elige el modo en unas tarjetas. */
+    eligiendoModo = signal(false);
 
-    onModoJuegoChange(event: Event): void {
-        this.modoJuego.set((event.target as HTMLSelectElement).value as GameMode);
+    abrirSelectorModo(): void {
+        this.eligiendoModo.set(true);
+    }
+
+    cerrarSelectorModo(): void {
+        if (!this.creandoSala()) this.eligiendoModo.set(false);
     }
 
     onTiempoTurnoChange(event: Event): void {
         this.tiempoTurno.set(Number((event.target as HTMLSelectElement).value));
     }
 
-    crearSalaJuego(): void {
+    /** Crea la sala en el modo elegido. Presencial: el anfitrión marca y confirma las respuestas que dicen los jugadores. */
+    crearSalaJuego(modo: GameMode): void {
         const quiz = this.cuestionario();
-        if (!quiz) return;
+        if (!quiz || this.creandoSala()) return;
 
         this.creandoSala.set(true);
 
@@ -185,14 +190,14 @@ export class QuizDetailComponent implements OnInit {
         if (!token) {
             this.errorMessage.set('Debes iniciar sesión para crear una sala');
             this.creandoSala.set(false);
+            this.eligiendoModo.set(false);
             return;
         }
 
         this.gameSignalrService.connect(token).then(() => {
             // Invocar CreateGame en el hub
             // En modo presencial no hay tiempo por turno (el servidor también lo fuerza).
-            const presencial = this.modoJuego() === 'Presencial';
-            return this.gameSignalrService.createGame(quiz.id, presencial ? 0 : this.tiempoTurno(), this.modoJuego());
+            return this.gameSignalrService.createGame(quiz.id, modo === 'Presencial' ? 0 : this.tiempoTurno(), modo);
         }).then((roomCode) => {
             console.log('[QuizDetail] ★★★ Sala creada:', roomCode);
             // Indicar que este usuario es el owner
@@ -205,6 +210,7 @@ export class QuizDetailComponent implements OnInit {
             console.error('[QuizDetail] Error al crear sala:', error);
             this.errorMessage.set('Error al crear la sala de juego');
             this.creandoSala.set(false);
+            this.eligiendoModo.set(false);
         });
     }
 }
