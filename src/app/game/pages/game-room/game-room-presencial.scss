@@ -1,0 +1,44 @@
+// Modo presencial: estilos del anfitrión que marca y confirma las respuestas.
+
+.answer-options .answer-btn {
+    // Presencial: solo el anfitrión ve cuál es la correcta
+    &.host-correct {
+        outline: 3px dashed var(--success);
+        outline-offset: 3px;
+    }
+
+    .host-correct-badge {
+        position: absolute;
+        top: -0.7rem;
+        right: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.1rem 0.5rem;
+        border-radius: 999px;
+        background: var(--success);
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 700;
+        pointer-events: none;
+    }
+}
+
+.host-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+
+    .btn {
+        min-width: min(100%, 16rem);
+    }
+
+    .host-controls-hint {
+        color: var(--base-content);
+        opacity: 0.7;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+}
