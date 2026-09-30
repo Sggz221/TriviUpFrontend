@@ -15,6 +15,7 @@ import { AudioService } from '../../../shared/services/audio.service';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { clearAnonymousIdentity, getOrCreateAnonymousUserId, getSavedAnonymousIdentity, saveAnonymousIdentity, touchAnonymousIdentity } from '../../utils/anonymous-identity.utils';
+import { clearLastGame, saveLastGame, touchLastGame } from '../../utils/last-game.utils';
 
 @Component({
     selector: 'app-game-room',
@@ -198,7 +199,10 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.initializeConnection();
 
         // Mantener viva la identidad anónima mientras el jugador está en la sala
-        this.activityTimer = setInterval(() => touchAnonymousIdentity(this.roomCode()), 60 * 1000);
+        this.activityTimer = setInterval(() => {
+            touchAnonymousIdentity(this.roomCode());
+            touchLastGame(this.roomCode());
+        }, 60 * 1000);
     }
 
     ngOnDestroy(): void {
@@ -296,9 +300,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 return this.gameSignalrService.joinGame(this.roomCode(), this.myUserId(), this.myUsername());
             }).then(() => {
                 console.log('[GameRoom] joinGame() succeeded (if called)');
+                saveLastGame(this.roomCode());
             }).catch((error) => {
                 console.error('[GameRoom] Error al conectar:', error);
                 this.errorMessage.set('Error al conectar con el servidor de juego');
+                // Sala inexistente o inaccesible: que el aviso de reconexión no vuelva a ofrecerla
+                clearLastGame(this.roomCode());
             });
         } else {
             // No hay usuario logueado → mostrar formulario para unirse como anónimo
@@ -324,6 +331,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                     console.log('[GameRoom] Set players from service:', servicePlayers.length);
                 }
                 this.setupEventHandlers();
+                saveLastGame(this.roomCode());
 
                 // JoinGame (desde /unirse) pudo reenviar el estado de una partida en curso
                 // antes de que este componente registrara sus handlers: recuperarlo del servicio.
@@ -420,10 +428,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 this.myUserId.set(registeredId);
                 saveAnonymousIdentity(this.roomCode(), registeredId, username);
             }
+            saveLastGame(this.roomCode());
             this.isJoining.set(false);
         }).catch((error) => {
             console.error('[GameRoom] Error al conectar como anónimo:', error);
             this.errorMessage.set('Error al conectar con el servidor de juego');
+            clearLastGame(this.roomCode());
             this.isJoining.set(false);
         });
     }
@@ -506,6 +516,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 console.log('[GameRoom] You were kicked from the game!');
                 this.errorMessage.set('Has sido expulsado de la sala');
                 clearAnonymousIdentity(this.roomCode());
+                clearLastGame(this.roomCode());
                 // Redirect to home after a short delay
                 setTimeout(() => {
                     this.router.navigate(['/']);
@@ -523,6 +534,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         // Cuando el anfitrión cierra la sala (salió explícitamente mientras se esperaba)
         this.gameSignalrService.onRoomClosed.pipe(takeUntil(this.destroy$)).subscribe(({ reason }) => {
             console.log('[GameRoom] La sala fue cerrada:', reason);
+            clearLastGame(this.roomCode());
             this.errorMessage.set(reason === 'NO_PLAYERS'
                 ? 'La sala se cerró: el anfitrión se fue y solo quedaban espectadores'
                 : 'El anfitrión cerró la sala');
@@ -636,6 +648,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             console.log('[GameRoom] Game finished:', results);
             this.gameResults.set(results);
             this.audioService.playGameOver();
+            // Partida terminada: ya no hay nada a lo que reconectar
+            clearLastGame(this.roomCode());
         });
 
         // Errores
@@ -694,6 +708,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
     onLeaveGame(): void {
         clearAnonymousIdentity(this.roomCode());
+        clearLastGame(this.roomCode());
         this.gameSignalrService.leaveGame(this.roomCode())
             .catch((error) => console.error('[GameRoom] Error al notificar salida de la sala:', error))
             .finally(() => {
