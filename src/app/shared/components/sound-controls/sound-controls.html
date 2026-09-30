@@ -29,3 +29,30 @@
         </svg>
     }
 </button>
+<button class="btn btn-circle btn-ghost sound-btn" type="button"
+        [attr.aria-expanded]="panelOpen()"
+        aria-label="Volumen" title="Volumen"
+        (click)="togglePanel()">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" aria-hidden="true">
+        <line x1="4" y1="6" x2="20" y2="6" /><circle cx="9" cy="6" r="2" fill="currentColor" />
+        <line x1="4" y1="12" x2="20" y2="12" /><circle cx="15" cy="12" r="2" fill="currentColor" />
+        <line x1="4" y1="18" x2="20" y2="18" /><circle cx="8" cy="18" r="2" fill="currentColor" />
+    </svg>
+</button>
+@if (panelOpen()) {
+    <div class="volume-panel" role="group" aria-label="Volumen">
+        <label class="volume-row">
+            <span>Música</span>
+            <input type="range" min="0" max="100" step="1" class="range range-xs range-primary"
+                   [value]="audio.musicVolume() * 100" (input)="onMusicVolume($event)" />
+            <output>{{ (audio.musicVolume() * 100).toFixed(0) }}%</output>
+        </label>
+        <label class="volume-row">
+            <span>Efectos</span>
+            <input type="range" min="0" max="100" step="1" class="range range-xs range-primary"
+                   [value]="audio.sfxVolume() * 100" (input)="onSfxVolume($event)" />
+            <output>{{ (audio.sfxVolume() * 100).toFixed(0) }}%</output>
+        </label>
+    </div>
+}

@@ -45,7 +45,7 @@ export class AudioService {
     }
 
     private playTone(frequency: number, duration: number, type: OscillatorType = 'sine', gainValue: number = 0.3): void {
-        if (this.isMuted()) return;
+        if (this.isMuted() || this.sfxVolumeSignal() === 0) return;
 
         try {
             const ctx = this.getAudioContext();
@@ -58,7 +58,7 @@ export class AudioService {
             oscillator.type = type;
             oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
 
-            gainNode.gain.setValueAtTime(gainValue, ctx.currentTime);
+            gainNode.gain.setValueAtTime(gainValue * this.sfxVolumeSignal(), ctx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
 
             oscillator.start(ctx.currentTime);
@@ -128,6 +128,9 @@ export class AudioService {
     private static readonly MUSIC_SMOOTHING_S = 0.15;
 
     private musicMutedSignal = signal(this.loadFlag('musicMuted'));
+    /** Volumen elegido por el jugador (0-1), por encima del volumen base de cada canal. */
+    private musicVolumeSignal = signal(this.loadVolume('musicVolume'));
+    private sfxVolumeSignal = signal(this.loadVolume('sfxVolume'));
     /** Se reproduce en streaming (no se decodifica entera: serían ~120 MB de memoria en el móvil). */
     private musicElement: HTMLAudioElement | null = null;
     private musicGain: GainNode | null = null;
@@ -140,6 +143,25 @@ export class AudioService {
 
     get musicMuted() {
         return this.musicMutedSignal.asReadonly();
+    }
+
+    get musicVolume() {
+        return this.musicVolumeSignal.asReadonly();
+    }
+
+    get sfxVolume() {
+        return this.sfxVolumeSignal.asReadonly();
+    }
+
+    setMusicVolume(volume: number): void {
+        this.musicVolumeSignal.set(AudioService.clampVolume(volume));
+        this.saveVolume('musicVolume', this.musicVolumeSignal());
+        this.applyMusicState();
+    }
+
+    setSfxVolume(volume: number): void {
+        this.sfxVolumeSignal.set(AudioService.clampVolume(volume));
+        this.saveVolume('sfxVolume', this.sfxVolumeSignal());
     }
 
     toggleMusicMute(): void {
@@ -198,6 +220,22 @@ export class AudioService {
     setMusicMuffled(muffled: boolean): void {
         this.musicMuffled = muffled;
         this.applyMusicState();
+    }
+
+    private static clampVolume(volume: number): number {
+        return Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 1;
+    }
+
+    private loadVolume(key: string): number {
+        if (typeof localStorage === 'undefined') return 1;
+        const stored = localStorage.getItem(key);
+        return stored === null ? 1 : AudioService.clampVolume(Number(stored));
+    }
+
+    private saveVolume(key: string, value: number): void {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(key, value.toString());
+        }
     }
 
     private loadFlag(key: string): boolean {
@@ -268,7 +306,7 @@ export class AudioService {
         const ctx = this.getAudioContext();
         const volume = this.musicMutedSignal() || !this.musicWanted
             ? 0
-            : AudioService.MUSIC_VOLUME * (this.musicMuffled ? AudioService.MUFFLED_GAIN : 1);
+            : AudioService.MUSIC_VOLUME * this.musicVolumeSignal() * (this.musicMuffled ? AudioService.MUFFLED_GAIN : 1);
         const cutoff = this.musicMuffled ? AudioService.MUFFLED_CUTOFF_HZ : AudioService.OPEN_CUTOFF_HZ;
         this.musicGain.gain.setTargetAtTime(volume, ctx.currentTime, AudioService.MUSIC_SMOOTHING_S);
         this.musicFilter.frequency.setTargetAtTime(cutoff, ctx.currentTime, AudioService.MUSIC_SMOOTHING_S);
