@@ -105,4 +105,186 @@ export class AudioService {
             setTimeout(() => this.playTone(freq, 0.2, 'sine', 0.2), i * 150);
         });
     }
+
+    // ============ Música de fondo (canal independiente de los efectos) ============
+
+    private static readonly MUSIC_URL = '/audio/music/TriviUp_BG_Music.ogg';
+    /**
+     * Puntos del bucle, en segundos: el archivo tiene ~0,78 s de silencio al principio y ~0,94 s al
+     * final, así que se salta del último sonido al primero. Medidos sobre TriviUp_BG_Music.ogg;
+     * hay que actualizarlos si se cambia el archivo.
+     */
+    private static readonly MUSIC_LOOP_START_S = 0.78;
+    private static readonly MUSIC_LOOP_END_S = 338.83;
+    /** Cada cuánto se comprueba si se ha llegado al final del bucle. */
+    private static readonly MUSIC_LOOP_CHECK_MS = 30;
+    /** Volumen base de la música; queda por debajo de los efectos. */
+    private static readonly MUSIC_VOLUME = 0.35;
+    /** Con un comodín bloqueante, la música baja a esta fracción y se "tapa" con un paso bajo. */
+    private static readonly MUFFLED_GAIN = 0.4;
+    private static readonly MUFFLED_CUTOFF_HZ = 500;
+    private static readonly OPEN_CUTOFF_HZ = 20000;
+    /** Constante de tiempo (s) de las transiciones de volumen y filtro: tarda ~3x en asentarse. */
+    private static readonly MUSIC_SMOOTHING_S = 0.15;
+
+    private musicMutedSignal = signal(this.loadFlag('musicMuted'));
+    /** Se reproduce en streaming (no se decodifica entera: serían ~120 MB de memoria en el móvil). */
+    private musicElement: HTMLAudioElement | null = null;
+    private musicGain: GainNode | null = null;
+    private musicFilter: BiquadFilterNode | null = null;
+    private musicLoopTimer: ReturnType<typeof setInterval> | null = null;
+    private musicStopTimer: ReturnType<typeof setTimeout> | null = null;
+    private musicWanted = false;
+    private musicMuffled = false;
+    private unlockListenersAdded = false;
+
+    get musicMuted() {
+        return this.musicMutedSignal.asReadonly();
+    }
+
+    toggleMusicMute(): void {
+        this.setMusicMuted(!this.musicMutedSignal());
+    }
+
+    setMusicMuted(muted: boolean): void {
+        this.musicMutedSignal.set(muted);
+        this.saveFlag('musicMuted', muted);
+        this.applyMusicState();
+    }
+
+    /** Empieza la música en bucle (idempotente). Los navegadores solo la dejan sonar tras un gesto del usuario. */
+    startMusic(): void {
+        if (typeof window === 'undefined') return;
+        this.musicWanted = true;
+        if (this.musicStopTimer) {
+            clearTimeout(this.musicStopTimer);
+            this.musicStopTimer = null;
+        }
+
+        const element = this.ensureMusicGraph();
+        if (element.paused) {
+            if (element.currentTime < AudioService.MUSIC_LOOP_START_S) {
+                element.currentTime = AudioService.MUSIC_LOOP_START_S;
+            }
+            this.tryPlayMusic();
+        }
+        this.startLoopWatcher();
+        this.applyMusicState();
+    }
+
+    /** Para la música con un fundido corto. */
+    stopMusic(): void {
+        this.musicWanted = false;
+        this.musicMuffled = false;
+        const element = this.musicElement;
+        if (!element || element.paused) {
+            this.stopLoopWatcher();
+            return;
+        }
+
+        this.applyMusicState();
+        this.musicStopTimer = setTimeout(() => {
+            this.musicStopTimer = null;
+            element.pause();
+            element.currentTime = AudioService.MUSIC_LOOP_START_S;
+            this.stopLoopWatcher();
+        }, 600);
+    }
+
+    /**
+     * Tapa la música mientras dura algo bloqueante (ruleta, llamada): baja el volumen y cierra un
+     * filtro paso bajo, como al pausar en muchos juegos. Las transiciones son suaves.
+     */
+    setMusicMuffled(muffled: boolean): void {
+        this.musicMuffled = muffled;
+        this.applyMusicState();
+    }
+
+    private loadFlag(key: string): boolean {
+        return typeof localStorage !== 'undefined' && localStorage.getItem(key) === 'true';
+    }
+
+    private saveFlag(key: string, value: boolean): void {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(key, value.toString());
+        }
+    }
+
+    /** Crea (una vez) el elemento de audio y su cadena: elemento → paso bajo → volumen → salida. */
+    private ensureMusicGraph(): HTMLAudioElement {
+        if (this.musicElement) return this.musicElement;
+
+        const ctx = this.getAudioContext();
+        const element = new Audio(AudioService.MUSIC_URL);
+        element.preload = 'auto';
+        // Si el navegador llega al final real (pestaña en segundo plano sin temporizadores), se vuelve a empezar
+        element.addEventListener('ended', () => {
+            element.currentTime = AudioService.MUSIC_LOOP_START_S;
+            if (this.musicWanted) this.tryPlayMusic();
+        });
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = AudioService.OPEN_CUTOFF_HZ;
+        const gain = ctx.createGain();
+        gain.gain.value = 0;
+        ctx.createMediaElementSource(element).connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+
+        this.musicElement = element;
+        this.musicFilter = filter;
+        this.musicGain = gain;
+        return element;
+    }
+
+    private tryPlayMusic(): void {
+        const element = this.musicElement;
+        if (!element) return;
+        void this.getAudioContext().resume().catch(() => { /* espera al primer gesto */ });
+        element.play().catch(() => this.unlockOnGesture());
+    }
+
+    /** Salta del último sonido al primero sin esperar al silencio final del archivo. */
+    private startLoopWatcher(): void {
+        if (this.musicLoopTimer) return;
+        this.musicLoopTimer = setInterval(() => {
+            const element = this.musicElement;
+            if (element && !element.paused && element.currentTime >= AudioService.MUSIC_LOOP_END_S) {
+                element.currentTime = AudioService.MUSIC_LOOP_START_S;
+            }
+        }, AudioService.MUSIC_LOOP_CHECK_MS);
+    }
+
+    private stopLoopWatcher(): void {
+        if (!this.musicLoopTimer) return;
+        clearInterval(this.musicLoopTimer);
+        this.musicLoopTimer = null;
+    }
+
+    /** Lleva volumen y filtro al estado que toque (muteada, tapada o normal) con una transición suave. */
+    private applyMusicState(): void {
+        if (!this.musicGain || !this.musicFilter) return;
+        const ctx = this.getAudioContext();
+        const volume = this.musicMutedSignal() || !this.musicWanted
+            ? 0
+            : AudioService.MUSIC_VOLUME * (this.musicMuffled ? AudioService.MUFFLED_GAIN : 1);
+        const cutoff = this.musicMuffled ? AudioService.MUFFLED_CUTOFF_HZ : AudioService.OPEN_CUTOFF_HZ;
+        this.musicGain.gain.setTargetAtTime(volume, ctx.currentTime, AudioService.MUSIC_SMOOTHING_S);
+        this.musicFilter.frequency.setTargetAtTime(cutoff, ctx.currentTime, AudioService.MUSIC_SMOOTHING_S);
+    }
+
+    /** El navegador bloquea el audio hasta el primer gesto del usuario: se reintenta en cuanto ocurre. */
+    private unlockOnGesture(): void {
+        if (this.unlockListenersAdded) return;
+
+        this.unlockListenersAdded = true;
+        const events = ['pointerdown', 'keydown', 'touchend'];
+        const unlock = () => {
+            events.forEach(e => window.removeEventListener(e, unlock));
+            this.unlockListenersAdded = false;
+            if (this.musicWanted) this.tryPlayMusic();
+        };
+        events.forEach(e => window.addEventListener(e, unlock));
+    }
 }

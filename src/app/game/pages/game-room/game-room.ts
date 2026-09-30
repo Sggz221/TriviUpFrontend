@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, OnDestroy, computed, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, signal, inject, OnDestroy, computed, effect, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -14,13 +14,14 @@ import { colorDeFase, textoSobreColor } from '../../../cuestionarios/models/fase
 import { AudioService } from '../../../shared/services/audio.service';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 import { IconComponent } from '../../../shared/components/icon/icon.component';
+import { SoundControlsComponent } from '../../../shared/components/sound-controls/sound-controls.component';
 import { clearAnonymousIdentity, getOrCreateAnonymousUserId, getSavedAnonymousIdentity, saveAnonymousIdentity, touchAnonymousIdentity } from '../../utils/anonymous-identity.utils';
 import { clearLastGame, saveLastGame, touchLastGame } from '../../utils/last-game.utils';
 
 @Component({
     selector: 'app-game-room',
     standalone: true,
-    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent],
+    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent, SoundControlsComponent],
     templateUrl: './game-room.html',
     styleUrls: ['./game-room.scss', './game-room-comodines.scss', './game-room-presencial.scss']
 })
@@ -57,7 +58,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     private static readonly PRESENCIAL_OVERLAY_MS = 2500;
     lastTurnResult = signal<TurnResult | null>(null);
     gameResults = signal<GameResult | null>(null);
-    isMuted = signal<boolean>(false);
     isPaused = signal<boolean>(false);
     localTimeRemaining = signal<number>(0);
     /** Segundos totales del turno actual (0 = sin límite de tiempo). */
@@ -176,10 +176,20 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         return `shape-${this.getShapeType(index)}`;
     }
 
-    ngOnInit(): void {
-        // Load muted state from localStorage
-        this.isMuted.set(this.audioService.muted());
+    constructor() {
+        // Música de fondo mientras se juega (no en el lobby ni en los resultados)
+        effect(() => {
+            if (this.gameState() === 'playing' && !this.gameResults()) this.audioService.startMusic();
+            else this.audioService.stopMusic();
+        });
 
+        // Con un comodín bloqueante (ruleta girando o llamada en pantalla) la música se baja y se "tapa"
+        effect(() => {
+            this.audioService.setMusicMuffled(!!this.ruletaSpin() || (this.callActive() && !this.showTurnResult()));
+        });
+    }
+
+    ngOnInit(): void {
         const code = this.route.snapshot.paramMap.get('roomCode');
         if (!code) {
             this.errorMessage.set('Código de sala no válido');
@@ -213,6 +223,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy(): void {
+        this.audioService.stopMusic();
         this.destroy$.next();
         this.destroy$.complete();
         if (this.activityTimer) clearInterval(this.activityTimer);
@@ -1121,11 +1132,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
     getImageUrl(url: string | null | undefined): string {
         return imageUrl(url);
-    }
-
-    toggleMute(): void {
-        this.audioService.toggleMute();
-        this.isMuted.set(this.audioService.muted());
     }
 
     togglePause(): void {

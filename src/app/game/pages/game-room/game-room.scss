@@ -743,25 +743,7 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
     position: absolute;
     top: 1rem;
     right: 1rem;
-
-    .btn-circle {
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        transition: all 0.3s ease;
-
-        &:hover {
-            background: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-        }
-
-        svg {
-            width: 24px;
-            height: 24px;
-            color: var(--base-content);
-        }
-    }
-}
+}
 
 .results-sound-toggle {
     position: absolute;
