@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, HostQuestionInfoDto } from '../models/game.models';
+import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, CallDismissedDto, HostQuestionInfoDto } from '../models/game.models';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 import { colorDeFase } from '../../cuestionarios/models/fase-color';
 import { AuthService } from '../../auth/auth.service';
@@ -67,6 +67,7 @@ export class GameSignalrService {
     private phaseCompleted$ = new Subject<PhaseCompletedDto>();
     private comodinUsed$ = new Subject<ComodinUsedDto>();
     private answerMarked$ = new Subject<AnswerMarkedDto>();
+    private callDismissed$ = new Subject<CallDismissedDto>();
 
     // State signals
     isConnected = signal(false);
@@ -115,6 +116,7 @@ export class GameSignalrService {
     onPhaseCompleted = this.phaseCompleted$.asObservable();
     onComodinUsed = this.comodinUsed$.asObservable();
     onAnswerMarked = this.answerMarked$.asObservable();
+    onCallDismissed = this.callDismissed$.asObservable();
     /** Último TurnStarted recibido (para recuperar robo/comodines si el componente se suscribe tarde). */
     lastTurnStarted = signal<TurnStartedDto | null>(null);
 
@@ -332,7 +334,18 @@ export class GameSignalrService {
             console.log('[GameSignalr] Event: ComodinUsed', data);
             this.players.update(list => list.map(p =>
                 p.userId === data.userId ? { ...p, availableComodines: data.availableComodines } : p));
+            // Para quien reentra sin un TurnStarted nuevo (ver lastTurnStarted)
+            this.lastTurnStarted.update(t => t && t.question.id === data.questionId ? {
+                ...t,
+                comodinUsed: t.comodinUsed || data.tipo !== 'Robo',
+                callActive: t.callActive || data.tipo === 'Llamada'
+            } : t);
             this.comodinUsed$.next(data);
+        });
+        this.hubConnection.on('CallDismissed', (data: CallDismissedDto) => {
+            console.log('[GameSignalr] Event: CallDismissed', data);
+            this.lastTurnStarted.update(t => t && t.question.id === data.questionId ? { ...t, callActive: false } : t);
+            this.callDismissed$.next(data);
         });
         this.hubConnection.on('AnswerMarked', (data: AnswerMarkedDto) => {
             console.log('[GameSignalr] Event: AnswerMarked', data);
@@ -492,6 +505,14 @@ export class GameSignalrService {
     async markAnswer(roomCode: string, questionId: number, answerIndex: number | null): Promise<void> {
         if (!this.hubConnection) throw new Error('Hub not connected');
         return this.hubConnection.invoke('MarkAnswer', roomCode, questionId, answerIndex);
+    }
+
+    /**
+     * Presencial: remove the Llamada banner for everyone (requires owner)
+     */
+    async dismissCall(roomCode: string, questionId: number): Promise<void> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        return this.hubConnection.invoke('DismissCall', roomCode, questionId);
     }
 
     /**

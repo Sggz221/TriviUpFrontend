@@ -271,6 +271,13 @@
                             <span class="comodin-icon" aria-hidden="true">🎲</span>
                             <span class="comodin-name">Doble o nada</span>
                         </button>
+                        @if (isPresencial()) {
+                            <button class="comodin-btn" type="button" [disabled]="!canUseLlamada() || usingComodin()"
+                                    title="Llamas a un amigo: el anfitrión quita el cartel cuando acabe" (click)="useComodin('Llamada')">
+                                <span class="comodin-icon" aria-hidden="true">📞</span>
+                                <span class="comodin-name">Llamada</span>
+                            </button>
+                        }
                     } @else {
                         <button class="comodin-btn" type="button" [disabled]="!canRobar() || usingComodin()"
                                 title="Responde tú. Si fallas: −50 y vuelve al jugador original" (click)="useComodin('Robo')">
@@ -430,6 +437,16 @@
                 }
             </p>
         </div>
+    </div>
+}
+
+@if (callActive() && !showTurnResult()) {
+    <div class="call-banner" role="status" aria-live="polite">
+        <span class="call-banner-icon" aria-hidden="true">📞</span>
+        <span class="call-banner-text">Llamada de {{ getCurrentTurnPlayerName() }}</span>
+        @if (isHostMarking()) {
+            <button class="btn btn-sm call-banner-cancel" type="button" (click)="dismissCall()">Cancelar</button>
+        }
     </div>
 }
 

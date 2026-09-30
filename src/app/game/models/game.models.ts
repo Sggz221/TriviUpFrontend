@@ -83,6 +83,15 @@ export interface TurnStartedDto {
     mode?: GameMode;
     /** Presencial: opción marcada por el anfitrión y aún sin confirmar. */
     markedAnswerIndex?: number | null;
+    /** Ya se usó algún comodín en esta pregunta: no se puede robar. */
+    comodinUsed?: boolean;
+    /** Presencial: hay una Llamada en curso y su cartel sigue en pantalla. */
+    callActive?: boolean;
+}
+
+/** Presencial: el anfitrión quitó el cartel de la Llamada. */
+export interface CallDismissedDto {
+    questionId: number;
 }
 
 /** Presencial: el anfitrión marcó (o desmarcó, con null) una opción. */
@@ -129,10 +138,10 @@ export interface GameLobbyState {
     mode?: GameMode;
 }
 
-export type ComodinTipo = 'Ruleta' | 'DobleONada' | 'Robo' | 'Apuesta';
+export type ComodinTipo = 'Ruleta' | 'DobleONada' | 'Robo' | 'Apuesta' | 'Llamada';
 
 /** Comodines que se usan en el turno propio; el resto, fuera de él. */
-export const COMODINES_DE_TURNO: readonly ComodinTipo[] = ['Ruleta', 'DobleONada'];
+export const COMODINES_DE_TURNO: readonly ComodinTipo[] = ['Ruleta', 'DobleONada', 'Llamada'];
 
 export interface Bet {
     userId: number;

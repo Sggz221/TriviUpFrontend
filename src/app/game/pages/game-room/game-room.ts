@@ -76,6 +76,10 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     turnOwnerId = signal<number | null>(null);
     isSteal = signal<boolean>(false);
     stolenById = signal<number | null>(null);
+    /** Ya se usó algún comodín en la pregunta (bloquea el robo). */
+    comodinUsedOnQuestion = signal<boolean>(false);
+    /** Presencial: Llamada en curso; su cartel lo quita el anfitrión. */
+    callActive = signal<boolean>(false);
     usingComodin = signal<boolean>(false);
     betPickerOpen = signal<boolean>(false);
     /** Ruleta girando: resultado (respuestas eliminadas), valor del hueco en el que cae y si ya se paró. */
@@ -123,8 +127,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     canUseRuleta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('Ruleta') && !this.ruletaSpin());
     canUseDobleONada = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('DobleONada')
         && !this.doubleOrNothingPlayers().includes(this.myUserId()));
+    /** Llamada: solo en presencial, en el turno propio y sin otra llamada en pantalla. */
+    canUseLlamada = computed(() => this.canUseComodines() && this.isPresencial() && this.isMyTurn()
+        && this.hasComodin('Llamada') && !this.callActive());
     canRobar = computed(() => this.canUseComodines() && !this.isMyTurn() && this.hasComodin('Robo')
-        && this.stolenById() === null && !this.iBet() && this.turnOwnerId() !== this.myUserId());
+        && this.stolenById() === null && !this.comodinUsedOnQuestion() && this.turnOwnerId() !== this.myUserId());
     canApostar = computed(() => this.canUseComodines() && !this.isMyTurn() && this.hasComodin('Apuesta')
         && !this.isSteal() && this.stolenById() !== this.myUserId() && !this.iBet() && this.turnOwnerId() !== this.myUserId());
     /** Doble o nada activo para quien responde ahora. */
@@ -637,6 +644,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.selectedAnswer.set(data.answerIndex);
         });
 
+        // Presencial: el anfitrión quitó el cartel de la Llamada
+        this.gameSignalrService.onCallDismissed.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+            if (data.questionId === this.currentQuestion()?.id) this.callActive.set(false);
+        });
+
         // Comodín usado por cualquier jugador
         this.gameSignalrService.onComodinUsed.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             console.log('[GameRoom] Comodín usado:', data);
@@ -827,6 +839,19 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             .finally(() => this.usingComodin.set(false));
     }
 
+    /** Solo el anfitrión (presencial): quita el cartel de la Llamada para toda la sala. */
+    dismissCall(): void {
+        const question = this.currentQuestion();
+        if (!question) return;
+        this.callActive.set(false);
+        this.gameSignalrService.dismissCall(this.roomCode(), question.id)
+            .catch((error) => {
+                console.error('[GameRoom] Error al quitar la llamada:', error);
+                this.callActive.set(true);
+                this.showToast(this.hubErrorMessage(error, 'No se pudo quitar el cartel'), 'error');
+            });
+    }
+
     toggleBetPicker(): void {
         this.betPickerOpen.update(open => !open);
     }
@@ -843,6 +868,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.eliminatedAnswers.set(data.eliminatedAnswerIndexes ?? []);
         this.doubleOrNothingPlayers.set(data.doubleOrNothingPlayers ?? []);
         this.bets.set(data.bets ?? []);
+        this.comodinUsedOnQuestion.set(!!data.comodinUsed);
+        this.callActive.set(!!data.callActive);
     }
 
     private onComodinUsed(data: ComodinUsedDto): void {
@@ -850,8 +877,13 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             p.userId === data.userId ? { ...p, availableComodines: data.availableComodines } : p));
         if (data.questionId !== this.currentQuestion()?.id) return;
 
+        if (data.tipo !== 'Robo') this.comodinUsedOnQuestion.set(true);
+
         const nombre = data.username;
         switch (data.tipo) {
+            case 'Llamada':
+                this.callActive.set(true);
+                break;
             case 'Ruleta':
                 this.spinRuleta(data);
                 break;
