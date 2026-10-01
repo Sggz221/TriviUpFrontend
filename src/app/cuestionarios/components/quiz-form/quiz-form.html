@@ -179,6 +179,14 @@
                                     <button type="button" class="btn btn-xs btn-ghost" (click)="aplicarColorFase(preguntaIndex, '')">Automático</button>
                                 }
                             </div>
+                            <label class="flex items-start gap-2 mt-2 cursor-pointer">
+                                <input type="checkbox" formControlName="dinamica" class="mt-1"
+                                       style="accent-color: var(--primary);">
+                                <span class="text-sm">
+                                    <strong>Ronda dinámica</strong>
+                                    <span class="opacity-70"> · los equipos usan el móvil como pulsador y responde el primero en pulsar (sin turnos ni comodines)</span>
+                                </span>
+                            </label>
                             <div class="flex flex-wrap items-center gap-2 mt-2">
                                 <span class="text-xs opacity-70">Atajos:</span>
                                 @for (preset of presetsFase; track preset) {

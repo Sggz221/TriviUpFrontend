@@ -42,3 +42,56 @@
         text-align: center;
     }
 }
+
+// Ronda dinámica: pulsador de concurso en el móvil de cada equipo.
+.buzzer-zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    margin: 0.5rem 0 1rem;
+
+    .buzzer-hint {
+        color: var(--base-content);
+        opacity: 0.75;
+        font-size: 0.95rem;
+        text-align: center;
+    }
+}
+
+.buzzer-btn {
+    width: min(70vw, 14rem);
+    aspect-ratio: 1;
+    border: 0.5rem solid color-mix(in srgb, var(--error) 70%, black);
+    border-radius: 50%;
+    background: var(--error);
+    color: var(--error-content, #fff);
+    font-size: 1.75rem;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    box-shadow: 0 0.6rem 0 color-mix(in srgb, var(--error) 55%, black), 0 1.2rem 2rem rgb(0 0 0 / 0.35);
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    animation: buzzer-pulse 1.2s ease-in-out infinite;
+
+    &:active:not(:disabled) {
+        transform: translateY(0.5rem);
+        box-shadow: 0 0.1rem 0 color-mix(in srgb, var(--error) 55%, black), 0 0.4rem 1rem rgb(0 0 0 / 0.35);
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        animation: none;
+    }
+}
+
+@keyframes buzzer-pulse {
+    50% { filter: brightness(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .buzzer-btn { animation: none; }
+}

@@ -80,6 +80,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     comodinUsedOnQuestion = signal<boolean>(false);
     /** Presencial: Llamada en curso; su cartel lo quita el anfitrión. */
     callActive = signal<boolean>(false);
+    /** Ronda dinámica: la pregunta se la lleva el primer equipo en pulsar (sin turnos ni comodines). */
+    isDynamic = signal<boolean>(false);
+    /** Ronda dinámica: el pulsador sigue abierto y todavía no responde nadie. */
+    buzzerOpen = signal<boolean>(false);
+    isBuzzing = signal<boolean>(false);
     usingComodin = signal<boolean>(false);
     betPickerOpen = signal<boolean>(false);
     /** Ruleta girando: resultado (respuestas eliminadas), valor del hueco en el que cae y si ya se paró. */
@@ -120,9 +125,13 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Jugador (no anfitrión ni espectador) con una pregunta activa y sin pausa ni resultado en pantalla. */
     canUseComodines = computed(() =>
         !!this.me() && !this.isOwner() && !this.isSpectator() && !!this.currentQuestion()
-        && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak()
+        && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak() && !this.isDynamic()
         // En presencial la marca del anfitrión no bloquea: solo confirmar cierra la pregunta.
         && (this.isPresencial() || this.selectedAnswer() === null));
+    /** Ronda dinámica: un jugador (no anfitrión ni espectador) puede pulsar mientras el pulsador esté abierto. */
+    canBuzz = computed(() =>
+        this.buzzerOpen() && !!this.me() && !this.isOwner() && !this.isSpectator()
+        && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak());
     private iBet = computed(() => this.bets().some(b => b.userId === this.myUserId()));
     canUseRuleta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('Ruleta') && !this.ruletaSpin());
     canUseDobleONada = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('DobleONada')
@@ -373,7 +382,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                         this.lastTurnResult.set(pendingResult);
                         this.showTurnResult.set(true);
                     }
-                    if (this.isMyTurn() && !this.isPaused()) {
+                    if ((this.isMyTurn() || this.buzzerOpen()) && !this.isPaused()) {
                         this.startLocalTimer(this.gameSignalrService.timeRemaining());
                     }
                 }
@@ -597,12 +606,19 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.betPickerOpen.set(false);
             if (data.isSteal) {
                 this.showTurnBanner(0, '¡Robo!', `${this.playerName(data.currentPlayerId)} roba a ${this.playerName(data.turnOwnerId)}`);
+            } else if (data.isDynamic && !data.buzzerOpen) {
+                this.showTurnBanner(0, '¡Primero en pulsar!', this.playerName(data.currentPlayerId));
             } else {
                 this.showTurnBanner(this.mostrarBannerFase(fase));
             }
             if (isMyTurn) {
                 this.audioService.playTurnStart();
                 this.startLocalTimer(data.timeLimit);
+            } else if (data.buzzerOpen) {
+                // Pulsador abierto: todos ven correr el tiempo para pulsar.
+                this.startLocalTimer(data.timeLimit);
+            } else {
+                this.clearTimerInterval();
             }
         });
 
@@ -881,6 +897,22 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.bets.set(data.bets ?? []);
         this.comodinUsedOnQuestion.set(!!data.comodinUsed);
         this.callActive.set(!!data.callActive);
+        this.isDynamic.set(!!data.isDynamic);
+        this.buzzerOpen.set(!!data.buzzerOpen);
+        this.isBuzzing.set(false);
+    }
+
+    /** Ronda dinámica: pulsa por mi equipo. Si otro llegó antes, el servidor lo rechaza y se avisa. */
+    onBuzz(): void {
+        const question = this.currentQuestion();
+        if (!question || !this.canBuzz() || this.isBuzzing()) return;
+        this.isBuzzing.set(true);
+        this.gameSignalrService.buzz(this.roomCode(), question.id)
+            .catch((error) => {
+                console.error('[GameRoom] Error al pulsar:', error);
+                this.showToast(this.hubErrorMessage(error, 'No se pudo pulsar'), 'info');
+            })
+            .finally(() => this.isBuzzing.set(false));
     }
 
     private onComodinUsed(data: ComodinUsedDto): void {

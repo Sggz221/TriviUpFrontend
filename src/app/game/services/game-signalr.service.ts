@@ -487,6 +487,18 @@ export class GameSignalrService {
     }
 
     /**
+     * Ronda dinámica: pulsa el botón del equipo. Gana el primero; al resto el hub le devuelve un error.
+     */
+    async buzz(roomCode: string, questionId: number): Promise<void> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        const userId = this.anonymousUserId ?? this.currentUserId();
+        if (userId === null) {
+            throw new Error('User not configured');
+        }
+        return this.hubConnection.invoke('Buzz', roomCode, userId, questionId);
+    }
+
+    /**
      * Use a comodín on the current question (anonymous - passes userId as parameter).
      * predictsCorrect only applies to 'Apuesta'.
      */

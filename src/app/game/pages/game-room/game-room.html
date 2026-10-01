@@ -166,7 +166,7 @@
                 }
             </div>
 
-            @if (isMyTurn() && !showTurnResult() && !isPaused() && turnTimeLimit() > 0) {
+            @if ((isMyTurn() || buzzerOpen()) && !showTurnResult() && !isPaused() && turnTimeLimit() > 0) {
                 <div class="turn-timer" [class.time-warning]="localTimeRemaining() <= 10" [class.time-danger]="localTimeRemaining() <= 5">
                     <div class="timer-bar">
                         <div class="timer-progress" [style.width.%]="(localTimeRemaining() / turnTimeLimit()) * 100"></div>
@@ -185,6 +185,20 @@
                     }
                     @for (bet of bets(); track bet.userId) {
                         <span class="comodin-chip chip-apuesta" [class.bet-yes]="bet.predictsCorrect" [class.bet-no]="!bet.predictsCorrect">{{ betLabel(bet) }}</span>
+                    }
+                </div>
+            }
+
+            @if (buzzerOpen() && !showTurnResult()) {
+                <div class="buzzer-zone">
+                    @if (canBuzz()) {
+                        <button class="buzzer-btn" type="button" [disabled]="isBuzzing()" (click)="onBuzz()"
+                                aria-label="Pulsar para responder">
+                            ¡PULSA!
+                        </button>
+                        <span class="buzzer-hint">El primero en pulsar responde</span>
+                    } @else {
+                        <span class="buzzer-hint">Ronda dinámica: esperando a que un equipo pulse...</span>
                     }
                 </div>
             }
@@ -226,9 +240,19 @@
                             {{ isConfirming() ? 'Confirmando...' : 'Confirmar respuesta' }}
                         </button>
                         <span class="host-controls-hint">
-                            {{ selectedAnswer() === null ? 'Marca la respuesta que diga ' + getCurrentTurnPlayerName() : 'Puedes cambiarla hasta confirmar' }}
+                            {{ buzzerOpen() ? 'Esperando a que un equipo pulse'
+                                : selectedAnswer() === null ? 'Marca la respuesta que diga ' + getCurrentTurnPlayerName() : 'Puedes cambiarla hasta confirmar' }}
                         </span>
                     }
+                </div>
+            }
+
+            @if (isOwner() && buzzerOpen() && !showTurnResult()) {
+                <div class="host-controls">
+                    <button class="btn btn-outline" type="button" [disabled]="isAdvancing() || isPaused()" (click)="onNextQuestion()">
+                        {{ isAdvancing() ? 'Pasando...' : 'Saltar pregunta' }}
+                    </button>
+                    <span class="host-controls-hint">Si nadie pulsa, puedes pasar a la siguiente</span>
                 </div>
             }
 
@@ -278,7 +302,9 @@
             }
 
             <div class="turn-info">
-                @if (isSpectator()) {
+                @if (buzzerOpen()) {
+                    <span class="waiting">{{ canBuzz() ? '¡Pulsa antes que los demás!' : 'Ronda dinámica: el primero en pulsar responde' }}</span>
+                } @else if (isSpectator()) {
                     <span class="badge badge-info badge-sm mb-1">Modo espectador</span><br />
                     <span class="waiting">Turno de {{ getCurrentTurnPlayerName() }}</span>
                 } @else if (isHostMarking()) {

@@ -25,6 +25,8 @@ interface PreguntaFormValue {
     nombre?: string;
     /** Color de la fase #rrggbb, vacío = por defecto (solo separadores). */
     color?: string;
+    /** Ronda dinámica: los equipos pulsan desde el móvil y responde el primero (solo separadores). */
+    dinamica?: boolean;
     dificultad?: Dificultad | null;
     enunciado: string;
     respuestas: RespuestaFormValue[];
@@ -224,8 +226,8 @@ export class QuizFormComponent {
         ordenadas.forEach((p) => {
             const fase = p.faseNumero ?? 1;
             if (fase !== faseAnterior) {
-                if (hayVariasFases || p.faseNombre) {
-                    this.preguntasArray.push(this.crearSeparador(p.faseNombre ?? '', p.faseColor ?? ''));
+                if (hayVariasFases || p.faseNombre || p.faseDinamica) {
+                    this.preguntasArray.push(this.crearSeparador(p.faseNombre ?? '', p.faseColor ?? '', !!p.faseDinamica));
                 }
                 faseAnterior = fase;
             }
@@ -275,11 +277,12 @@ export class QuizFormComponent {
         });
     }
 
-    private crearSeparador(nombre = '', color = ''): FormGroup {
+    private crearSeparador(nombre = '', color = '', dinamica = false): FormGroup {
         return this.fb.group({
             tipo: ['separador'],
             nombre: [nombre],
-            color: [color]
+            color: [color],
+            dinamica: [dinamica]
         });
     }
 
@@ -769,6 +772,7 @@ export class QuizFormComponent {
         let fase = 1;
         let faseNombre: string | undefined;
         let faseColor: string | undefined;
+        let faseDinamica = false;
         let preguntasEnFase = 0;
 
         for (const item of items) {
@@ -779,6 +783,7 @@ export class QuizFormComponent {
                 }
                 faseNombre = (item.nombre ?? '').trim() || undefined;
                 faseColor = esColorValido(item.color) ? item.color.toLowerCase() : undefined;
+                faseDinamica = !!item.dinamica;
                 continue;
             }
 
@@ -788,6 +793,7 @@ export class QuizFormComponent {
                 faseNumero: fase,
                 faseNombre,
                 faseColor,
+                faseDinamica: faseDinamica || undefined,
                 enunciado: item.enunciado ?? '',
                 respuestas: item.respuestas.map((r: RespuestaFormValue) => ({
                     texto: r.texto ?? '',

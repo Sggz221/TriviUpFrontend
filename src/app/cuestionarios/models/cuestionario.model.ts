@@ -35,6 +35,8 @@ export interface Pregunta {
     faseNombre?: string | null;
     /** Color de la fase (#rrggbb); ausente = color por defecto según el número de fase. */
     faseColor?: string | null;
+    /** Ronda dinámica: los equipos pulsan desde el móvil y responde el primero. */
+    faseDinamica?: boolean;
     dificultad?: Dificultad | null;
     imagenUrl?: string | null;
 }
@@ -67,6 +69,7 @@ export interface CreateQuizRequest {
         faseNumero: number;
         faseNombre?: string;
         faseColor?: string;
+        faseDinamica?: boolean;
         dificultad?: Dificultad;
     }[];
 }
