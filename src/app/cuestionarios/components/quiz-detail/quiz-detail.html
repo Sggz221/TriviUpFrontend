@@ -46,7 +46,7 @@
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    <span>{{ cuestionario()!.preguntas.length }} preguntas</span>
+                                    <span>{{ resumenPreguntas() }}</span>
                                 </div>
                             </div>
                         </div>
@@ -122,16 +122,28 @@
                 <!-- Questions Section -->
                 <div class="space-y-4">
                     <h2 class="text-xl font-bold" style="color: var(--secondary);">Preguntas</h2>
-                    @for (pregunta of cuestionario()!.preguntas; track pregunta.id) {
-                        @if (cabeceraFase($index); as cabecera) {
-                            <h3 class="text-xl sm:text-2xl font-extrabold pt-4 pl-3 border-l-8" [style.color]="colorFase($index)" [style.border-color]="colorFase($index)">{{ cabecera }}</h3>
+                    @for (fase of fases(); track fase.numero) {
+                        @if (mostrarCabeceras()) {
+                            <h3 class="text-xl sm:text-2xl font-extrabold pt-4 pl-3 border-l-8" [style.color]="fase.color" [style.border-color]="fase.color">{{ fase.titulo }}</h3>
                         }
+                        @if (fase.pool; as pool) {
+                            <div class="rounded-xl p-5 border-2 border-dashed flex items-start gap-3"
+                                 style="background-color: var(--base-200);" [style.border-color]="fase.color">
+                                <span class="text-2xl" aria-hidden="true">🎲</span>
+                                <div class="min-w-0">
+                                    <p class="font-semibold" style="color: var(--base-content);">Pool de preguntas</p>
+                                    <p class="text-sm opacity-80">{{ descripcionPool(pool) }}. Cambian en cada partida.</p>
+                                </div>
+                            </div>
+                        }
+                        @for (item of fase.preguntas; track item.pregunta.id) {
+                        @let pregunta = item.pregunta;
                         <div class="rounded-xl shadow-md p-6" style="background-color: var(--base-200);">
                             <!-- Question Header -->
                             <div class="flex items-start gap-4 mb-4">
                                 <div class="badge badge-lg font-bold text-xl w-10 h-10 flex items-center justify-center shrink-0"
                                      style="background-color: var(--info); color: var(--info-content);">
-                                    {{ $index + 1 }}
+                                    {{ item.numero }}
                                 </div>
                                 <p class="text-lg font-medium flex-1" style="color: var(--base-content);">
                                     {{ pregunta.enunciado }}
@@ -179,6 +191,7 @@
                                 </div>
                             </details>
                         </div>
+                        }
                     }
                 </div>
 

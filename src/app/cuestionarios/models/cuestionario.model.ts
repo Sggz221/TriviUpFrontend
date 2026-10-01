@@ -55,6 +55,8 @@ export interface Cuestionario {
     tieneBorrador?: boolean;
     gameCode: string;
     preguntas: Pregunta[];
+    /** Fases con pool: sus preguntas se sortean del banco del autor en cada partida. */
+    pools?: FasePool[];
     creatorId: number;
     fechaCreacion: string;
     fechaActualizacion: string;
@@ -75,6 +77,35 @@ export interface CreateQuizRequest {
         tipo?: TipoPregunta;
         dificultad?: Dificultad;
     }[];
+    pools?: FasePool[];
+}
+
+/** De dónde salen las preguntas de un pool: elegidas a mano del banco o por filtros. */
+export type OrigenPool = 'manual' | 'filtros';
+
+/** Pregunta del banco elegida a mano para un pool (el enunciado es solo para mostrarlo). */
+export interface FasePoolPregunta {
+    id: number;
+    enunciado: string;
+}
+
+/**
+ * Fase sin preguntas fijas: en cada partida se sortean `cantidad` preguntas del banco del autor.
+ * Ocupa su número de fase igual que las fases de preguntas.
+ */
+export interface FasePool {
+    faseNumero: number;
+    faseNombre?: string | null;
+    faseColor?: string | null;
+    cantidad: number;
+    origen: OrigenPool;
+    /** Origen manual: preguntas del banco entre las que se sortea. */
+    preguntas: FasePoolPregunta[];
+    /** Origen por filtros: categoría (null = cualquiera). */
+    categoriaId?: number | null;
+    categoriaNombre?: string | null;
+    /** Origen por filtros: dificultad (null = cualquiera). */
+    dificultad?: Dificultad | null;
 }
 
 export type UpdateQuizRequest = CreateQuizRequest;

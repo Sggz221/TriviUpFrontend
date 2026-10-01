@@ -5,7 +5,8 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDragPlaceholder, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { CuestionarioService } from '../../services/cuestionario.service';
 import {
-    Cuestionario, CreateQuizRequest, QuizVersion, BancoPregunta, BancoCategoria, Dificultad, Pregunta, TipoPregunta
+    Cuestionario, CreateQuizRequest, QuizVersion, BancoPregunta, BancoCategoria, Dificultad, Pregunta, TipoPregunta,
+    FasePool
 } from '../../models/cuestionario.model';
 import { BancoPreguntasService } from '../../services/banco-preguntas.service';
 import { BancoCategoriasService } from '../../services/banco-categorias.service';
@@ -29,9 +30,12 @@ interface PreguntaFormValue {
     imagenUrl?: string | null;
 }
 
+/** Configuración del pool de una fase (los datos de fase, nombre y color, van en la propia fase). */
+export type PoolConfig = Omit<FasePool, 'faseNumero' | 'faseNombre' | 'faseColor'>;
+
 /**
- * Fase del builder: agrupa sus preguntas. Es obligatoria (todo cuestionario tiene al menos una)
- * y es el sitio donde irá su configuración propia (p. ej. la pool de preguntas).
+ * Fase del builder: agrupa sus preguntas. Es obligatoria (todo cuestionario tiene al menos una).
+ * Con `pool` sus preguntas no son fijas: se sortean del banco en cada partida y no tiene preguntas propias.
  */
 interface FaseFormValue {
     /** Nombre libre; vacío = se muestra "Fase N". */
@@ -39,6 +43,13 @@ interface FaseFormValue {
     /** Color #rrggbb, vacío = por defecto según el número de fase. */
     color: string;
     preguntas: PreguntaFormValue[];
+    pool: PoolConfig | null;
+}
+
+/** Destino del panel del banco: añadir preguntas (copias) a la fase o elegirlas para su pool. */
+interface DestinoBanco {
+    fase: AbstractControl;
+    modo: 'preguntas' | 'pool';
 }
 
 type ImagenPregunta = { uploading: boolean; url: string | null; preview: string | null };
@@ -97,8 +108,15 @@ export class QuizFormComponent {
     /** Colores sugeridos para las fases; también se puede elegir cualquiera con el selector de color. */
     readonly paletaFases = PALETA_FASES;
 
-    /** Fase en la que se abrió el panel del banco (null = cerrado). */
-    bancoDestino = signal<AbstractControl | null>(null);
+    /** Fase en la que se abrió el panel del banco y para qué (null = cerrado). */
+    bancoDestino = signal<DestinoBanco | null>(null);
+
+    /** Máximo de preguntas que puede sacar un pool (igual que en el backend). */
+    static readonly POOL_MAXIMO = 50;
+    readonly poolMaximo = QuizFormComponent.POOL_MAXIMO;
+
+    /** Pools por filtros: preguntas del banco que cumplen sus filtros ahora mismo (null = consultando). */
+    poolDisponibles = signal<Map<AbstractControl, number | null>>(new Map());
 
     /** Diálogo "Al banco": pregunta que se guarda y categoría elegida (existente o nueva). */
     dialogoBanco = signal<{
@@ -223,29 +241,43 @@ export class QuizFormComponent {
         });
     }
 
-    /** Agrupa las preguntas por su número de fase: cada grupo es una fase del builder. */
+    /**
+     * Agrupa las preguntas por su número de fase: cada grupo es una fase del builder. Los pools
+     * ocupan su propio número de fase y se intercalan en su sitio.
+     */
     private rellenarFormulario(quiz: Cuestionario): void {
         this.quizForm.patchValue({ nombre: quiz.nombre, esPublico: quiz.esPublico ?? false });
         this.fasesArray.clear();
         this.bancoDestino.set(null);
+        this.poolDisponibles.set(new Map());
         const images = new Map<AbstractControl, ImagenPregunta>();
 
         const ordenadas = [...quiz.preguntas].sort((a, b) => a.numeroPregunta - b.numeroPregunta);
-        let faseAnterior: number | null = null;
-        let fase: FormGroup | null = null;
-
+        const porFase = new Map<number, Pregunta[]>();
         for (const p of ordenadas) {
             const numero = p.faseNumero ?? 1;
-            if (fase === null || numero !== faseAnterior) {
-                fase = this.crearFase(p.faseNombre ?? '', p.faseColor ?? '', false);
-                this.fasesArray.push(fase);
-                faseAnterior = numero;
+            porFase.set(numero, [...(porFase.get(numero) ?? []), p]);
+        }
+        const pools = new Map((quiz.pools ?? []).map(p => [p.faseNumero, p]));
+        const numeros = [...new Set([...porFase.keys(), ...pools.keys()])].sort((a, b) => a - b);
+
+        for (const numero of numeros) {
+            const pool = pools.get(numero);
+            if (pool) {
+                const { faseNumero, faseNombre, faseColor, ...config } = pool;
+                this.fasesArray.push(this.crearFase(faseNombre ?? '', faseColor ?? '', false, config));
+                continue;
             }
 
-            const grupo = this.crearPregunta(p);
-            this.preguntasDe(fase).push(grupo);
-            if (p.imagenUrl) {
-                images.set(grupo, { uploading: false, url: imageUrl(p.imagenUrl), preview: null });
+            const preguntas = porFase.get(numero)!;
+            const fase = this.crearFase(preguntas[0].faseNombre ?? '', preguntas[0].faseColor ?? '', false);
+            this.fasesArray.push(fase);
+            for (const p of preguntas) {
+                const grupo = this.crearPregunta(p);
+                this.preguntasDe(fase).push(grupo);
+                if (p.imagenUrl) {
+                    images.set(grupo, { uploading: false, url: imageUrl(p.imagenUrl), preview: null });
+                }
             }
         }
 
@@ -254,6 +286,12 @@ export class QuizFormComponent {
         }
         this.questionImages.set(images);
         this.quizForm.markAsPristine();
+
+        if (pools.size > 0) {
+            this.cargarCategoriasBanco();
+            this.fasesArray.controls.filter(f => this.poolDe(f)?.origen === 'filtros')
+                .forEach(f => this.consultarDisponibles(f));
+        }
     }
 
     // ===== Estructura =====
@@ -267,11 +305,12 @@ export class QuizFormComponent {
         return control.get('preguntas') as FormArray;
     }
 
-    private crearFase(nombre = '', color = '', conPregunta = true): FormGroup {
+    private crearFase(nombre = '', color = '', conPregunta = true, pool: PoolConfig | null = null): FormGroup {
         return this.fb.group({
             nombre: [nombre],
             color: [color],
-            preguntas: this.fb.array(conPregunta ? [this.crearPregunta()] : [])
+            preguntas: this.fb.array(conPregunta ? [this.crearPregunta()] : []),
+            pool: [pool]
         });
     }
 
@@ -331,7 +370,7 @@ export class QuizFormComponent {
         }
 
         const fase = this.fasesArray.at(index);
-        if (this.bancoDestino() === fase) this.bancoDestino.set(null);
+        if (this.bancoDestino()?.fase === fase) this.bancoDestino.set(null);
         const images = new Map(this.questionImages());
         preguntas.controls.forEach(p => images.delete(p));
         this.questionImages.set(images);
@@ -379,6 +418,109 @@ export class QuizFormComponent {
         this.quizForm.markAsDirty();
     }
 
+    // ===== Pool de preguntas =====
+
+    poolDe(fase: number | AbstractControl): PoolConfig | null {
+        const control = typeof fase === 'number' ? this.fasesArray.at(fase) : fase;
+        return control.get('pool')?.value ?? null;
+    }
+
+    esPool(fase: number | AbstractControl): boolean {
+        return this.poolDe(fase) !== null;
+    }
+
+    /** Convierte la fase en un pool: sus preguntas se sortearán del banco y deja de tener preguntas propias. */
+    activarPool(faseIndex: number): void {
+        this.cerrarMenu();
+        const preguntas = this.preguntasDe(faseIndex);
+        const conContenido = preguntas.controls.filter(p => !this.preguntaVacia(p)).length;
+        if (conContenido > 0 &&
+            !confirm(`«${this.nombreFase(faseIndex)}» tiene ${conContenido} pregunta(s). Al usar un pool se quitan de la fase. ¿Continuar?`)) {
+            return;
+        }
+
+        const images = new Map(this.questionImages());
+        preguntas.controls.forEach(p => images.delete(p));
+        this.questionImages.set(images);
+        preguntas.clear();
+
+        const fase = this.fasesArray.at(faseIndex);
+        if (this.bancoDestino()?.fase === fase) this.bancoDestino.set(null);
+        fase.patchValue({ pool: { cantidad: 5, origen: 'filtros', preguntas: [], categoriaId: null, categoriaNombre: null, dificultad: null } });
+        this.quizForm.markAsDirty();
+        this.cargarCategoriasBanco();
+        this.consultarDisponibles(fase);
+    }
+
+    /** Vuelve a una fase de preguntas fijas (con una pregunta vacía para empezar). */
+    quitarPool(faseIndex: number): void {
+        this.cerrarMenu();
+        const fase = this.fasesArray.at(faseIndex);
+        if (this.bancoDestino()?.fase === fase) this.bancoDestino.set(null);
+        fase.patchValue({ pool: null });
+        this.preguntasDe(fase).push(this.crearPregunta());
+        this.quizForm.markAsDirty();
+    }
+
+    actualizarPool(fase: AbstractControl, cambios: Partial<PoolConfig>): void {
+        const actual = this.poolDe(fase);
+        if (!actual) return;
+        fase.patchValue({ pool: { ...actual, ...cambios } });
+        this.quizForm.markAsDirty();
+        if ('origen' in cambios || 'categoriaId' in cambios || 'dificultad' in cambios) {
+            this.consultarDisponibles(fase);
+        }
+    }
+
+    cambiarCantidadPool(fase: AbstractControl, valor: string | number): void {
+        const cantidad = Math.trunc(Number(valor));
+        if (!Number.isFinite(cantidad)) return;
+        this.actualizarPool(fase, { cantidad: Math.min(Math.max(cantidad, 1), this.poolMaximo) });
+    }
+
+    cambiarCategoriaPool(fase: AbstractControl, valor: string): void {
+        const categoriaId = valor ? Number(valor) : null;
+        const categoriaNombre = this.categoriasBanco().find(c => c.id === categoriaId)?.nombre ?? null;
+        this.actualizarPool(fase, { categoriaId, categoriaNombre });
+    }
+
+    quitarDelPool(fase: AbstractControl, id: number): void {
+        const pool = this.poolDe(fase);
+        if (!pool) return;
+        this.actualizarPool(fase, { preguntas: pool.preguntas.filter(p => p.id !== id) });
+    }
+
+    /** Pool por filtros: cuántas preguntas del banco los cumplen ahora mismo (solo informativo). */
+    private consultarDisponibles(fase: AbstractControl): void {
+        const pool = this.poolDe(fase);
+        if (!pool || pool.origen !== 'filtros') return;
+
+        this.poolDisponibles.update(m => new Map(m).set(fase, null));
+        this.bancoService.listar({ categoriaId: pool.categoriaId ?? null, dificultad: pool.dificultad ?? null, pageSize: 1 })
+            .subscribe({
+                next: (lista) => {
+                    // Solo si los filtros no han cambiado mientras tanto
+                    const ahora = this.poolDe(fase);
+                    if (ahora?.categoriaId === pool.categoriaId && ahora?.dificultad === pool.dificultad) {
+                        this.poolDisponibles.update(m => new Map(m).set(fase, lista.totalCount));
+                    }
+                },
+                error: () => this.poolDisponibles.update(m => { const n = new Map(m); n.delete(fase); return n; })
+            });
+    }
+
+    disponiblesPool(fase: AbstractControl): number | null | undefined {
+        return this.poolDisponibles().get(fase);
+    }
+
+    private cargarCategoriasBanco(): void {
+        if (this.categoriasBanco().length > 0) return;
+        this.categoriasService.listar().subscribe({
+            next: (r) => this.categoriasBanco.set(r.categorias),
+            error: () => this.categoriasBanco.set([])
+        });
+    }
+
     // ===== Preguntas =====
 
     agregarPregunta(faseIndex: number, tipo: TipoPregunta = 'normal'): void {
@@ -420,7 +562,7 @@ export class QuizFormComponent {
 
     /**
      * Sube (-1) o baja (+1) una pregunta dentro de su fase; desde el extremo de una fase pasa
-     * al final de la anterior o al principio de la siguiente.
+     * al final de la anterior o al principio de la siguiente (saltando las fases con pool).
      */
     moverPregunta(faseIndex: number, preguntaIndex: number, delta: -1 | 1): void {
         const origen = this.preguntasDe(faseIndex);
@@ -431,8 +573,8 @@ export class QuizFormComponent {
             origen.removeAt(preguntaIndex);
             origen.insert(destinoIndex, control);
         } else {
-            const otraFase = faseIndex + delta;
-            if (otraFase < 0 || otraFase >= this.fasesArray.length) return;
+            const otraFase = this.faseDePreguntasVecina(faseIndex, delta);
+            if (otraFase === null) return;
             const destino = this.preguntasDe(otraFase);
             origen.removeAt(preguntaIndex);
             destino.insert(delta < 0 ? destino.length : 0, control);
@@ -440,12 +582,20 @@ export class QuizFormComponent {
         this.quizForm.markAsDirty();
     }
 
+    /** Fase de preguntas fijas más cercana en esa dirección (null si no hay). */
+    private faseDePreguntasVecina(faseIndex: number, delta: -1 | 1): number | null {
+        for (let i = faseIndex + delta; i >= 0 && i < this.fasesArray.length; i += delta) {
+            if (!this.esPool(i)) return i;
+        }
+        return null;
+    }
+
     puedeSubir(faseIndex: number, preguntaIndex: number): boolean {
-        return faseIndex > 0 || preguntaIndex > 0;
+        return preguntaIndex > 0 || this.faseDePreguntasVecina(faseIndex, -1) !== null;
     }
 
     puedeBajar(faseIndex: number, preguntaIndex: number): boolean {
-        return faseIndex < this.fasesArray.length - 1 || preguntaIndex < this.preguntasDe(faseIndex).length - 1;
+        return preguntaIndex < this.preguntasDe(faseIndex).length - 1 || this.faseDePreguntasVecina(faseIndex, 1) !== null;
     }
 
     /** Suelta una pregunta arrastrada: reordena dentro de la fase o la pasa a otra. */
@@ -484,19 +634,42 @@ export class QuizFormComponent {
 
     // ===== Banco de preguntas =====
 
-    abrirBanco(faseIndex: number): void {
+    /** Abre el banco para copiar preguntas a la fase (`modo: 'preguntas'`) o elegirlas para su pool. */
+    abrirBanco(faseIndex: number, modo: DestinoBanco['modo'] = 'preguntas'): void {
         this.cerrarMenu();
-        this.bancoDestino.set(this.fasesArray.at(faseIndex));
+        this.bancoDestino.set({ fase: this.fasesArray.at(faseIndex), modo });
     }
 
     cerrarBanco(): void {
         this.bancoDestino.set(null);
     }
 
-    /** Copia al final de la fase las preguntas elegidas en el banco (no quedan enlazadas). */
+    bancoAbiertoEn(fase: AbstractControl): DestinoBanco['modo'] | null {
+        const destino = this.bancoDestino();
+        return destino?.fase === fase ? destino.modo : null;
+    }
+
+    /**
+     * Preguntas elegidas en el banco: en modo pool se enlazan al pool de la fase (por id); si no,
+     * se copian al final de la fase (no quedan enlazadas).
+     */
     agregarDesdeBanco(preguntas: BancoPregunta[]): void {
-        const fase = this.bancoDestino();
-        if (!fase) return;
+        const destinoBanco = this.bancoDestino();
+        if (!destinoBanco) return;
+        const fase = destinoBanco.fase;
+
+        if (destinoBanco.modo === 'pool') {
+            const pool = this.poolDe(fase);
+            if (!pool) return;
+            const ya = new Set(pool.preguntas.map(p => p.id));
+            const nuevas = preguntas.filter(p => !ya.has(p.id)).map(p => ({ id: p.id, enunciado: p.enunciado }));
+            this.actualizarPool(fase, { preguntas: [...pool.preguntas, ...nuevas] });
+            this.bancoDestino.set(null);
+            this.successMessage.set(`${nuevas.length} pregunta(s) añadida(s) al pool.`);
+            setTimeout(() => this.successMessage.set(null), 3000);
+            return;
+        }
+
         const destino = this.preguntasDe(fase);
         const images = new Map(this.questionImages());
 
@@ -733,6 +906,19 @@ export class QuizFormComponent {
         }
 
         for (let f = 0; f < this.fasesArray.length; f++) {
+            const pool = this.poolDe(f);
+            if (pool) {
+                if (pool.origen === 'manual' && pool.preguntas.length === 0) {
+                    this.errorMessage.set(`El pool de «${this.nombreFase(f)}» no tiene preguntas elegidas de tu banco.`);
+                    return false;
+                }
+                if (pool.origen === 'manual' && pool.cantidad > pool.preguntas.length) {
+                    this.errorMessage.set(`El pool de «${this.nombreFase(f)}» saca ${pool.cantidad} preguntas pero solo tiene ${pool.preguntas.length} elegidas.`);
+                    return false;
+                }
+                continue;
+            }
+
             const preguntas = this.preguntasDe(f);
             if (preguntas.length === 0) {
                 this.errorMessage.set(`«${this.nombreFase(f)}» no tiene preguntas. Añade alguna o elimina la fase.`);
@@ -771,23 +957,30 @@ export class QuizFormComponent {
             nombre: nombre || 'Borrador sin título',
             esPublico: formValue.esPublico ?? false,
             esBorrador,
-            preguntas: this.aplanarPreguntas(formValue.fases)
+            ...this.aplanarFases(formValue.fases)
         };
     }
 
     /**
-     * Pasa las fases del builder a la lista de preguntas de la API: cada pregunta lleva los datos
-     * de su fase. Las fases vacías se omiten para que la numeración de fases sea consecutiva.
+     * Pasa las fases del builder al formato de la API: cada pregunta lleva los datos de su fase y
+     * cada pool los suyos. Las fases de preguntas vacías se omiten para que la numeración de fases
+     * sea consecutiva.
      */
-    private aplanarPreguntas(fases: FaseFormValue[]): CreateQuizRequest['preguntas'] {
+    private aplanarFases(fases: FaseFormValue[]): Pick<CreateQuizRequest, 'preguntas' | 'pools'> {
         const resultado: CreateQuizRequest['preguntas'] = [];
+        const pools: FasePool[] = [];
         let faseNumero = 0;
 
         for (const fase of fases) {
-            if (fase.preguntas.length === 0) continue;
+            if (!fase.pool && fase.preguntas.length === 0) continue;
             faseNumero++;
             const faseNombre = (fase.nombre ?? '').trim() || undefined;
             const faseColor = esColorValido(fase.color) ? fase.color.toLowerCase() : undefined;
+
+            if (fase.pool) {
+                pools.push({ ...fase.pool, faseNumero, faseNombre, faseColor });
+                continue;
+            }
 
             for (const item of fase.preguntas) {
                 resultado.push({
@@ -807,7 +1000,7 @@ export class QuizFormComponent {
             }
         }
 
-        return resultado;
+        return { preguntas: resultado, pools };
     }
 
     private guardar(request: CreateQuizRequest) {

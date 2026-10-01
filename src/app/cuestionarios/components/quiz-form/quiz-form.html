@@ -151,6 +151,7 @@
                                            aria-label="Nombre de la fase"
                                            class="phase-name-input">
 
+                                    @if (!esPool(f)) {
                                     <div class="dropdown dropdown-end">
                                         <div tabindex="0" role="button" class="phase-icon-btn" title="Añadir pregunta" aria-label="Añadir pregunta a la fase">+</div>
                                         <ul tabindex="0" class="dropdown-content menu phase-menu">
@@ -165,6 +166,7 @@
                                             </li>
                                         </ul>
                                     </div>
+                                    }
 
                                     <div class="dropdown dropdown-end">
                                         <div tabindex="0" role="button" class="phase-icon-btn" title="Opciones de la fase" aria-label="Opciones de la fase">⋯</div>
@@ -176,7 +178,20 @@
                                                 <li><button type="button" (click)="aplicarPresetFase(f, preset)">{{ preset === 'Ronda' ? 'Ronda ' + (f + 1) : preset.trim() }}</button></li>
                                             }
                                             <li class="menu-title">Configuración</li>
-                                            <li class="menu-disabled"><span>Pool de preguntas <small class="opacity-70">· próximamente</small></span></li>
+                                            @if (esPool(f)) {
+                                                <li>
+                                                    <button type="button" (click)="quitarPool(f)">
+                                                        <span>Quitar pool <small class="block opacity-70">Volver a preguntas fijas</small></span>
+                                                    </button>
+                                                </li>
+                                            } @else {
+                                                <li>
+                                                    <button type="button" (click)="activarPool(f)">
+                                                        <span aria-hidden="true">🎲</span>
+                                                        <span>Pool de preguntas <small class="block opacity-70">Sortear N de tu banco en cada partida</small></span>
+                                                    </button>
+                                                </li>
+                                            }
                                             <li>
                                                 <button type="button" class="text-error" [disabled]="fasesArray.length <= 1" (click)="eliminarFase(f)">
                                                     Eliminar fase
@@ -206,6 +221,102 @@
                                 </div>
                             </header>
 
+                            @if (poolDe(f); as pool) {
+                            <div class="pool-panel">
+                                <p class="pool-intro">
+                                    <span aria-hidden="true">🎲</span>
+                                    <span><strong>Pool de preguntas</strong> · en cada partida se sortean preguntas de tu banco.</span>
+                                </p>
+
+                                <label class="pool-cantidad">
+                                    Salen
+                                    <input type="number" min="1" [max]="poolMaximo" class="pool-cantidad-input"
+                                           [value]="pool.cantidad"
+                                           aria-label="Preguntas que salen en cada partida"
+                                           (change)="cambiarCantidadPool(fase, $any($event.target).value)">
+                                    preguntas al azar
+                                </label>
+
+                                <div class="pool-origen" role="radiogroup" aria-label="De dónde salen las preguntas">
+                                    <button type="button" role="radio" class="pool-origen-btn"
+                                            [class.pool-origen-activo]="pool.origen === 'filtros'"
+                                            [attr.aria-checked]="pool.origen === 'filtros'"
+                                            (click)="actualizarPool(fase, { origen: 'filtros' })">
+                                        Por filtros <small>categoría y/o dificultad</small>
+                                    </button>
+                                    <button type="button" role="radio" class="pool-origen-btn"
+                                            [class.pool-origen-activo]="pool.origen === 'manual'"
+                                            [attr.aria-checked]="pool.origen === 'manual'"
+                                            (click)="actualizarPool(fase, { origen: 'manual' })">
+                                        Elegidas a mano <small>entre las que tú escojas</small>
+                                    </button>
+                                </div>
+
+                                @if (pool.origen === 'filtros') {
+                                    <div class="pool-filtros">
+                                        <label class="pool-filtro">
+                                            <span class="text-xs opacity-70">Categoría</span>
+                                            <select class="select select-sm pool-select"
+                                                    (change)="cambiarCategoriaPool(fase, $any($event.target).value)">
+                                                <option value="" [selected]="!pool.categoriaId">Cualquiera</option>
+                                                @for (c of categoriasBanco(); track c.id) {
+                                                    <option [value]="c.id" [selected]="pool.categoriaId === c.id">{{ c.nombre }} ({{ c.total }})</option>
+                                                }
+                                            </select>
+                                        </label>
+                                        <div class="pool-filtro">
+                                            <span class="text-xs opacity-70">Dificultad <small>(sin marcar = cualquiera)</small></span>
+                                            <app-dificultad-selector
+                                                [valor]="pool.dificultad ?? null"
+                                                (cambio)="actualizarPool(fase, { dificultad: $event })" />
+                                        </div>
+                                    </div>
+
+                                    @if (disponiblesPool(fase); as disponibles) {
+                                        <p class="pool-aviso" [class.pool-aviso-warn]="disponibles < pool.cantidad">
+                                            @if (disponibles < pool.cantidad) {
+                                                Ahora hay {{ disponibles }} pregunta(s) en tu banco con estos filtros: la fase se jugará con {{ disponibles }} en vez de {{ pool.cantidad }}.
+                                            } @else {
+                                                Hay {{ disponibles }} preguntas en tu banco con estos filtros.
+                                            }
+                                        </p>
+                                    } @else if (disponiblesPool(fase) === 0) {
+                                        <p class="pool-aviso pool-aviso-warn">
+                                            Ahora mismo no hay preguntas en tu banco con estos filtros: si sigue así, esta fase no se jugará.
+                                        </p>
+                                    } @else if (disponiblesPool(fase) === null) {
+                                        <p class="pool-aviso">Contando preguntas de tu banco...</p>
+                                    }
+                                } @else {
+                                    <div class="pool-manual">
+                                        <div class="pool-manual-header">
+                                            <span class="text-sm">{{ pool.preguntas.length }} pregunta(s) elegida(s)</span>
+                                            <button type="button" class="btn btn-sm btn-outline btn-info" (click)="abrirBanco(f, 'pool')">
+                                                Elegir de mi banco
+                                            </button>
+                                        </div>
+                                        @if (pool.preguntas.length === 0) {
+                                            <p class="pool-aviso">Aún no has elegido preguntas: en cada partida se sortearán {{ pool.cantidad }} de las que elijas.</p>
+                                        } @else {
+                                            <ul class="pool-lista">
+                                                @for (p of pool.preguntas; track p.id) {
+                                                    <li>
+                                                        <span class="pool-lista-texto">{{ p.enunciado }}</span>
+                                                        <button type="button" class="pool-lista-x" aria-label="Quitar del pool"
+                                                                (click)="quitarDelPool(fase, p.id)">✕</button>
+                                                    </li>
+                                                }
+                                            </ul>
+                                            @if (pool.cantidad > pool.preguntas.length) {
+                                                <p class="pool-aviso pool-aviso-warn">
+                                                    Salen {{ pool.cantidad }} pero solo hay {{ pool.preguntas.length }} elegidas: elige más o baja la cantidad.
+                                                </p>
+                                            }
+                                        }
+                                    </div>
+                                }
+                            </div>
+                            } @else {
                             <div class="phase-questions" formArrayName="preguntas"
                                  cdkDropList
                                  [cdkDropListData]="preguntasDe(f)"
@@ -361,10 +472,11 @@
                                     </div>
                                 }
                             </div>
+                            }
 
-                            @if (bancoDestino() === fase) {
+                            @if (bancoAbiertoEn(fase); as modo) {
                                 <div class="px-3 pb-3 sm:px-4 sm:pb-4">
-                                    <app-banco-picker (agregar)="agregarDesdeBanco($event)" (cerrar)="cerrarBanco()" />
+                                    <app-banco-picker [modo]="modo" (agregar)="agregarDesdeBanco($event)" (cerrar)="cerrarBanco()" />
                                 </div>
                             }
                         </section>

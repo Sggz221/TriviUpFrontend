@@ -387,6 +387,167 @@
   opacity: 1;
 }
 
+/* Pool de preguntas: la fase sortea sus preguntas del banco en cada partida */
+.pool-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 0.75rem;
+  padding: 1rem;
+  border: 2px dashed color-mix(in srgb, var(--fase) 60%, transparent);
+  border-radius: 0.75rem;
+  background-color: var(--base-100);
+}
+
+.pool-intro {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.pool-cantidad {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.pool-cantidad-input {
+  width: 4.5rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--neutral);
+  border-radius: 0.5rem;
+  background-color: var(--base-300);
+  color: var(--base-content);
+  font-weight: 700;
+  text-align: center;
+}
+
+.pool-origen {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.pool-origen-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0.6rem 0.75rem;
+  border: 2px solid var(--neutral);
+  border-radius: 0.6rem;
+  background: none;
+  color: var(--base-content);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pool-origen-btn small {
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.pool-origen-activo {
+  border-color: var(--fase);
+  background-color: color-mix(in srgb, var(--fase) 15%, transparent);
+}
+
+.pool-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.pool-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.pool-select {
+  min-width: 12rem;
+  max-width: 100%;
+  background-color: var(--base-300);
+}
+
+.pool-aviso {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.pool-aviso-warn {
+  color: var(--warning);
+  opacity: 1;
+}
+
+.pool-manual {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pool-manual-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pool-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 16rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.pool-lista li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
+  background-color: var(--base-300);
+  font-size: 0.9rem;
+}
+
+.pool-lista-texto {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pool-lista-x {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  color: var(--error);
+  cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .pool-panel {
+    margin: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .pool-origen {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Drag & drop (CDK) */
 .cdk-drag-preview {
   box-sizing: border-box;

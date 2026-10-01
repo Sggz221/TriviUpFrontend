@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, output, signal } from '@angular/core';
+import { Component, OnInit, inject, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -107,11 +107,17 @@ type FiltroCategoria = { tipo: 'todas' } | { tipo: 'sin' } | { tipo: 'categoria'
             }
 
             <div class="flex items-center justify-between gap-3 mt-3">
-                <span class="text-xs opacity-70">Se copian al cuestionario, con su dificultad: editarlas aquí no cambia tu banco.</span>
+                <span class="text-xs opacity-70">
+                    @if (modo() === 'pool') {
+                        Quedan enlazadas a tu banco: en cada partida se usa su versión actual.
+                    } @else {
+                        Se copian al cuestionario, con su dificultad: editarlas aquí no cambia tu banco.
+                    }
+                </span>
                 <button type="button" class="btn btn-sm btn-primary"
                         [disabled]="seleccion().size === 0"
                         (click)="confirmar()">
-                    Añadir seleccionadas ({{ seleccion().size }})
+                    {{ modo() === 'pool' ? 'Añadir al pool' : 'Añadir seleccionadas' }} ({{ seleccion().size }})
                 </button>
             </div>
         </div>
@@ -121,6 +127,8 @@ export class BancoPickerComponent implements OnInit {
     private bancoService = inject(BancoPreguntasService);
     private categoriasService = inject(BancoCategoriasService);
 
+    /** 'preguntas': se copian al cuestionario; 'pool': se eligen (enlazadas) para el pool de una fase. */
+    modo = input<'preguntas' | 'pool'>('preguntas');
     agregar = output<BancoPregunta[]>();
     cerrar = output<void>();
 

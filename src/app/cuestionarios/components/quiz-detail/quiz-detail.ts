@@ -1,14 +1,23 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CuestionarioService } from '../../services/cuestionario.service';
-import { Cuestionario, Pregunta, Respuesta, colorDificultad, etiquetaDificultad } from '../../models/cuestionario.model';
+import { Cuestionario, FasePool, Pregunta, Respuesta, colorDificultad, etiquetaDificultad } from '../../models/cuestionario.model';
 import { colorDeFase } from '../../models/fase-color';
 import { GameSignalrService } from '../../../game/services/game-signalr.service';
 import { GameMode } from '../../../game/models/game.models';
 import { AuthService } from '../../../auth/auth.service';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
+
+interface FaseDetalle {
+    numero: number;
+    titulo: string;
+    color: string;
+    pool: FasePool | null;
+    /** Preguntas fijas con su número dentro del cuestionario. */
+    preguntas: { pregunta: Pregunta; numero: number }[];
+}
 
 @Component({
     selector: 'app-quiz-detail',
@@ -98,25 +107,63 @@ export class QuizDetailComponent implements OnInit {
         return pregunta.respuestas.find(r => r.esCorrecta);
     }
 
-    /** Color de la fase de la pregunta (el configurado o el de la paleta según su número). */
-    colorFase(index: number): string {
-        const pregunta = this.cuestionario()?.preguntas[index];
-        return colorDeFase(pregunta?.faseNumero, pregunta?.faseColor);
-    }
+    /**
+     * Fases del cuestionario en orden: las de preguntas fijas (numeradas de forma continua) y las
+     * de pool, que no tienen preguntas propias.
+     */
+    fases = computed<FaseDetalle[]>(() => {
+        const quiz = this.cuestionario();
+        if (!quiz) return [];
 
-    /** Título de la fase si la pregunta abre una (null si sigue en la misma fase o el cuestionario no tiene fases). */
-    cabeceraFase(index: number): string | null {
-        const preguntas = this.cuestionario()?.preguntas ?? [];
-        const actual = preguntas[index];
-        if (!actual) return null;
+        const porFase = new Map<number, Pregunta[]>();
+        for (const p of [...quiz.preguntas].sort((a, b) => a.numeroPregunta - b.numeroPregunta)) {
+            const numero = p.faseNumero ?? 1;
+            porFase.set(numero, [...(porFase.get(numero) ?? []), p]);
+        }
+        const pools = new Map((quiz.pools ?? []).map(p => [p.faseNumero, p]));
+        const numeros = [...new Set([...porFase.keys(), ...pools.keys()])].sort((a, b) => a - b);
 
-        const fase = actual.faseNumero ?? 1;
-        if (index > 0 && (preguntas[index - 1].faseNumero ?? 1) === fase) return null;
+        let contador = 0;
+        return numeros.map(numero => {
+            const pool = pools.get(numero) ?? null;
+            const preguntas = porFase.get(numero) ?? [];
+            const nombre = pool ? pool.faseNombre : preguntas[0]?.faseNombre;
+            return {
+                numero,
+                titulo: nombre ? `Fase ${numero} · ${nombre}` : `Fase ${numero}`,
+                color: colorDeFase(numero, pool ? pool.faseColor : preguntas[0]?.faseColor),
+                pool,
+                preguntas: preguntas.map(pregunta => ({ pregunta, numero: ++contador }))
+            };
+        });
+    });
 
-        const hayVariasFases = new Set(preguntas.map(p => p.faseNumero ?? 1)).size > 1;
-        if (!hayVariasFases && !actual.faseNombre) return null;
+    /** Con una sola fase sin nombre no se muestran cabeceras de fase. */
+    mostrarCabeceras = computed(() => {
+        const fases = this.fases();
+        return fases.length > 1 || fases.some(f => f.pool || f.titulo !== `Fase ${f.numero}`);
+    });
 
-        return actual.faseNombre ? `Fase ${fase} · ${actual.faseNombre}` : `Fase ${fase}`;
+    /** Resumen de preguntas: las fijas más las que salen del banco en cada partida. */
+    resumenPreguntas = computed(() => {
+        const quiz = this.cuestionario();
+        if (!quiz) return '';
+        const delBanco = (quiz.pools ?? []).reduce((total, p) => total + p.cantidad, 0);
+        const n = quiz.preguntas.length;
+        const fijas = `${n} pregunta${n === 1 ? '' : 's'}`;
+        return delBanco > 0 ? `${fijas} + ${delBanco} al azar del banco` : fijas;
+    });
+
+    /** Descripción de un pool: cuántas salen y de dónde. */
+    descripcionPool(pool: FasePool): string {
+        const salen = `Salen ${pool.cantidad} pregunta(s) al azar`;
+        if (pool.origen === 'manual') {
+            return `${salen} entre ${pool.preguntas.length} elegida(s) a mano del banco`;
+        }
+        const filtros = [pool.categoriaNombre, pool.dificultad ? etiquetaDificultad(pool.dificultad) : null].filter(Boolean);
+        return filtros.length > 0
+            ? `${salen} del banco (${filtros.join(' · ')})`
+            : `${salen} de todo el banco`;
     }
 
     obtenerLetraRespuesta(index: number): string {
