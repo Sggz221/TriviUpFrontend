@@ -87,13 +87,13 @@ export interface TurnStartedDto {
     comodinUsed?: boolean;
     /** Presencial: hay una Llamada en curso y su cartel sigue en pantalla. */
     callActive?: boolean;
-    /** Ronda dinámica: nadie tiene turno, el primer equipo en pulsar se lleva la pregunta. */
+    /** Pregunta de pulsador: nadie tiene turno, el primer equipo en pulsar se lleva la pregunta. */
     isDynamic?: boolean;
-    /** Ronda dinámica: el pulsador sigue abierto (currentPlayerId = 0 hasta que alguien pulse). */
+    /** Pregunta de pulsador: el pulsador sigue abierto (currentPlayerId = 0 hasta que alguien pulse). */
     buzzerOpen?: boolean;
 }
 
-/** Ronda dinámica: el equipo que ha pulsado primero. */
+/** Pregunta de pulsador: el equipo que ha pulsado primero. */
 export interface BuzzerWonDto {
     questionId: number;
     playerId: number;

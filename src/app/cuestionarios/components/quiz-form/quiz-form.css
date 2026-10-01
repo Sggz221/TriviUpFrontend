@@ -84,20 +84,26 @@
   gap: 0.5rem;
 }
 
-.quiz-form-actions .actions-add,
 .quiz-form-actions .actions-save {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.quiz-form-actions .actions-add > .btn {
-  flex: 1 1 0;
+.quiz-form-actions .actions-save > .btn {
+  flex: 1 1 9rem;
   min-width: 0;
 }
 
-.quiz-form-actions .actions-save > .btn {
-  flex: 1 1 8rem;
+.quiz-form-actions .actions-back {
+  align-self: center;
+  font-size: 0.875rem;
+  color: var(--accent);
+  transition: opacity 0.15s ease;
+}
+
+.quiz-form-actions .actions-back:hover {
+  opacity: 0.8;
 }
 
 .quiz-form-actions .actions-note {
@@ -183,4 +189,252 @@
     border-radius: 0 0 0.75rem 0.75rem;
   }
 
+}
+
+/* ===== Fases: cada una es una tarjeta con sus preguntas ===== */
+.fases-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  min-width: 0;
+}
+
+.phase-card {
+  --fase: var(--info);
+  min-width: 0;
+  border: 2px solid var(--fase);
+  border-radius: 0.875rem;
+  background-color: color-mix(in srgb, var(--fase) 6%, var(--base-200));
+  scroll-margin-top: 0.5rem;
+}
+
+/* Cabecera fija mientras se recorren las preguntas de la fase (por debajo de la barra inferior y de los modales) */
+.phase-header {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  padding: 0.75rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--fase) 45%, transparent);
+  background-color: var(--base-100);
+  box-shadow: 0 6px 12px -8px rgba(0, 0, 0, 0.45);
+}
+
+.phase-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.phase-badge {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: var(--fase);
+  color: #fff;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+}
+
+.phase-name-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--neutral);
+  border-radius: 0.5rem;
+  outline: none;
+  box-sizing: border-box;
+  background-color: var(--base-300);
+  color: var(--base-content);
+}
+
+.phase-name-input:focus {
+  border-color: var(--fase);
+}
+
+.phase-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 2px solid var(--fase);
+  border-radius: 0.5rem;
+  color: var(--base-content);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.phase-icon-btn:hover,
+.phase-icon-btn:focus-visible {
+  background-color: color-mix(in srgb, var(--fase) 25%, transparent);
+}
+
+.phase-menu {
+  z-index: 30;
+  width: 16rem;
+  margin-top: 0.25rem;
+  padding: 0.5rem;
+  border-radius: 0.75rem;
+  background-color: var(--base-200);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.phase-colors {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.phase-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  /* Hueco para poder soltar preguntas aunque la fase esté vacía */
+  min-height: 4rem;
+  padding: 0.75rem;
+}
+
+.phase-empty {
+  padding: 1.25rem 0.75rem;
+  border: 2px dashed color-mix(in srgb, var(--fase) 50%, transparent);
+  border-radius: 0.75rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.phase-empty p {
+  margin: 0 0 0.75rem;
+  opacity: 0.75;
+}
+
+.question-card {
+  background-color: var(--base-100);
+}
+
+.question-pulsador {
+  box-shadow: inset 4px 0 0 var(--error);
+}
+
+.question-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  background-color: var(--info);
+  color: var(--info-content);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.drag-handle {
+  padding: 0.1rem 0.4rem;
+  border: none;
+  background: none;
+  color: var(--base-content);
+  font-size: 1.1rem;
+  line-height: 1;
+  opacity: 0.55;
+  cursor: grab;
+  touch-action: none;
+}
+
+.drag-handle:hover {
+  opacity: 1;
+}
+
+.question-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.pulsador-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.2rem 0.4rem 0.2rem 0.75rem;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--error) 18%, transparent);
+  color: var(--base-content);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.pulsador-chip-x {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.pulsador-chip-x:hover {
+  opacity: 1;
+}
+
+/* Drag & drop (CDK) */
+.cdk-drag-preview {
+  box-sizing: border-box;
+  border-radius: 0.75rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  opacity: 0.95;
+}
+
+.question-drop-placeholder {
+  min-height: 4.5rem;
+  border: 2px dashed var(--fase, var(--info));
+  border-radius: 0.75rem;
+  background-color: color-mix(in srgb, var(--fase, var(--info)) 12%, transparent);
+}
+
+.cdk-drag-animating,
+.phase-questions.cdk-drop-list-dragging .question-card:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cdk-drag-animating,
+  .phase-questions.cdk-drop-list-dragging .question-card:not(.cdk-drag-placeholder) {
+    transition: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .phase-header {
+    padding: 0.6rem;
+  }
+
+  /* Una sola fila de colores para que la cabecera fija no tape media pantalla */
+  .phase-colors {
+    gap: 0.3rem;
+  }
+
+  .phase-colors .phase-swatch {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+  .phase-colors .phase-color-input {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+
+  .phase-questions {
+    padding: 0.5rem;
+  }
 }

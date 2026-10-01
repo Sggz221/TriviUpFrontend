@@ -22,6 +22,9 @@ export interface Respuesta {
     esCorrecta: boolean;
 }
 
+/** Tipo de pregunta: normal (por turnos) o pulsador (responde el primer equipo en pulsar desde su móvil). */
+export type TipoPregunta = 'normal' | 'pulsador';
+
 export interface Pregunta {
     id: number;
     quizId: number;
@@ -35,8 +38,8 @@ export interface Pregunta {
     faseNombre?: string | null;
     /** Color de la fase (#rrggbb); ausente = color por defecto según el número de fase. */
     faseColor?: string | null;
-    /** Ronda dinámica: los equipos pulsan desde el móvil y responde el primero. */
-    faseDinamica?: boolean;
+    /** Tipo de pregunta; ausente = normal. */
+    tipo?: TipoPregunta;
     dificultad?: Dificultad | null;
     imagenUrl?: string | null;
 }
@@ -69,7 +72,7 @@ export interface CreateQuizRequest {
         faseNumero: number;
         faseNombre?: string;
         faseColor?: string;
-        faseDinamica?: boolean;
+        tipo?: TipoPregunta;
         dificultad?: Dificultad;
     }[];
 }

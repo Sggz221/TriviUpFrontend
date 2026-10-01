@@ -80,9 +80,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     comodinUsedOnQuestion = signal<boolean>(false);
     /** Presencial: Llamada en curso; su cartel lo quita el anfitrión. */
     callActive = signal<boolean>(false);
-    /** Ronda dinámica: la pregunta se la lleva el primer equipo en pulsar (sin turnos ni comodines). */
+    /** Pregunta de pulsador: la pregunta se la lleva el primer equipo en pulsar (sin turnos ni comodines). */
     isDynamic = signal<boolean>(false);
-    /** Ronda dinámica: el pulsador sigue abierto y todavía no responde nadie. */
+    /** Pregunta de pulsador: el pulsador sigue abierto y todavía no responde nadie. */
     buzzerOpen = signal<boolean>(false);
     isBuzzing = signal<boolean>(false);
     usingComodin = signal<boolean>(false);
@@ -128,7 +128,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak() && !this.isDynamic()
         // En presencial la marca del anfitrión no bloquea: solo confirmar cierra la pregunta.
         && (this.isPresencial() || this.selectedAnswer() === null));
-    /** Ronda dinámica: un jugador (no anfitrión ni espectador) puede pulsar mientras el pulsador esté abierto. */
+    /** Pregunta de pulsador: un jugador (no anfitrión ni espectador) puede pulsar mientras el pulsador esté abierto. */
     canBuzz = computed(() =>
         this.buzzerOpen() && !!this.me() && !this.isOwner() && !this.isSpectator()
         && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak());
@@ -902,7 +902,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.isBuzzing.set(false);
     }
 
-    /** Ronda dinámica: pulsa por mi equipo. Si otro llegó antes, el servidor lo rechaza y se avisa. */
+    /** Pregunta de pulsador: pulsa por mi equipo. Si otro llegó antes, el servidor lo rechaza y se avisa. */
     onBuzz(): void {
         const question = this.currentQuestion();
         if (!question || !this.canBuzz() || this.isBuzzing()) return;

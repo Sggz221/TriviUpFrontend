@@ -2,8 +2,11 @@ import { Component, signal, inject, computed, DestroyRef } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDragPlaceholder, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { CuestionarioService } from '../../services/cuestionario.service';
-import { Cuestionario, CreateQuizRequest, QuizVersion, BancoPregunta, BancoCategoria, Dificultad } from '../../models/cuestionario.model';
+import {
+    Cuestionario, CreateQuizRequest, QuizVersion, BancoPregunta, BancoCategoria, Dificultad, Pregunta, TipoPregunta
+} from '../../models/cuestionario.model';
 import { BancoPreguntasService } from '../../services/banco-preguntas.service';
 import { BancoCategoriasService } from '../../services/banco-categorias.service';
 import { BancoPickerComponent } from '../banco-picker/banco-picker';
@@ -18,27 +21,35 @@ interface RespuestaFormValue {
     esCorrecta: boolean;
 }
 
-/** Elemento de la lista del builder: una pregunta o un separador de fase. */
 interface PreguntaFormValue {
-    tipo: 'pregunta' | 'separador';
-    /** Nombre de la fase (solo separadores). */
-    nombre?: string;
-    /** Color de la fase #rrggbb, vacío = por defecto (solo separadores). */
-    color?: string;
-    /** Ronda dinámica: los equipos pulsan desde el móvil y responde el primero (solo separadores). */
-    dinamica?: boolean;
+    tipo: TipoPregunta;
     dificultad?: Dificultad | null;
     enunciado: string;
     respuestas: RespuestaFormValue[];
-    imagenUrl?: string;
+    imagenUrl?: string | null;
 }
+
+/**
+ * Fase del builder: agrupa sus preguntas. Es obligatoria (todo cuestionario tiene al menos una)
+ * y es el sitio donde irá su configuración propia (p. ej. la pool de preguntas).
+ */
+interface FaseFormValue {
+    /** Nombre libre; vacío = se muestra "Fase N". */
+    nombre: string;
+    /** Color #rrggbb, vacío = por defecto según el número de fase. */
+    color: string;
+    preguntas: PreguntaFormValue[];
+}
+
+type ImagenPregunta = { uploading: boolean; url: string | null; preview: string | null };
 
 @Component({
     selector: 'app-quiz-form',
     standalone: true,
     imports: [
         CommonModule, ReactiveFormsModule, RouterLink, AnswerShapeComponent, BancoPickerComponent,
-        CategoriaSelectorComponent, DificultadSelectorComponent
+        CategoriaSelectorComponent, DificultadSelectorComponent,
+        CdkDropListGroup, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder
     ],
     templateUrl: './quiz-form.html',
     styleUrls: ['./quiz-form.css']
@@ -86,12 +97,12 @@ export class QuizFormComponent {
     /** Colores sugeridos para las fases; también se puede elegir cualquiera con el selector de color. */
     readonly paletaFases = PALETA_FASES;
 
-    /** Panel para añadir preguntas desde el banco personal. */
-    mostrarBanco = signal(false);
+    /** Fase en la que se abrió el panel del banco (null = cerrado). */
+    bancoDestino = signal<AbstractControl | null>(null);
 
     /** Diálogo "Al banco": pregunta que se guarda y categoría elegida (existente o nueva). */
     dialogoBanco = signal<{
-        index: number;
+        pregunta: AbstractControl;
         categoriaId: number | null;
         categoriaNombre: string | null;
         guardando: boolean;
@@ -99,8 +110,8 @@ export class QuizFormComponent {
     categoriasBanco = signal<BancoCategoria[]>([]);
 
     // Estado de las imágenes por pregunta. La clave es el control (no el índice) para que
-    // insertar, mover o borrar elementos de la lista no desincronice las imágenes.
-    questionImages = signal<Map<AbstractControl, { uploading: boolean; url: string | null; preview: string | null }>>(new Map());
+    // insertar, mover o borrar preguntas no desincronice las imágenes.
+    questionImages = signal<Map<AbstractControl, ImagenPregunta>>(new Map());
 
     quizForm: FormGroup;
 
@@ -108,15 +119,14 @@ export class QuizFormComponent {
         this.quizForm = this.fb.group({
             nombre: ['', [Validators.required, Validators.minLength(3)]],
             esPublico: [false],
-            preguntas: this.fb.array([])
+            fases: this.fb.array([])
         });
 
         const idParam = this.route.snapshot.paramMap.get('id');
         if (idParam) {
             this.cargarQuiz(Number(idParam));
         } else {
-            // Add initial question
-            this.agregarPregunta();
+            this.fasesArray.push(this.crearFase());
         }
 
         const timer = setInterval(() => this.autoguardar(), QuizFormComponent.AUTOSAVE_MS);
@@ -139,7 +149,7 @@ export class QuizFormComponent {
             error: () => {
                 this.loadingQuiz.set(false);
                 this.errorMessage.set('No se pudo cargar el cuestionario.');
-                this.agregarPregunta();
+                this.fasesArray.push(this.crearFase());
             }
         });
     }
@@ -213,60 +223,67 @@ export class QuizFormComponent {
         });
     }
 
+    /** Agrupa las preguntas por su número de fase: cada grupo es una fase del builder. */
     private rellenarFormulario(quiz: Cuestionario): void {
         this.quizForm.patchValue({ nombre: quiz.nombre, esPublico: quiz.esPublico ?? false });
-        this.preguntasArray.clear();
-        const images = new Map<AbstractControl, { uploading: boolean; url: string | null; preview: string | null }>();
+        this.fasesArray.clear();
+        this.bancoDestino.set(null);
+        const images = new Map<AbstractControl, ImagenPregunta>();
 
         const ordenadas = [...quiz.preguntas].sort((a, b) => a.numeroPregunta - b.numeroPregunta);
-        // Con una sola fase sin nombre no hace falta separador; en el resto, uno antes de cada fase
-        const hayVariasFases = new Set(ordenadas.map(p => p.faseNumero ?? 1)).size > 1;
         let faseAnterior: number | null = null;
+        let fase: FormGroup | null = null;
 
-        ordenadas.forEach((p) => {
-            const fase = p.faseNumero ?? 1;
-            if (fase !== faseAnterior) {
-                if (hayVariasFases || p.faseNombre || p.faseDinamica) {
-                    this.preguntasArray.push(this.crearSeparador(p.faseNombre ?? '', p.faseColor ?? '', !!p.faseDinamica));
-                }
-                faseAnterior = fase;
+        for (const p of ordenadas) {
+            const numero = p.faseNumero ?? 1;
+            if (fase === null || numero !== faseAnterior) {
+                fase = this.crearFase(p.faseNombre ?? '', p.faseColor ?? '', false);
+                this.fasesArray.push(fase);
+                faseAnterior = numero;
             }
 
-            const grupo = this.crearPregunta({
-                enunciado: p.enunciado,
-                respuestas: p.respuestas,
-                imagenUrl: p.imagenUrl ?? null,
-                dificultad: p.dificultad ?? null
-            });
-            this.preguntasArray.push(grupo);
+            const grupo = this.crearPregunta(p);
+            this.preguntasDe(fase).push(grupo);
             if (p.imagenUrl) {
                 images.set(grupo, { uploading: false, url: imageUrl(p.imagenUrl), preview: null });
             }
-        });
+        }
 
-        if (this.cantidadPreguntas === 0) {
-            this.agregarPregunta();
+        if (this.fasesArray.length === 0) {
+            this.fasesArray.push(this.crearFase());
         }
         this.questionImages.set(images);
         this.quizForm.markAsPristine();
     }
 
-    get preguntasArray(): FormArray {
-        return this.quizForm.get('preguntas') as FormArray;
+    // ===== Estructura =====
+
+    get fasesArray(): FormArray {
+        return this.quizForm.get('fases') as FormArray;
     }
 
-    private crearPregunta(datos?: {
-        enunciado: string;
-        respuestas: { texto: string; esCorrecta: boolean }[];
-        imagenUrl?: string | null;
-        dificultad?: Dificultad | null;
-    }): FormGroup {
+    preguntasDe(fase: number | AbstractControl): FormArray {
+        const control = typeof fase === 'number' ? this.fasesArray.at(fase) : fase;
+        return control.get('preguntas') as FormArray;
+    }
+
+    private crearFase(nombre = '', color = '', conPregunta = true): FormGroup {
+        return this.fb.group({
+            nombre: [nombre],
+            color: [color],
+            preguntas: this.fb.array(conPregunta ? [this.crearPregunta()] : [])
+        });
+    }
+
+    private crearPregunta(datos?: Partial<Pick<Pregunta, 'enunciado' | 'imagenUrl' | 'dificultad' | 'tipo'>> & {
+        respuestas?: { texto: string; esCorrecta: boolean }[];
+    }, tipo: TipoPregunta = 'normal'): FormGroup {
         const respuestas = datos?.respuestas ?? [
             { texto: '', esCorrecta: false },
             { texto: '', esCorrecta: false }
         ];
         return this.fb.group({
-            tipo: ['pregunta'],
+            tipo: [(datos?.tipo ?? tipo) as TipoPregunta],
             dificultad: [(datos?.dificultad ?? null) as Dificultad | null],
             enunciado: [datos?.enunciado ?? '', Validators.required],
             respuestas: this.fb.array(respuestas.map(r => this.fb.group({
@@ -277,116 +294,216 @@ export class QuizFormComponent {
         });
     }
 
-    private crearSeparador(nombre = '', color = '', dinamica = false): FormGroup {
-        return this.fb.group({
-            tipo: ['separador'],
-            nombre: [nombre],
-            color: [color],
-            dinamica: [dinamica]
-        });
+    /** Número de la pregunta en todo el cuestionario (la numeración sigue de una fase a otra). */
+    numeroGlobal(faseIndex: number, preguntaIndex: number): number {
+        let previas = 0;
+        for (let i = 0; i < faseIndex; i++) {
+            previas += this.preguntasDe(i).length;
+        }
+        return previas + preguntaIndex + 1;
     }
 
-    agregarPregunta(): void {
-        this.preguntasArray.push(this.crearPregunta());
+    /** Cierra el desplegable abierto (los menús de daisyUI se cierran al perder el foco). */
+    cerrarMenu(): void {
+        (document.activeElement as HTMLElement | null)?.blur();
     }
 
-    /** Añade un separador de fase al final; las preguntas que se añadan después pertenecen a la nueva fase. */
-    agregarSeparador(): void {
-        this.preguntasArray.push(this.crearSeparador());
+    // ===== Fases =====
+
+    /** Añade una fase al final con una pregunta vacía y la lleva a la vista. */
+    agregarFase(): void {
+        this.fasesArray.push(this.crearFase());
+        this.quizForm.markAsDirty();
+        const index = this.fasesArray.length - 1;
+        setTimeout(() => document.getElementById(`fase-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
+
+    /** Quita una fase con sus preguntas; siempre debe quedar al menos una. */
+    eliminarFase(index: number): void {
+        this.cerrarMenu();
+        if (this.fasesArray.length <= 1) return;
+
+        const preguntas = this.preguntasDe(index);
+        const conContenido = preguntas.controls.filter(p => !this.preguntaVacia(p)).length;
+        if (conContenido > 0 &&
+            !confirm(`¿Eliminar «${this.nombreFase(index)}» y sus ${preguntas.length} pregunta(s)?`)) {
+            return;
+        }
+
+        const fase = this.fasesArray.at(index);
+        if (this.bancoDestino() === fase) this.bancoDestino.set(null);
+        const images = new Map(this.questionImages());
+        preguntas.controls.forEach(p => images.delete(p));
+        this.questionImages.set(images);
+        this.fasesArray.removeAt(index);
         this.quizForm.markAsDirty();
     }
 
-    esSeparador(control: AbstractControl): boolean {
-        return control.get('tipo')?.value === 'separador';
+    moverFase(index: number, delta: -1 | 1): void {
+        this.cerrarMenu();
+        const destino = index + delta;
+        if (destino < 0 || destino >= this.fasesArray.length) return;
+
+        const control = this.fasesArray.at(index);
+        this.fasesArray.removeAt(index);
+        this.fasesArray.insert(destino, control);
+        this.quizForm.markAsDirty();
     }
 
-    /** Número de preguntas (sin contar separadores). */
-    get cantidadPreguntas(): number {
-        return this.preguntasArray.controls.filter(c => !this.esSeparador(c)).length;
+    /** Nombre visible de la fase: el elegido o "Fase N". */
+    nombreFase(index: number): string {
+        return (this.fasesArray.at(index).get('nombre')?.value ?? '').trim() || `Fase ${index + 1}`;
     }
 
-    /** Elimina una pregunta (siempre debe quedar al menos una) o un separador. */
-    eliminarPregunta(index: number): void {
-        const control = this.preguntasArray.at(index);
-        if (!this.esSeparador(control) && this.cantidadPreguntas <= 1) return;
+    /** Color efectivo de la fase: el elegido o el de la paleta según su número. */
+    colorFase(index: number): string {
+        return colorDeFase(index + 1, this.fasesArray.at(index).get('color')?.value);
+    }
 
-        this.preguntasArray.removeAt(index);
+    /** ¿La fase usa un color elegido a mano (no el de por defecto)? */
+    tieneColorPropio(index: number): boolean {
+        return esColorValido(this.fasesArray.at(index).get('color')?.value);
+    }
+
+    /** Fija el color de la fase; vacío vuelve al color por defecto. */
+    aplicarColorFase(index: number, color: string): void {
+        this.fasesArray.at(index).patchValue({ color: esColorValido(color) ? color.toLowerCase() : '' });
+        this.quizForm.markAsDirty();
+    }
+
+    /** Aplica un atajo de taxonomía al nombre de la fase ("Ronda" pasa a "Ronda 2" según su posición). */
+    aplicarPresetFase(index: number, preset: string): void {
+        this.cerrarMenu();
+        const nombre = preset === 'Ronda' ? `Ronda ${index + 1}` : preset;
+        this.fasesArray.at(index).patchValue({ nombre });
+        this.quizForm.markAsDirty();
+    }
+
+    // ===== Preguntas =====
+
+    agregarPregunta(faseIndex: number, tipo: TipoPregunta = 'normal'): void {
+        this.cerrarMenu();
+        this.preguntasDe(faseIndex).push(this.crearPregunta(undefined, tipo));
+        this.quizForm.markAsDirty();
+    }
+
+    /** Copia la pregunta (con su imagen) justo debajo de la original. */
+    duplicarPregunta(faseIndex: number, preguntaIndex: number): void {
+        const preguntas = this.preguntasDe(faseIndex);
+        const original = preguntas.at(preguntaIndex);
+        const valor = original.value as PreguntaFormValue;
+        const copia = this.crearPregunta({
+            ...valor,
+            respuestas: valor.respuestas.map(r => ({ ...r }))
+        });
+        preguntas.insert(preguntaIndex + 1, copia);
+
+        const imagen = this.questionImages().get(original);
+        if (imagen?.url) {
+            const images = new Map(this.questionImages());
+            images.set(copia, { uploading: false, url: imagen.url, preview: null });
+            this.questionImages.set(images);
+        }
+        this.quizForm.markAsDirty();
+    }
+
+    /** Elimina una pregunta; si la fase se queda vacía, muestra su estado vacío. */
+    eliminarPregunta(faseIndex: number, preguntaIndex: number): void {
+        const preguntas = this.preguntasDe(faseIndex);
+        const control = preguntas.at(preguntaIndex);
+        preguntas.removeAt(preguntaIndex);
         const images = new Map(this.questionImages());
         images.delete(control);
         this.questionImages.set(images);
         this.quizForm.markAsDirty();
     }
 
-    puedeEliminar(index: number): boolean {
-        return this.esSeparador(this.preguntasArray.at(index)) || this.cantidadPreguntas > 1;
-    }
+    /**
+     * Sube (-1) o baja (+1) una pregunta dentro de su fase; desde el extremo de una fase pasa
+     * al final de la anterior o al principio de la siguiente.
+     */
+    moverPregunta(faseIndex: number, preguntaIndex: number, delta: -1 | 1): void {
+        const origen = this.preguntasDe(faseIndex);
+        const control = origen.at(preguntaIndex);
+        const destinoIndex = preguntaIndex + delta;
 
-    /** Sube (-1) o baja (+1) un elemento; mover una pregunta al otro lado de un separador la cambia de fase. */
-    moverElemento(index: number, delta: -1 | 1): void {
-        const destino = index + delta;
-        if (destino < 0 || destino >= this.preguntasArray.length) return;
-
-        const control = this.preguntasArray.at(index);
-        this.preguntasArray.removeAt(index);
-        this.preguntasArray.insert(destino, control);
-        this.quizForm.markAsDirty();
-    }
-
-    /** Número de fase (1..n) que abre el separador de esa posición (uno inicial nombra la primera). */
-    numeroFaseSeparador(index: number): number {
-        let fase = 1;
-        let hayPreguntas = false;
-        for (let i = 0; i <= index; i++) {
-            const control = this.preguntasArray.at(i);
-            if (!this.esSeparador(control)) {
-                hayPreguntas = true;
-            } else if (hayPreguntas && i > 0) {
-                fase++;
-                hayPreguntas = false;
-            }
+        if (destinoIndex >= 0 && destinoIndex < origen.length) {
+            origen.removeAt(preguntaIndex);
+            origen.insert(destinoIndex, control);
+        } else {
+            const otraFase = faseIndex + delta;
+            if (otraFase < 0 || otraFase >= this.fasesArray.length) return;
+            const destino = this.preguntasDe(otraFase);
+            origen.removeAt(preguntaIndex);
+            destino.insert(delta < 0 ? destino.length : 0, control);
         }
-        return fase;
-    }
-
-    /** Color efectivo del separador: el elegido o el de la paleta según el número de fase. */
-    colorSeparador(index: number): string {
-        return colorDeFase(this.numeroFaseSeparador(index), this.preguntasArray.at(index).get('color')?.value);
-    }
-
-    /** ¿El separador usa un color elegido a mano (no el de por defecto)? */
-    tieneColorPropio(index: number): boolean {
-        return esColorValido(this.preguntasArray.at(index).get('color')?.value);
-    }
-
-    /** Fija el color de la fase; vacío vuelve al color por defecto. */
-    aplicarColorFase(index: number, color: string): void {
-        this.preguntasArray.at(index).patchValue({ color: esColorValido(color) ? color.toLowerCase() : '' });
         this.quizForm.markAsDirty();
     }
 
-    /** Aplica un atajo de taxonomía al nombre del separador ("Ronda" pasa a "Ronda 2" según su posición). */
-    aplicarPresetFase(index: number, preset: string): void {
-        const numeroSeparador = this.preguntasArray.controls
-            .slice(0, index + 1)
-            .filter(c => this.esSeparador(c)).length;
-        const nombre = preset === 'Ronda' ? `Ronda ${numeroSeparador}` : preset;
-        this.preguntasArray.at(index).patchValue({ nombre });
+    puedeSubir(faseIndex: number, preguntaIndex: number): boolean {
+        return faseIndex > 0 || preguntaIndex > 0;
+    }
+
+    puedeBajar(faseIndex: number, preguntaIndex: number): boolean {
+        return faseIndex < this.fasesArray.length - 1 || preguntaIndex < this.preguntasDe(faseIndex).length - 1;
+    }
+
+    /** Suelta una pregunta arrastrada: reordena dentro de la fase o la pasa a otra. */
+    onDrop(event: CdkDragDrop<FormArray>): void {
+        const origen = event.previousContainer.data;
+        const destino = event.container.data;
+        if (origen === destino && event.previousIndex === event.currentIndex) return;
+
+        const control = origen.at(event.previousIndex);
+        origen.removeAt(event.previousIndex);
+        destino.insert(event.currentIndex, control);
         this.quizForm.markAsDirty();
+    }
+
+    esPulsador(pregunta: AbstractControl): boolean {
+        return pregunta.get('tipo')?.value === 'pulsador';
+    }
+
+    cambiarTipo(pregunta: AbstractControl, tipo: TipoPregunta): void {
+        pregunta.patchValue({ tipo });
+        this.quizForm.markAsDirty();
+    }
+
+    /** Cambia la dificultad de una pregunta (volver a pulsar la activa la deja sin clasificar). */
+    cambiarDificultad(pregunta: AbstractControl, dificultad: Dificultad | null): void {
+        pregunta.patchValue({ dificultad });
+        this.quizForm.markAsDirty();
+    }
+
+    private preguntaVacia(control: AbstractControl): boolean {
+        const respuestas = control.get('respuestas') as FormArray;
+        return !control.get('enunciado')?.value?.trim() &&
+            !control.get('imagenUrl')?.value &&
+            respuestas.controls.every(r => !r.get('texto')?.value?.trim());
     }
 
     // ===== Banco de preguntas =====
 
-    toggleBanco(): void {
-        this.mostrarBanco.update(v => !v);
+    abrirBanco(faseIndex: number): void {
+        this.cerrarMenu();
+        this.bancoDestino.set(this.fasesArray.at(faseIndex));
     }
 
-    /** Copia al final del cuestionario las preguntas elegidas en el banco (no quedan enlazadas). */
+    cerrarBanco(): void {
+        this.bancoDestino.set(null);
+    }
+
+    /** Copia al final de la fase las preguntas elegidas en el banco (no quedan enlazadas). */
     agregarDesdeBanco(preguntas: BancoPregunta[]): void {
+        const fase = this.bancoDestino();
+        if (!fase) return;
+        const destino = this.preguntasDe(fase);
         const images = new Map(this.questionImages());
 
-        // Si el formulario solo tiene la pregunta vacía inicial, se sustituye
-        if (this.preguntasArray.length === 1 && this.preguntaVacia(this.preguntasArray.at(0))) {
-            this.preguntasArray.clear();
+        // Si la fase solo tiene la pregunta vacía inicial, se sustituye
+        if (destino.length === 1 && this.preguntaVacia(destino.at(0))) {
+            images.delete(destino.at(0));
+            destino.clear();
         }
 
         for (const p of preguntas) {
@@ -396,7 +513,7 @@ export class QuizFormComponent {
                 imagenUrl: p.imagenUrl ?? null,
                 dificultad: p.dificultad ?? null
             });
-            this.preguntasArray.push(grupo);
+            destino.push(grupo);
             if (p.imagenUrl) {
                 images.set(grupo, { uploading: false, url: imageUrl(p.imagenUrl), preview: null });
             }
@@ -404,33 +521,20 @@ export class QuizFormComponent {
 
         this.questionImages.set(images);
         this.quizForm.markAsDirty();
-        this.mostrarBanco.set(false);
+        this.bancoDestino.set(null);
         this.successMessage.set(`${preguntas.length} pregunta(s) añadida(s) desde el banco.`);
         setTimeout(() => this.successMessage.set(null), 3000);
     }
 
-    private preguntaVacia(control: AbstractControl): boolean {
-        if (this.esSeparador(control)) return false;
-        const respuestas = control.get('respuestas') as FormArray;
-        return !control.get('enunciado')?.value?.trim() &&
-            respuestas.controls.every(r => !r.get('texto')?.value?.trim());
-    }
-
-    /** Cambia la dificultad de una pregunta (volver a pulsar la activa la deja sin clasificar). */
-    cambiarDificultad(index: number, dificultad: Dificultad | null): void {
-        this.preguntasArray.at(index).patchValue({ dificultad });
-        this.quizForm.markAsDirty();
-    }
-
     /** Abre el diálogo para guardar la pregunta en el banco eligiendo (o creando) su categoría. */
-    guardarEnBanco(index: number): void {
-        if (!this.preguntaValidaParaBanco(index)) {
+    guardarEnBanco(pregunta: AbstractControl): void {
+        if (!this.preguntaValidaParaBanco(pregunta)) {
             this.errorMessage.set('Completa la pregunta (enunciado, respuestas y una correcta) antes de guardarla en el banco.');
             return;
         }
 
         this.errorMessage.set(null);
-        this.dialogoBanco.set({ index, categoriaId: null, categoriaNombre: null, guardando: false });
+        this.dialogoBanco.set({ pregunta, categoriaId: null, categoriaNombre: null, guardando: false });
 
         this.categoriasService.listar().subscribe({
             next: (r) => {
@@ -459,9 +563,9 @@ export class QuizFormComponent {
 
     confirmarGuardarEnBanco(): void {
         const dialogo = this.dialogoBanco();
-        if (!dialogo || dialogo.guardando || !this.preguntaValidaParaBanco(dialogo.index)) return;
+        if (!dialogo || dialogo.guardando || !this.preguntaValidaParaBanco(dialogo.pregunta)) return;
 
-        const control = this.preguntasArray.at(dialogo.index);
+        const control = dialogo.pregunta;
         const respuestas = (control.get('respuestas') as FormArray).value as RespuestaFormValue[];
         const nombreNuevo = dialogo.categoriaId ? null : (dialogo.categoriaNombre?.trim() || null);
 
@@ -491,8 +595,7 @@ export class QuizFormComponent {
         });
     }
 
-    private preguntaValidaParaBanco(index: number): boolean {
-        const control = this.preguntasArray.at(index);
+    private preguntaValidaParaBanco(control: AbstractControl): boolean {
         const enunciado = (control.get('enunciado')?.value ?? '').trim();
         const respuestas = (control.get('respuestas') as FormArray).value as RespuestaFormValue[];
         return !!enunciado && respuestas.length >= 2 && respuestas.every(r => !!r.texto?.trim()) &&
@@ -516,9 +619,14 @@ export class QuizFormComponent {
         }
     }
 
-    agregarRespuesta(preguntaIndex: number): void {
-        const pregunta = this.preguntasArray.at(preguntaIndex);
-        const respuestas = pregunta.get('respuestas') as FormArray;
+    // ===== Respuestas =====
+
+    respuestasDe(pregunta: AbstractControl): FormArray {
+        return pregunta.get('respuestas') as FormArray;
+    }
+
+    agregarRespuesta(pregunta: AbstractControl): void {
+        const respuestas = this.respuestasDe(pregunta);
         if (respuestas.length >= 4) {
             this.errorMessage.set('Máximo 4 respuestas por pregunta');
             return;
@@ -529,96 +637,21 @@ export class QuizFormComponent {
         }));
     }
 
-    eliminarRespuesta(preguntaIndex: number, respuestaIndex: number, respuestaControl: AbstractControl): void {
-        console.log('[eliminarRespuesta] INICIO');
-        console.log('[eliminarRespuesta] preguntaIndex:', preguntaIndex);
-        console.log('[eliminarRespuesta] respuestaIndex pasado:', respuestaIndex);
-        console.log('[eliminarRespuesta] respuestaControl texto:', respuestaControl.get('texto')?.value);
+    eliminarRespuesta(pregunta: AbstractControl, respuesta: AbstractControl): void {
+        const respuestas = this.respuestasDe(pregunta);
+        if (respuestas.length <= 2) return;
 
-        const pregunta = this.preguntasArray.at(preguntaIndex);
-        const respuestas = pregunta.get('respuestas') as FormArray;
-
-        console.log('[eliminarRespuesta] Respuestas antes de eliminar:', respuestas.length);
-        console.log('[eliminarRespuesta] Estado de respuestas antes:');
-        for (let i = 0; i < respuestas.length; i++) {
-            console.log(`  [${i}] texto: "${respuestas.at(i).get('texto')?.value}", esCorrecta: ${respuestas.at(i).get('esCorrecta')?.value}`);
-        }
-
-        if (respuestas.length > 2) {
-            // Remove by control reference to ensure we remove the exact one
-            const indexToRemove = respuestas.controls.indexOf(respuestaControl);
-            console.log('[eliminarRespuesta] indexToRemove calculado:', indexToRemove);
-
-            if (indexToRemove !== -1) {
-                console.log('[eliminarRespuesta] ELIMINANDO respuesta en índice:', indexToRemove);
-                respuestas.removeAt(indexToRemove);
-
-                // Resetear todas las respuestas a esCorrecta: false para evitar inconsistencias visuales
-                this.resetCorrectAnswer(preguntaIndex);
-
-                console.log('[eliminarRespuesta] Respuestas después de eliminar:', respuestas.length);
-                console.log('[eliminarRespuesta] Estado de respuestas después:');
-                for (let i = 0; i < respuestas.length; i++) {
-                    console.log(`  [${i}] texto: "${respuestas.at(i).get('texto')?.value}", esCorrecta: ${respuestas.at(i).get('esCorrecta')?.value}`);
-                }
-            } else {
-                console.log('[eliminarRespuesta] ERROR: respuestaControl no encontrado en controls!');
-            }
-        } else {
-            console.log('[eliminarRespuesta] No se puede eliminar, menos de 3 respuestas');
-        }
+        const index = respuestas.controls.indexOf(respuesta);
+        if (index === -1) return;
+        respuestas.removeAt(index);
+        // Al quitar una respuesta se desmarca la correcta para evitar inconsistencias visuales
+        respuestas.controls.forEach(r => r.patchValue({ esCorrecta: false }));
     }
 
-    setRespuestaCorrecta(preguntaIndex: number, respuestaIndex: number): void {
-        console.log('[setRespuestaCorrecta] INICIO');
-        console.log('[setRespuestaCorrecta] preguntaIndex:', preguntaIndex, 'respuestaIndex:', respuestaIndex);
-
-        const pregunta = this.preguntasArray.at(preguntaIndex);
-        const respuestas = pregunta.get('respuestas') as FormArray;
-
-        console.log('[setRespuestaCorrecta] Estado antes de cambiar:');
-        for (let i = 0; i < respuestas.length; i++) {
-            console.log(`  [${i}] texto: "${respuestas.at(i).get('texto')?.value}", esCorrecta: ${respuestas.at(i).get('esCorrecta')?.value}`);
-        }
-
-        // Desmarcar TODAS las respuestas primero (forzar una sola correcta)
-        for (let i = 0; i < respuestas.length; i++) {
-            respuestas.at(i).patchValue({ esCorrecta: false });
-        }
-
-        // Marcar solo la respuesta clickeada como correcta
-        respuestas.at(respuestaIndex).patchValue({ esCorrecta: true });
-
-        console.log('[setRespuestaCorrecta] Estado después de cambiar:');
-        for (let i = 0; i < respuestas.length; i++) {
-            console.log(`  [${i}] texto: "${respuestas.at(i).get('texto')?.value}", esCorrecta: ${respuestas.at(i).get('esCorrecta')?.value}`);
-        }
-    }
-
-    private resetCorrectAnswer(preguntaIndex: number): void {
-        // Cuando se elimina una respuesta, resetear todas las respuestas a esCorrecta: false
-        // para evitar inconsistencias visuales
-        const pregunta = this.preguntasArray.at(preguntaIndex);
-        const respuestas = pregunta.get('respuestas') as FormArray;
-        for (let i = 0; i < respuestas.length; i++) {
-            respuestas.at(i).patchValue({ esCorrecta: false });
-        }
-        console.log('[resetCorrectAnswer] Respuestas de pregunta', preguntaIndex, 'reseteadas a esCorrecta: false');
-    }
-
-    esRespuestaCorrecta(preguntaIndex: number, respuestaIndex: number): boolean {
-        const pregunta = this.preguntasArray.at(preguntaIndex);
-        const respuestas = pregunta.get('respuestas') as FormArray;
-        return respuestas.at(respuestaIndex).get('esCorrecta')?.value === true;
-    }
-
-    /** Número de la pregunta en el cuestionario (los separadores no cuentan). */
-    obtenerNumeroPregunta(index: number): number {
-        return this.preguntasArray.controls.slice(0, index + 1).filter(c => !this.esSeparador(c)).length;
-    }
-
-    obtenerNumeroRespuesta(preguntaIndex: number, index: number): string {
-        return String.fromCharCode(65 + index); // A, B, C, D...
+    /** Marca una sola respuesta como correcta. */
+    setRespuestaCorrecta(pregunta: AbstractControl, respuestaIndex: number): void {
+        const respuestas = this.respuestasDe(pregunta);
+        respuestas.controls.forEach((r, i) => r.patchValue({ esCorrecta: i === respuestaIndex }));
     }
 
     obtenerShapeRespuesta(index: number): ShapeType {
@@ -626,19 +659,13 @@ export class QuizFormComponent {
         return shapes[index] || 'triangle';
     }
 
-    obtenerRespuestasFormArray(preguntaIndex: number): FormArray {
-        const pregunta = this.preguntasArray.at(preguntaIndex);
-        return pregunta.get('respuestas') as FormArray;
-    }
+    // ===== Imágenes =====
 
-    // Image handling
-    onImageSelected(event: Event, preguntaIndex: number): void {
-        const control = this.preguntasArray.at(preguntaIndex);
+    onImageSelected(event: Event, control: AbstractControl): void {
         const input = event.target as HTMLInputElement;
         const file = input.files?.[0];
         if (!file) return;
 
-        // Validate
         const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         if (!allowedTypes.includes(file.type)) {
             this.errorMessage.set('Por favor, selecciona una imagen válida (JPG, PNG, GIF o WebP)');
@@ -649,28 +676,25 @@ export class QuizFormComponent {
             return;
         }
 
-        // Create preview
         const reader = new FileReader();
         reader.onload = (e) => {
             const preview = e.target?.result as string;
 
-            // Update local state with preview
             const newMap = new Map(this.questionImages());
             newMap.set(control, { uploading: true, url: null, preview });
             this.questionImages.set(newMap);
 
-            // Upload immediately
             this.cuestionarioService.subirImagenPregunta(file).subscribe({
                 next: (response) => {
                     const updatedMap = new Map(this.questionImages());
                     updatedMap.set(control, { uploading: false, url: imageUrl(response.path), preview: null });
                     this.questionImages.set(updatedMap);
 
-                    // Store the path (relative URL) in the form
+                    // Se guarda la ruta relativa en el formulario
                     control.patchValue({ imagenUrl: response.path });
                     this.quizForm.markAsDirty();
                 },
-                error: (err) => {
+                error: () => {
                     const updatedMap = new Map(this.questionImages());
                     updatedMap.delete(control);
                     this.questionImages.set(updatedMap);
@@ -681,64 +705,53 @@ export class QuizFormComponent {
         reader.readAsDataURL(file);
     }
 
-    removeImage(preguntaIndex: number): void {
-        const control = this.preguntasArray.at(preguntaIndex);
+    removeImage(control: AbstractControl): void {
         const newMap = new Map(this.questionImages());
         newMap.delete(control);
         this.questionImages.set(newMap);
         control.patchValue({ imagenUrl: null });
+        this.quizForm.markAsDirty();
     }
 
-    getQuestionImageData(preguntaIndex: number) {
-        return this.questionImages().get(this.preguntasArray.at(preguntaIndex));
+    getQuestionImageData(control: AbstractControl): ImagenPregunta | undefined {
+        return this.questionImages().get(control);
     }
 
-    isUploadingImageFor(preguntaIndex: number): boolean {
-        return this.questionImages().get(this.preguntasArray.at(preguntaIndex))?.uploading === true;
-    }
+    // ===== Guardar y publicar =====
 
     validarFormulario(): boolean {
         this.quizForm.markAllAsTouched();
-        
+
         if (this.quizForm.invalid) {
             this.errorMessage.set('Por favor, completa todos los campos correctamente.');
             return false;
         }
 
-        if (this.cantidadPreguntas === 0) {
-            this.errorMessage.set('Agrega al menos una pregunta.');
+        if (this.fasesArray.length === 0) {
+            this.errorMessage.set('Agrega al menos una fase.');
             return false;
         }
 
-        // Validate each question has at least 2 answers and one correct
-        for (let i = 0; i < this.preguntasArray.length; i++) {
-            const pregunta = this.preguntasArray.at(i);
-            if (this.esSeparador(pregunta)) continue;
-
-            const numero = this.obtenerNumeroPregunta(i);
-            const respuestas = pregunta.get('respuestas') as FormArray;
-
-            if (respuestas.length < 2) {
-                this.errorMessage.set(`La pregunta ${numero} debe tener al menos 2 respuestas.`);
+        for (let f = 0; f < this.fasesArray.length; f++) {
+            const preguntas = this.preguntasDe(f);
+            if (preguntas.length === 0) {
+                this.errorMessage.set(`«${this.nombreFase(f)}» no tiene preguntas. Añade alguna o elimina la fase.`);
                 return false;
             }
 
-            const tieneCorrecta = respuestas.controls.some((r: AbstractControl) => r.get('esCorrecta')?.value === true);
-            if (!tieneCorrecta) {
-                this.errorMessage.set(`La pregunta ${numero} debe tener una respuesta correcta marcada.`);
-                return false;
-            }
-        }
+            for (let p = 0; p < preguntas.length; p++) {
+                const numero = this.numeroGlobal(f, p);
+                const respuestas = this.respuestasDe(preguntas.at(p));
 
-        // Una fase sin preguntas (dos separadores seguidos, o uno al final) no se puede publicar
-        const controles = this.preguntasArray.controls;
-        for (let i = 0; i < controles.length; i++) {
-            if (!this.esSeparador(controles[i])) continue;
-            const siguiente = controles[i + 1];
-            if (!siguiente || this.esSeparador(siguiente)) {
-                const nombre = (controles[i].get('nombre')?.value ?? '').trim();
-                this.errorMessage.set(`La fase${nombre ? ' "' + nombre + '"' : ''} no tiene preguntas. Añade alguna o quita el separador.`);
-                return false;
+                if (respuestas.length < 2) {
+                    this.errorMessage.set(`La pregunta ${numero} debe tener al menos 2 respuestas.`);
+                    return false;
+                }
+
+                if (!respuestas.controls.some(r => r.get('esCorrecta')?.value === true)) {
+                    this.errorMessage.set(`La pregunta ${numero} debe tener una respuesta correcta marcada.`);
+                    return false;
+                }
             }
         }
 
@@ -749,7 +762,7 @@ export class QuizFormComponent {
         const formValue = this.quizForm.value as {
             nombre: string;
             esPublico: boolean;
-            preguntas: PreguntaFormValue[];
+            fases: FaseFormValue[];
         };
 
         const nombre = (formValue.nombre ?? '').trim();
@@ -758,50 +771,40 @@ export class QuizFormComponent {
             nombre: nombre || 'Borrador sin título',
             esPublico: formValue.esPublico ?? false,
             esBorrador,
-            preguntas: this.aplanarPreguntas(formValue.preguntas)
+            preguntas: this.aplanarPreguntas(formValue.fases)
         };
     }
 
     /**
-     * Recorre la lista del builder: cada separador abre una fase nueva (un separador inicial solo
-     * nombra la primera) y todas las preguntas hasta el siguiente separador la comparten.
-     * Los separadores sin preguntas detrás no generan fase, para que la numeración sea consecutiva.
+     * Pasa las fases del builder a la lista de preguntas de la API: cada pregunta lleva los datos
+     * de su fase. Las fases vacías se omiten para que la numeración de fases sea consecutiva.
      */
-    private aplanarPreguntas(items: PreguntaFormValue[]): CreateQuizRequest['preguntas'] {
+    private aplanarPreguntas(fases: FaseFormValue[]): CreateQuizRequest['preguntas'] {
         const resultado: CreateQuizRequest['preguntas'] = [];
-        let fase = 1;
-        let faseNombre: string | undefined;
-        let faseColor: string | undefined;
-        let faseDinamica = false;
-        let preguntasEnFase = 0;
+        let faseNumero = 0;
 
-        for (const item of items) {
-            if (item.tipo === 'separador') {
-                if (preguntasEnFase > 0) {
-                    fase++;
-                    preguntasEnFase = 0;
-                }
-                faseNombre = (item.nombre ?? '').trim() || undefined;
-                faseColor = esColorValido(item.color) ? item.color.toLowerCase() : undefined;
-                faseDinamica = !!item.dinamica;
-                continue;
+        for (const fase of fases) {
+            if (fase.preguntas.length === 0) continue;
+            faseNumero++;
+            const faseNombre = (fase.nombre ?? '').trim() || undefined;
+            const faseColor = esColorValido(fase.color) ? fase.color.toLowerCase() : undefined;
+
+            for (const item of fase.preguntas) {
+                resultado.push({
+                    numeroPregunta: resultado.length + 1,
+                    faseNumero,
+                    faseNombre,
+                    faseColor,
+                    tipo: item.tipo ?? 'normal',
+                    enunciado: item.enunciado ?? '',
+                    respuestas: item.respuestas.map((r: RespuestaFormValue) => ({
+                        texto: r.texto ?? '',
+                        esCorrecta: !!r.esCorrecta
+                    })),
+                    imagenUrl: item.imagenUrl || undefined,
+                    dificultad: item.dificultad || undefined
+                });
             }
-
-            preguntasEnFase++;
-            resultado.push({
-                numeroPregunta: resultado.length + 1,
-                faseNumero: fase,
-                faseNombre,
-                faseColor,
-                faseDinamica: faseDinamica || undefined,
-                enunciado: item.enunciado ?? '',
-                respuestas: item.respuestas.map((r: RespuestaFormValue) => ({
-                    texto: r.texto ?? '',
-                    esCorrecta: !!r.esCorrecta
-                })),
-                imagenUrl: item.imagenUrl || undefined,
-                dificultad: item.dificultad || undefined
-            });
         }
 
         return resultado;

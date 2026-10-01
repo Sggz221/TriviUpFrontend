@@ -487,7 +487,7 @@ export class GameSignalrService {
     }
 
     /**
-     * Ronda dinámica: pulsa el botón del equipo. Gana el primero; al resto el hub le devuelve un error.
+     * Pregunta de pulsador: pulsa el botón del equipo. Gana el primero; al resto el hub le devuelve un error.
      */
     async buzz(roomCode: string, questionId: number): Promise<void> {
         if (!this.hubConnection) throw new Error('Hub not connected');

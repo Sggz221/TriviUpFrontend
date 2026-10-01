@@ -135,248 +135,250 @@
                     </div>
                 </div>
 
-                <div formArrayName="preguntas" class="space-y-6">
-                    @for (pregunta of preguntasArray.controls; track pregunta; let preguntaIndex = $index) {
-                        @if (esSeparador(pregunta)) {
-                        <!-- Separador de fase: las preguntas que siguen pertenecen a esta fase -->
-                        <div class="phase-divider rounded-xl p-3 sm:p-4 border-2 border-dashed"
-                             style="background-color: var(--base-100);"
-                             [style.border-color]="colorSeparador(preguntaIndex)"
-                             [formGroupName]="preguntaIndex">
-                            <div class="flex items-center gap-2">
-                                <span class="badge font-bold shrink-0 px-3 py-3"
-                                      [style.background-color]="colorSeparador(preguntaIndex)"
-                                      style="color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.45);">Fase {{ numeroFaseSeparador(preguntaIndex) }}</span>
-                                <input type="text"
-                                       formControlName="nombre"
-                                       maxlength="100"
-                                       placeholder="Nombre de la fase (ronda, categoría, dificultad...)"
-                                       aria-label="Nombre de la fase"
-                                       class="min-w-0 flex-1 px-3 py-2 rounded-lg border outline-none box-border"
-                                       style="background-color: var(--base-300); border-color: var(--neutral); color: var(--base-content);">
-                                <button type="button" class="btn btn-ghost btn-xs shrink-0" aria-label="Subir fase"
-                                        [disabled]="preguntaIndex === 0" (click)="moverElemento(preguntaIndex, -1)">▲</button>
-                                <button type="button" class="btn btn-ghost btn-xs shrink-0" aria-label="Bajar fase"
-                                        [disabled]="preguntaIndex === preguntasArray.length - 1" (click)="moverElemento(preguntaIndex, 1)">▼</button>
-                                <button type="button" class="btn btn-ghost btn-xs shrink-0" style="color: var(--error);"
-                                        aria-label="Quitar separador" (click)="eliminarPregunta(preguntaIndex)">✕</button>
-                            </div>
-                            <div class="flex flex-wrap items-center gap-2 mt-2">
-                                <span class="text-xs opacity-70">Color:</span>
-                                @for (c of paletaFases; track c) {
-                                    <button type="button" class="phase-swatch"
-                                            [class.phase-swatch-activo]="colorSeparador(preguntaIndex) === c"
-                                            [style.background-color]="c"
-                                            [attr.aria-label]="'Color ' + c"
-                                            [attr.aria-pressed]="colorSeparador(preguntaIndex) === c"
-                                            (click)="aplicarColorFase(preguntaIndex, c)"></button>
-                                }
-                                <input type="color" class="phase-color-input"
-                                       aria-label="Elegir otro color"
-                                       [value]="colorSeparador(preguntaIndex)"
-                                       (input)="aplicarColorFase(preguntaIndex, $any($event.target).value)">
-                                @if (tieneColorPropio(preguntaIndex)) {
-                                    <button type="button" class="btn btn-xs btn-ghost" (click)="aplicarColorFase(preguntaIndex, '')">Automático</button>
-                                }
-                            </div>
-                            <label class="flex items-start gap-2 mt-2 cursor-pointer">
-                                <input type="checkbox" formControlName="dinamica" class="mt-1"
-                                       style="accent-color: var(--primary);">
-                                <span class="text-sm">
-                                    <strong>Ronda dinámica</strong>
-                                    <span class="opacity-70"> · los equipos usan el móvil como pulsador y responde el primero en pulsar (sin turnos ni comodines)</span>
-                                </span>
-                            </label>
-                            <div class="flex flex-wrap items-center gap-2 mt-2">
-                                <span class="text-xs opacity-70">Atajos:</span>
-                                @for (preset of presetsFase; track preset) {
-                                    <button type="button" class="btn btn-xs btn-outline"
-                                            (click)="aplicarPresetFase(preguntaIndex, preset)">{{ preset.trim() }}</button>
-                                }
-                            </div>
-                        </div>
-                        } @else {
-                        <div class="question-card rounded-xl shadow-md p-3 sm:p-6" style="background-color: var(--base-100);" [formGroupName]="preguntaIndex">
-                            <div class="question-header">
-                                <div class="badge badge-lg font-bold text-lg sm:text-xl w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shrink-0"
-                                     style="background-color: var(--info); color: var(--info-content);">
-                                    {{ obtenerNumeroPregunta(preguntaIndex) }}
-                                </div>
+                <!-- Fases: cada una agrupa sus preguntas; las preguntas se pueden arrastrar de una fase a otra -->
+                <div formArrayName="fases" class="fases-list" cdkDropListGroup>
+                    @for (fase of fasesArray.controls; track fase; let f = $index) {
+                        <section class="phase-card" [id]="'fase-' + f" [formGroupName]="f"
+                                 [style.--fase]="colorFase(f)" [attr.aria-label]="nombreFase(f)">
+                            <!-- Cabecera de la fase: se queda fija mientras se recorren sus preguntas -->
+                            <header class="phase-header">
+                                <div class="phase-header-row">
+                                    <span class="phase-badge">Fase {{ f + 1 }}</span>
+                                    <input type="text"
+                                           formControlName="nombre"
+                                           maxlength="100"
+                                           placeholder="Nombre de la fase (opcional)"
+                                           aria-label="Nombre de la fase"
+                                           class="phase-name-input">
 
-                                <div class="question-body min-w-0 flex-1">
-                                    <textarea formControlName="enunciado"
-                                              placeholder="Escribe la pregunta..."
-                                              class="w-full max-w-full px-3 sm:px-4 py-3 rounded-lg border outline-none transition-all text-base sm:text-lg box-border"
-                                              style="background-color: var(--base-300); border-color: var(--neutral); color: var(--base-content);"
-                                              rows="2"></textarea>
-                                    @if (pregunta.get('enunciado')?.invalid && pregunta.get('enunciado')?.touched) {
-                                        <label class="label">
-                                            <span class="label-text-alt" style="color: var(--error);">La pregunta es requerida</span>
-                                        </label>
-                                    }
-
-                                    <div class="mt-3">
-                                        <span class="text-xs opacity-70 mr-2">Dificultad</span>
-                                        <app-dificultad-selector
-                                            class="inline-block"
-                                            [valor]="pregunta.get('dificultad')?.value"
-                                            (cambio)="cambiarDificultad(preguntaIndex, $event)" />
+                                    <div class="dropdown dropdown-end">
+                                        <div tabindex="0" role="button" class="phase-icon-btn" title="Añadir pregunta" aria-label="Añadir pregunta a la fase">+</div>
+                                        <ul tabindex="0" class="dropdown-content menu phase-menu">
+                                            <li><button type="button" (click)="agregarPregunta(f)">Añadir pregunta</button></li>
+                                            <li><button type="button" (click)="abrirBanco(f)">Añadir desde mi banco</button></li>
+                                            <li class="menu-title">Pregunta especial</li>
+                                            <li>
+                                                <button type="button" (click)="agregarPregunta(f, 'pulsador')">
+                                                    <span aria-hidden="true">🔔</span>
+                                                    <span>Pulsador <small class="block opacity-70">El primer equipo en pulsar responde</small></span>
+                                                </button>
+                                            </li>
+                                        </ul>
                                     </div>
 
-                                    <!-- Image Upload Section (below question on all sizes) -->
-                                    <div class="mt-3">
-                                        @if (getQuestionImageData(preguntaIndex)?.url) {
-                                            <div class="flex flex-wrap items-center gap-3 p-3 rounded-lg" style="background-color: var(--base-300);">
-                                                <img
-                                                    [src]="getQuestionImageData(preguntaIndex)!.url"
-                                                    alt="Imagen de pregunta"
-                                                    class="rounded-lg max-w-[150px] max-h-[100px] object-cover"
-                                                />
-                                                <button type="button"
-                                                        class="btn btn-ghost btn-sm"
-                                                        style="color: var(--error);"
-                                                        (click)="removeImage(preguntaIndex)">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    <div class="dropdown dropdown-end">
+                                        <div tabindex="0" role="button" class="phase-icon-btn" title="Opciones de la fase" aria-label="Opciones de la fase">⋯</div>
+                                        <ul tabindex="0" class="dropdown-content menu phase-menu">
+                                            <li><button type="button" [disabled]="f === 0" (click)="moverFase(f, -1)">Subir fase</button></li>
+                                            <li><button type="button" [disabled]="f === fasesArray.length - 1" (click)="moverFase(f, 1)">Bajar fase</button></li>
+                                            <li class="menu-title">Nombrar como</li>
+                                            @for (preset of presetsFase; track preset) {
+                                                <li><button type="button" (click)="aplicarPresetFase(f, preset)">{{ preset === 'Ronda' ? 'Ronda ' + (f + 1) : preset.trim() }}</button></li>
+                                            }
+                                            <li class="menu-title">Configuración</li>
+                                            <li class="menu-disabled"><span>Pool de preguntas <small class="opacity-70">· próximamente</small></span></li>
+                                            <li>
+                                                <button type="button" class="text-error" [disabled]="fasesArray.length <= 1" (click)="eliminarFase(f)">
+                                                    Eliminar fase
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="phase-colors">
+                                    <span class="text-xs opacity-70">Color</span>
+                                    @for (c of paletaFases; track c) {
+                                        <button type="button" class="phase-swatch"
+                                                [class.phase-swatch-activo]="colorFase(f) === c"
+                                                [style.background-color]="c"
+                                                [attr.aria-label]="'Color ' + c"
+                                                [attr.aria-pressed]="colorFase(f) === c"
+                                                (click)="aplicarColorFase(f, c)"></button>
+                                    }
+                                    <input type="color" class="phase-color-input"
+                                           aria-label="Elegir otro color"
+                                           [value]="colorFase(f)"
+                                           (input)="aplicarColorFase(f, $any($event.target).value)">
+                                    @if (tieneColorPropio(f)) {
+                                        <button type="button" class="btn btn-xs btn-ghost" (click)="aplicarColorFase(f, '')">Automático</button>
+                                    }
+                                </div>
+                            </header>
+
+                            <div class="phase-questions" formArrayName="preguntas"
+                                 cdkDropList
+                                 [cdkDropListData]="preguntasDe(f)"
+                                 (cdkDropListDropped)="onDrop($event)">
+                                @for (pregunta of preguntasDe(f).controls; track pregunta; let p = $index) {
+                                    <div class="question-card rounded-xl shadow-md p-3 sm:p-5"
+                                         [class.question-pulsador]="esPulsador(pregunta)"
+                                         [formGroupName]="p"
+                                         cdkDrag cdkDragLockAxis="y">
+                                        <div class="question-drop-placeholder" *cdkDragPlaceholder></div>
+                                        <div class="question-header">
+                                            <div class="flex flex-col items-center gap-1 shrink-0">
+                                                <div class="question-number">{{ numeroGlobal(f, p) }}</div>
+                                                <button type="button" class="drag-handle" cdkDragHandle
+                                                        title="Arrastra para mover la pregunta (también a otra fase)"
+                                                        aria-label="Arrastrar pregunta">⠿</button>
+                                            </div>
+
+                                            <div class="question-body min-w-0 flex-1">
+                                                @if (esPulsador(pregunta)) {
+                                                    <div class="pulsador-chip">
+                                                        <span>🔔 Pulsador · responde el primer equipo en pulsar</span>
+                                                        <button type="button" class="pulsador-chip-x" title="Convertir en pregunta normal"
+                                                                aria-label="Convertir en pregunta normal"
+                                                                (click)="cambiarTipo(pregunta, 'normal')">✕</button>
+                                                    </div>
+                                                }
+                                                <textarea formControlName="enunciado"
+                                                          placeholder="Escribe la pregunta..."
+                                                          class="w-full max-w-full px-3 sm:px-4 py-3 rounded-lg border outline-none transition-all text-base sm:text-lg box-border"
+                                                          style="background-color: var(--base-300); border-color: var(--neutral); color: var(--base-content);"
+                                                          rows="2"></textarea>
+                                                @if (pregunta.get('enunciado')?.invalid && pregunta.get('enunciado')?.touched) {
+                                                    <label class="label">
+                                                        <span class="label-text-alt" style="color: var(--error);">La pregunta es requerida</span>
+                                                    </label>
+                                                }
+
+                                                <div class="mt-3">
+                                                    <span class="text-xs opacity-70 mr-2">Dificultad</span>
+                                                    <app-dificultad-selector
+                                                        class="inline-block"
+                                                        [valor]="pregunta.get('dificultad')?.value"
+                                                        (cambio)="cambiarDificultad(pregunta, $event)" />
+                                                </div>
+
+                                                <div class="mt-3">
+                                                    @if (getQuestionImageData(pregunta)?.url) {
+                                                        <div class="flex flex-wrap items-center gap-3 p-3 rounded-lg" style="background-color: var(--base-300);">
+                                                            <img [src]="getQuestionImageData(pregunta)!.url"
+                                                                 alt="Imagen de pregunta"
+                                                                 class="rounded-lg max-w-[150px] max-h-[100px] object-cover" />
+                                                            <button type="button" class="btn btn-ghost btn-sm" style="color: var(--error);"
+                                                                    (click)="removeImage(pregunta)">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                                </svg>
+                                                                Quitar
+                                                            </button>
+                                                        </div>
+                                                    } @else if (getQuestionImageData(pregunta)?.preview) {
+                                                        <div class="flex flex-wrap items-center gap-3 p-3 rounded-lg" style="background-color: var(--base-300);">
+                                                            <img [src]="getQuestionImageData(pregunta)!.preview"
+                                                                 alt="Preview"
+                                                                 class="rounded-lg max-w-[150px] max-h-[100px] object-cover opacity-50" />
+                                                            @if (getQuestionImageData(pregunta)?.uploading) {
+                                                                <span class="loading loading-spinner loading-sm"></span>
+                                                                <span class="text-sm opacity-70">Subiendo...</span>
+                                                            }
+                                                        </div>
+                                                    } @else {
+                                                        <label class="cursor-pointer inline-flex items-center gap-2 text-sm py-2" style="color: var(--info);">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            </svg>
+                                                            Añadir imagen
+                                                            <input type="file" accept="image/*" class="hidden"
+                                                                   (change)="onImageSelected($event, pregunta)" />
+                                                        </label>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <div class="question-tools">
+                                                <div class="flex flex-col items-center">
+                                                    <button type="button" class="btn btn-ghost btn-xs" aria-label="Subir pregunta"
+                                                            [disabled]="!puedeSubir(f, p)" (click)="moverPregunta(f, p, -1)">▲</button>
+                                                    <button type="button" class="btn btn-ghost btn-xs" aria-label="Bajar pregunta"
+                                                            [disabled]="!puedeBajar(f, p)" (click)="moverPregunta(f, p, 1)">▼</button>
+                                                </div>
+                                                <button type="button" class="btn btn-ghost btn-xs" style="color: var(--info);"
+                                                        title="Guardar una copia en tu banco de preguntas"
+                                                        (click)="guardarEnBanco(pregunta)">Al banco</button>
+                                                <button type="button" class="btn btn-ghost btn-xs" style="color: var(--info);"
+                                                        title="Duplicar la pregunta" (click)="duplicarPregunta(f, p)">Duplicar</button>
+                                                <button type="button" class="btn btn-circle btn-ghost btn-sm" style="color: var(--error);"
+                                                        (click)="eliminarPregunta(f, p)" aria-label="Eliminar pregunta">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
                                                     </svg>
-                                                    Quitar
                                                 </button>
                                             </div>
-                                        } @else if (getQuestionImageData(preguntaIndex)?.preview) {
-                                            <div class="flex flex-wrap items-center gap-3 p-3 rounded-lg" style="background-color: var(--base-300);">
-                                                <img
-                                                    [src]="getQuestionImageData(preguntaIndex)!.preview"
-                                                    alt="Preview"
-                                                    class="rounded-lg max-w-[150px] max-h-[100px] object-cover opacity-50"
-                                                />
-                                                @if (isUploadingImageFor(preguntaIndex)) {
-                                                    <span class="loading loading-spinner loading-sm"></span>
-                                                    <span class="text-sm opacity-70">Subiendo...</span>
-                                                }
+                                        </div>
+
+                                        <div class="answers-list mt-4 space-y-3" formArrayName="respuestas">
+                                            @for (respuesta of respuestasDe(pregunta).controls; track respuesta; let r = $index) {
+                                                <div class="answer-row" [formGroupName]="r">
+                                                    <app-answer-shape class="answer-shape shrink-0" [shape]="obtenerShapeRespuesta(r)" [selected]="false" />
+                                                    <input type="text"
+                                                           formControlName="texto"
+                                                           placeholder="Respuesta..."
+                                                           class="answer-input min-w-0 flex-1 px-3 sm:px-4 py-2 rounded-lg border outline-none transition-all box-border"
+                                                           style="background-color: var(--base-300); border-color: var(--neutral); color: var(--base-content);">
+                                                    <input type="checkbox"
+                                                           formControlName="esCorrecta"
+                                                           class="checkbox checkbox-md sm:checkbox-lg shrink-0"
+                                                           style="accent-color: var(--success);"
+                                                           (change)="setRespuestaCorrecta(pregunta, r)"
+                                                           aria-label="Respuesta correcta">
+                                                    @if (respuestasDe(pregunta).length > 2) {
+                                                        <button type="button" class="btn btn-ghost btn-xs shrink-0" style="color: var(--error);"
+                                                                (click)="eliminarRespuesta(pregunta, respuesta)"
+                                                                aria-label="Eliminar respuesta">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                            </svg>
+                                                        </button>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+
+                                        @if (respuestasDe(pregunta).length < 4) {
+                                            <div class="mt-3">
+                                                <button type="button" class="btn btn-ghost btn-sm" style="color: var(--info);"
+                                                        (click)="agregarRespuesta(pregunta)">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                                                    </svg>
+                                                    Agregar respuesta
+                                                </button>
                                             </div>
-                                        } @else {
-                                            <label class="cursor-pointer inline-flex items-center gap-2 text-sm py-2"
-                                                   style="color: var(--info);">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                </svg>
-                                                Añadir imagen
-                                                <input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    (change)="onImageSelected($event, preguntaIndex)"
-                                                    class="hidden"
-                                                />
-                                            </label>
                                         }
                                     </div>
-                                </div>
-
-                                <div class="flex flex-col items-center shrink-0">
-                                    <button type="button" class="btn btn-ghost btn-xs" aria-label="Subir pregunta"
-                                            [disabled]="preguntaIndex === 0" (click)="moverElemento(preguntaIndex, -1)">▲</button>
-                                    <button type="button" class="btn btn-ghost btn-xs" aria-label="Bajar pregunta"
-                                            [disabled]="preguntaIndex === preguntasArray.length - 1" (click)="moverElemento(preguntaIndex, 1)">▼</button>
-                                </div>
-
-                                <button type="button"
-                                        class="btn btn-ghost btn-xs shrink-0"
-                                        style="color: var(--info);"
-                                        title="Guardar una copia en tu banco de preguntas"
-                                        (click)="guardarEnBanco(preguntaIndex)">
-                                    Al banco
-                                </button>
-
-                                @if (puedeEliminar(preguntaIndex)) {
-                                    <button type="button"
-                                            class="btn btn-circle btn-ghost btn-sm shrink-0"
-                                            style="color: var(--error);"
-                                            (click)="eliminarPregunta(preguntaIndex)"
-                                            aria-label="Eliminar pregunta">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                        </svg>
-                                    </button>
-                                }
-                            </div>
-
-                            <div class="answers-list mt-4 space-y-3" formArrayName="respuestas">
-                                @for (respuesta of obtenerRespuestasFormArray(preguntaIndex).controls; track respuesta; let respuestaIndex = $index) {
-                                    <div class="answer-row" [formGroupName]="respuestaIndex">
-                                        <app-answer-shape class="answer-shape shrink-0" [shape]="obtenerShapeRespuesta(respuestaIndex)" [selected]="false" />
-                                        <input type="text"
-                                               formControlName="texto"
-                                               placeholder="Respuesta..."
-                                               class="answer-input min-w-0 flex-1 px-3 sm:px-4 py-2 rounded-lg border outline-none transition-all box-border"
-                                               style="background-color: var(--base-300); border-color: var(--neutral); color: var(--base-content);">
-                                        <input type="checkbox"
-                                               formControlName="esCorrecta"
-                                               class="checkbox checkbox-md sm:checkbox-lg shrink-0"
-                                               style="accent-color: var(--success);"
-                                               (change)="setRespuestaCorrecta(preguntaIndex, respuestaIndex)"
-                                               aria-label="Respuesta correcta">
-                                        @if (obtenerRespuestasFormArray(preguntaIndex).length > 2) {
-                                            <button type="button"
-                                                    class="btn btn-ghost btn-xs shrink-0"
-                                                    style="color: var(--error);"
-                                                    (click)="eliminarRespuesta(preguntaIndex, respuestaIndex, respuesta)"
-                                                    aria-label="Eliminar respuesta">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                                </svg>
-                                            </button>
-                                        }
+                                } @empty {
+                                    <div class="phase-empty">
+                                        <p>Esta fase no tiene preguntas. Arrastra alguna aquí o añádela:</p>
+                                        <div class="flex flex-wrap justify-center gap-2">
+                                            <button type="button" class="btn btn-sm btn-outline" (click)="agregarPregunta(f)">+ Pregunta</button>
+                                            <button type="button" class="btn btn-sm btn-outline" (click)="abrirBanco(f)">Desde mi banco</button>
+                                            <button type="button" class="btn btn-sm btn-outline" (click)="agregarPregunta(f, 'pulsador')">🔔 Pulsador</button>
+                                        </div>
                                     </div>
                                 }
                             </div>
 
-                            <div class="mt-3">
-                                @if (obtenerRespuestasFormArray(preguntaIndex).length < 4) {
-                                    <button type="button"
-                                            class="btn btn-ghost btn-sm"
-                                            style="color: var(--info);"
-                                            (click)="agregarRespuesta(preguntaIndex)">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
-                                        </svg>
-                                        Agregar respuesta
-                                    </button>
-                                }
-                            </div>
-                        </div>
-                        }
+                            @if (bancoDestino() === fase) {
+                                <div class="px-3 pb-3 sm:px-4 sm:pb-4">
+                                    <app-banco-picker (agregar)="agregarDesdeBanco($event)" (cerrar)="cerrarBanco()" />
+                                </div>
+                            }
+                        </section>
                     }
                 </div>
 
-                @if (mostrarBanco()) {
-                    <app-banco-picker (agregar)="agregarDesdeBanco($event)" (cerrar)="toggleBanco()" />
-                }
-
                 <!-- Barra de acciones fija: siempre visible mientras se edita, también en móvil -->
                 <div class="quiz-form-actions" role="toolbar" aria-label="Acciones del cuestionario">
-                    <div class="actions-add">
-                        <button type="button" class="btn btn-sm btn-outline" style="border-color: var(--warning); color: var(--warning);"
-                                (click)="agregarPregunta()">
-                            + <span class="sm:hidden">Pregunta</span><span class="hidden sm:inline">Agregar pregunta</span>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline btn-info"
-                                title="Las preguntas que añadas después de un separador pertenecen a esa fase"
-                                (click)="agregarSeparador()">
-                            + <span class="sm:hidden">Fase</span><span class="hidden sm:inline">Separador de fase</span>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline btn-info"
-                                [class.btn-active]="mostrarBanco()"
-                                (click)="toggleBanco()">
-                            <span class="sm:hidden">Banco</span><span class="hidden sm:inline">{{ mostrarBanco() ? 'Ocultar mi banco' : 'Añadir desde mi banco' }}</span>
-                        </button>
-                    </div>
-
                     <div class="actions-save">
                         <button type="button"
                                 class="btn btn-outline btn-info"
                                 [disabled]="savingDraft() || isLoading()"
                                 (click)="guardarBorrador()">
-                            {{ savingDraft() ? 'Guardando...' : (esPublicado() ? 'Guardar borrador' : 'Guardar borrador') }}
+                            {{ savingDraft() ? 'Guardando...' : 'Guardar borrador' }}
                         </button>
 
                         <button type="submit"
@@ -390,14 +392,16 @@
                                 {{ esPublicado() ? 'Publicar cambios (v' + (version() + 1) + ')' : (isDraft() ? 'Publicar cuestionario' : 'Crear cuestionario') }}
                             }
                         </button>
+
+                        <button type="button" class="btn btn-outline" style="border-color: var(--warning); color: var(--warning);"
+                                (click)="agregarFase()">
+                            + Añadir fase
+                        </button>
                     </div>
                     @if (esPublicado()) {
                         <p class="actions-note">El borrador no cambia lo publicado.</p>
                     }
-                </div>
-
-                <div class="mt-4 text-center">
-                    <a routerLink="/cuestionarios/mis-cuestionarios" class="text-sm hover:opacity-80 transition-opacity" style="color: var(--accent);">
+                    <a routerLink="/cuestionarios/mis-cuestionarios" class="actions-back">
                         ← Volver a mis cuestionarios
                     </a>
                 </div>
@@ -410,7 +414,7 @@
         <div class="modal-box" style="background-color: var(--base-200);">
             <h3 id="titulo-al-banco" class="font-bold text-lg mb-1" style="color: var(--secondary);">Guardar en tu banco</h3>
             <p class="text-sm opacity-70 mb-4 break-words">
-                {{ preguntasArray.at(dialogo.index).get('enunciado')?.value }}
+                {{ dialogo.pregunta.get('enunciado')?.value }}
             </p>
 
             <label class="block text-sm mb-1">Categoría</label>
@@ -423,8 +427,8 @@
             <div class="mt-4 flex items-center gap-2">
                 <span class="text-sm">Dificultad</span>
                 <app-dificultad-selector
-                    [valor]="preguntasArray.at(dialogo.index).get('dificultad')?.value"
-                    (cambio)="cambiarDificultad(dialogo.index, $event)" />
+                    [valor]="dialogo.pregunta.get('dificultad')?.value"
+                    (cambio)="cambiarDificultad(dialogo.pregunta, $event)" />
             </div>
 
             <div class="modal-action">

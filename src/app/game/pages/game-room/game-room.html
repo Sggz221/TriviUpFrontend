@@ -198,7 +198,7 @@
                         </button>
                         <span class="buzzer-hint">El primero en pulsar responde</span>
                     } @else {
-                        <span class="buzzer-hint">Ronda dinámica: esperando a que un equipo pulse...</span>
+                        <span class="buzzer-hint">Pregunta de pulsador: esperando a que un equipo pulse...</span>
                     }
                 </div>
             }
@@ -303,7 +303,7 @@
 
             <div class="turn-info">
                 @if (buzzerOpen()) {
-                    <span class="waiting">{{ canBuzz() ? '¡Pulsa antes que los demás!' : 'Ronda dinámica: el primero en pulsar responde' }}</span>
+                    <span class="waiting">{{ canBuzz() ? '¡Pulsa antes que los demás!' : 'Pregunta de pulsador: el primero en pulsar responde' }}</span>
                 } @else if (isSpectator()) {
                     <span class="badge badge-info badge-sm mb-1">Modo espectador</span><br />
                     <span class="waiting">Turno de {{ getCurrentTurnPlayerName() }}</span>
