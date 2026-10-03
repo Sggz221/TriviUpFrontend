@@ -123,7 +123,7 @@
                                                 <input type="checkbox" class="checkbox checkbox-sm"
                                                        [checked]="comodinConfig()[c.tipo].activo"
                                                        (change)="onComodinActivoChange(c.tipo, $event)" />
-                                                <span>{{ c.etiqueta }}@if (c.soloPresencial) { <small class="opacity-60"> (presencial)</small> }</span>
+                                                <span>{{ c.etiqueta }}@if (c.soloPresencial) { <small class="opacity-60"> (presencial)</small> }@if (c.soloOnline) { <small class="opacity-60"> (online)</small> }</span>
                                             </label>
                                             <label class="flex items-center gap-1 text-xs">
                                                 <input type="number" class="input input-bordered input-xs w-16" min="1" max="99" step="1"

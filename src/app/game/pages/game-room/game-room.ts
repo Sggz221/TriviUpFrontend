@@ -75,6 +75,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Jugador al que le tocaba la pregunta (currentTurnPlayerId es quien responde: el ladrón durante un robo). */
     turnOwnerId = signal<number | null>(null);
     isSteal = signal<boolean>(false);
+    /** Jugador al que se le oculta el texto de las respuestas en la pregunta actual. */
+    textHiddenForId = signal<number | null>(null);
     stolenById = signal<number | null>(null);
     /** Ya se usó algún comodín en la pregunta (bloquea el robo). */
     comodinUsedOnQuestion = signal<boolean>(false);
@@ -170,6 +172,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Pasar: turno propio y sin robo en curso (no se puede pasar una pregunta robada). */
     canUsePasar = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('Pasar')
         && !this.isSteal() && !this.ruletaSpin());
+    /** El texto de las respuestas está oculto para mí (el anfitrión nunca lo pierde). */
+    textoOculto = computed(() => !this.isOwner() && this.textHiddenForId() !== null && this.textHiddenForId() === this.myUserId());
+    /** Ocultar texto: ataque fuera de turno, una vez por pregunta y no sobre una pregunta robada. */
+    canUseOcultarTexto = computed(() => this.canUseComodines() && !this.isMyTurn() && this.hasComodin('OcultarTexto')
+        && this.textHiddenForId() === null && !this.isSteal() && this.turnOwnerId() !== this.myUserId());
     canUseDobleONada = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('DobleONada')
         && !this.doubleOrNothingPlayers().includes(this.myUserId()));
     /** Llamada: solo en presencial, en el turno propio y sin otra llamada en pantalla. */
@@ -927,6 +934,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     private applyTurnState(data: TurnStartedDto): void {
         this.turnOwnerId.set(data.turnOwnerId ?? data.currentPlayerId);
         this.isSteal.set(!!data.isSteal);
+        this.textHiddenForId.set(data.textHiddenForPlayerId ?? null);
         this.stolenById.set(data.stolenById ?? null);
         this.eliminatedAnswers.set(data.eliminatedAnswerIndexes ?? []);
         this.doubleOrNothingPlayers.set(data.doubleOrNothingPlayers ?? []);
@@ -965,6 +973,10 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 break;
             case 'Ruleta':
                 this.spinRuleta(data);
+                break;
+            case 'OcultarTexto':
+                this.textHiddenForId.set(data.targetPlayerId ?? null);
+                this.showToast(`${nombre} oculta el texto de las respuestas de ${this.playerName(data.targetPlayerId)}`, 'info');
                 break;
             case 'Pasar':
                 this.showToast(`${nombre} pasa la pregunta`, 'info');

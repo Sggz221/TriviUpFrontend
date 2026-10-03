@@ -212,10 +212,13 @@
                 </div>
             }
 
-            @if (isSteal() || answererDoubleOrNothing() || bets().length > 0) {
+            @if (isSteal() || answererDoubleOrNothing() || bets().length > 0 || textHiddenForId() !== null) {
                 <div class="comodin-status" aria-live="polite">
                     @if (isSteal()) {
                         <span class="comodin-chip chip-robo">Robada por {{ getCurrentTurnPlayerName() }}</span>
+                    }
+                    @if (textHiddenForId() !== null) {
+                        <span class="comodin-chip chip-oculto">Texto oculto para {{ playerName(textHiddenForId()) }}</span>
                     }
                     @if (answererDoubleOrNothing()) {
                         <span class="comodin-chip chip-doble">Doble o nada</span>
@@ -259,7 +262,7 @@
                             <span class="host-correct-badge" aria-hidden="true"><app-icon name="check" [size]="14" /> Correcta</span>
                         }
                         <app-answer-shape [shape]="getShapeType(i)" [selected]="selectedAnswer() === i" />
-                        <span class="answer-text">{{ option }}</span>
+                        <span class="answer-text" [attr.aria-label]="textoOculto() ? 'Texto oculto' : null">{{ textoOculto() ? '· · ·' : option }}</span>
                     </button>
                 }
             </div>
@@ -345,6 +348,14 @@
                             <span class="comodin-icon" aria-hidden="true">🥷</span>
                             <span class="comodin-name">Robar</span>
                             @if (usosRestantes('Robo') > 1) { <span class="comodin-usos">×{{ usosRestantes('Robo') }}</span> }
+                        </button>
+                        }
+                        @if (activo('OcultarTexto')) {
+                        <button class="comodin-btn" type="button" [disabled]="!canUseOcultarTexto() || usingComodin()"
+                                title="Oculta el texto de las respuestas de quien responde durante esta pregunta" (click)="useComodin('OcultarTexto')">
+                            <span class="comodin-icon" aria-hidden="true">🙈</span>
+                            <span class="comodin-name">Ocultar texto</span>
+                            @if (usosRestantes('OcultarTexto') > 1) { <span class="comodin-usos">×{{ usosRestantes('OcultarTexto') }}</span> }
                         </button>
                         }
                         @if (activo('Apuesta')) {

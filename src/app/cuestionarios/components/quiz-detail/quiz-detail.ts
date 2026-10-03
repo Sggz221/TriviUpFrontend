@@ -222,13 +222,14 @@ export class QuizDetailComponent implements OnInit {
     }
 
     /** Comodines configurables de la sala: cuáles están activos y cuántas veces puede usarlos cada jugador. */
-    readonly comodinesSala: { tipo: ComodinTipo; etiqueta: string; soloPresencial?: boolean }[] = [
+    readonly comodinesSala: { tipo: ComodinTipo; etiqueta: string; soloPresencial?: boolean; soloOnline?: boolean }[] = [
         { tipo: 'Ruleta', etiqueta: 'Ruleta' },
         { tipo: 'CincuentaCincuenta', etiqueta: '50/50' },
         { tipo: 'Pasar', etiqueta: 'Pasar' },
         { tipo: 'DobleONada', etiqueta: 'Doble o nada' },
         { tipo: 'Robo', etiqueta: 'Robo' },
         { tipo: 'Apuesta', etiqueta: 'Apuesta' },
+        { tipo: 'OcultarTexto', etiqueta: 'Ocultar texto', soloOnline: true },
         { tipo: 'Llamada', etiqueta: 'Llamada', soloPresencial: true }
     ];
     /** Tope de usos por comodín (el mismo que valida el servidor, ComodinReglas.MaxUsos). */
@@ -240,7 +241,8 @@ export class QuizDetailComponent implements OnInit {
         Apuesta: { activo: true, usos: 1 },
         Llamada: { activo: true, usos: 1 },
         CincuentaCincuenta: { activo: true, usos: 1 },
-        Pasar: { activo: true, usos: 1 }
+        Pasar: { activo: true, usos: 1 },
+        OcultarTexto: { activo: true, usos: 1 }
     });
 
     onComodinActivoChange(tipo: ComodinTipo, event: Event): void {
@@ -258,7 +260,7 @@ export class QuizDetailComponent implements OnInit {
     /** Config a enviar al crear la sala; null si se deja como viene por defecto (todos, un uso). */
     private comodinesParaEnviar(modo: GameMode): Partial<Record<ComodinTipo, number>> | null {
         const config = this.comodinConfig();
-        const delModo = this.comodinesSala.filter(c => !c.soloPresencial || modo === 'Presencial');
+        const delModo = this.comodinesSala.filter(c => (!c.soloPresencial || modo === 'Presencial') && (!c.soloOnline || modo === 'Normal'));
         if (delModo.every(c => config[c.tipo].activo && config[c.tipo].usos === 1)) return null;
         const resultado: Partial<Record<ComodinTipo, number>> = {};
         for (const c of delModo) {
