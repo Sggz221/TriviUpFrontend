@@ -189,8 +189,10 @@
                 }
                 <h3 class="question-text">{{ currentQuestion()!.text }}</h3>
                 @if (showTurnResult() && lastTurnResult()) {
-                    <div class="turn-result-indicator" [class.correct]="lastTurnResult()!.isCorrect" [class.incorrect]="!lastTurnResult()!.isCorrect">
-                        @if (lastTurnResult()!.isCorrect) {
+                    <div class="turn-result-indicator" [class.correct]="lastTurnResult()!.isCorrect" [class.incorrect]="!lastTurnResult()!.isCorrect && !lastTurnResult()!.passed">
+                        @if (lastTurnResult()!.passed) {
+                            <span class="result-label">Pregunta pasada</span>
+                        } @else if (lastTurnResult()!.isCorrect) {
                             <span class="result-icon"><app-icon name="check" [size]="20" /></span>
                             <span class="result-label">¡Correcta!</span>
                         } @else {
@@ -308,6 +310,14 @@
                             <span class="comodin-icon" aria-hidden="true">✂️</span>
                             <span class="comodin-name">50/50</span>
                             @if (usosRestantes('CincuentaCincuenta') > 1) { <span class="comodin-usos">×{{ usosRestantes('CincuentaCincuenta') }}</span> }
+                        </button>
+                        }
+                        @if (activo('Pasar')) {
+                        <button class="comodin-btn" type="button" [disabled]="!canUsePasar() || usingComodin()"
+                                title="Saltas la pregunta sin puntos y pasa el turno" (click)="useComodin('Pasar')">
+                            <span class="comodin-icon" aria-hidden="true">⏭️</span>
+                            <span class="comodin-name">Pasar</span>
+                            @if (usosRestantes('Pasar') > 1) { <span class="comodin-usos">×{{ usosRestantes('Pasar') }}</span> }
                         </button>
                         }
                         @if (activo('DobleONada')) {

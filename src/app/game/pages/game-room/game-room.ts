@@ -167,6 +167,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     canUseRuleta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('Ruleta') && !this.ruletaSpin());
     canUseCincuentaCincuenta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('CincuentaCincuenta')
         && !this.ruletaSpin());
+    /** Pasar: turno propio y sin robo en curso (no se puede pasar una pregunta robada). */
+    canUsePasar = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('Pasar')
+        && !this.isSteal() && !this.ruletaSpin());
     canUseDobleONada = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('DobleONada')
         && !this.doubleOrNothingPlayers().includes(this.myUserId()));
     /** Llamada: solo en presencial, en el turno propio y sin otra llamada en pantalla. */
@@ -962,6 +965,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 break;
             case 'Ruleta':
                 this.spinRuleta(data);
+                break;
+            case 'Pasar':
+                this.showToast(`${nombre} pasa la pregunta`, 'info');
                 break;
             case 'CincuentaCincuenta':
                 this.eliminatedAnswers.update(prev => [...new Set([...prev, ...(data.eliminatedAnswerIndexes ?? [])])]);

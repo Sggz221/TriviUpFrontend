@@ -39,6 +39,8 @@ export interface TurnResult {
     /** Robo fallido: jugador al que vuelve la pregunta. */
     returnsToPlayerId?: number | null;
     bets?: BetResult[] | null;
+    /** El jugador pasó la pregunta con el comodín Pasar: ni acierto ni fallo. */
+    passed?: boolean;
 }
 
 export interface GameResult {
@@ -153,10 +155,10 @@ export interface GameLobbyState {
     mode?: GameMode;
 }
 
-export type ComodinTipo = 'Ruleta' | 'DobleONada' | 'Robo' | 'Apuesta' | 'Llamada' | 'CincuentaCincuenta';
+export type ComodinTipo = 'Ruleta' | 'DobleONada' | 'Robo' | 'Apuesta' | 'Llamada' | 'CincuentaCincuenta' | 'Pasar';
 
 /** Comodines que se usan en el turno propio; el resto, fuera de él. */
-export const COMODINES_DE_TURNO: readonly ComodinTipo[] = ['Ruleta', 'DobleONada', 'Llamada', 'CincuentaCincuenta'];
+export const COMODINES_DE_TURNO: readonly ComodinTipo[] = ['Ruleta', 'DobleONada', 'Llamada', 'CincuentaCincuenta', 'Pasar'];
 
 export interface Bet {
     userId: number;

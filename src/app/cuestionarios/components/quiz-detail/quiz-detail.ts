@@ -225,6 +225,7 @@ export class QuizDetailComponent implements OnInit {
     readonly comodinesSala: { tipo: ComodinTipo; etiqueta: string; soloPresencial?: boolean }[] = [
         { tipo: 'Ruleta', etiqueta: 'Ruleta' },
         { tipo: 'CincuentaCincuenta', etiqueta: '50/50' },
+        { tipo: 'Pasar', etiqueta: 'Pasar' },
         { tipo: 'DobleONada', etiqueta: 'Doble o nada' },
         { tipo: 'Robo', etiqueta: 'Robo' },
         { tipo: 'Apuesta', etiqueta: 'Apuesta' },
@@ -238,7 +239,8 @@ export class QuizDetailComponent implements OnInit {
         Robo: { activo: true, usos: 1 },
         Apuesta: { activo: true, usos: 1 },
         Llamada: { activo: true, usos: 1 },
-        CincuentaCincuenta: { activo: true, usos: 1 }
+        CincuentaCincuenta: { activo: true, usos: 1 },
+        Pasar: { activo: true, usos: 1 }
     });
 
     onComodinActivoChange(tipo: ComodinTipo, event: Event): void {
