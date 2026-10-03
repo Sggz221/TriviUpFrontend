@@ -157,10 +157,10 @@ export interface GameLobbyState {
     mode?: GameMode;
 }
 
-export type ComodinTipo = 'Ruleta' | 'DobleONada' | 'Robo' | 'Apuesta' | 'Llamada' | 'CincuentaCincuenta' | 'Pasar' | 'OcultarTexto';
+export type ComodinTipo = 'Ruleta' | 'DobleONada' | 'Robo' | 'Apuesta' | 'Llamada' | 'CincuentaCincuenta' | 'Pasar' | 'OcultarTexto' | 'CambiarPregunta' | 'CambiarPreguntaRival';
 
 /** Comodines que se usan en el turno propio; el resto, fuera de él. */
-export const COMODINES_DE_TURNO: readonly ComodinTipo[] = ['Ruleta', 'DobleONada', 'Llamada', 'CincuentaCincuenta', 'Pasar'];
+export const COMODINES_DE_TURNO: readonly ComodinTipo[] = ['Ruleta', 'DobleONada', 'Llamada', 'CincuentaCincuenta', 'Pasar', 'CambiarPregunta'];
 
 export interface Bet {
     userId: number;

@@ -177,6 +177,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Ocultar texto: ataque fuera de turno, una vez por pregunta y no sobre una pregunta robada. */
     canUseOcultarTexto = computed(() => this.canUseComodines() && !this.isMyTurn() && this.hasComodin('OcultarTexto')
         && this.textHiddenForId() === null && !this.isSteal() && this.turnOwnerId() !== this.myUserId());
+    /** Cambiar pregunta (turno propio): no sobre una pregunta robada. */
+    canUseCambiarPregunta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('CambiarPregunta')
+        && !this.isSteal() && !this.ruletaSpin());
+    /** Cambiar la pregunta del rival: ataque fuera de turno, no sobre una pregunta robada. */
+    canUseCambiarRival = computed(() => this.canUseComodines() && !this.isMyTurn() && this.hasComodin('CambiarPreguntaRival')
+        && !this.isSteal() && this.turnOwnerId() !== this.myUserId());
     canUseDobleONada = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('DobleONada')
         && !this.doubleOrNothingPlayers().includes(this.myUserId()));
     /** Llamada: solo en presencial, en el turno propio y sin otra llamada en pantalla. */
@@ -977,6 +983,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             case 'OcultarTexto':
                 this.textHiddenForId.set(data.targetPlayerId ?? null);
                 this.showToast(`${nombre} oculta el texto de las respuestas de ${this.playerName(data.targetPlayerId)}`, 'info');
+                break;
+            case 'CambiarPregunta':
+                this.showToast(`${nombre} cambia su pregunta`, 'info');
+                break;
+            case 'CambiarPreguntaRival':
+                this.showToast(`${nombre} cambia la pregunta de ${this.playerName(data.targetPlayerId)}`, 'info');
                 break;
             case 'Pasar':
                 this.showToast(`${nombre} pasa la pregunta`, 'info');

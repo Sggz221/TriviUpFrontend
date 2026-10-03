@@ -315,6 +315,14 @@
                             @if (usosRestantes('CincuentaCincuenta') > 1) { <span class="comodin-usos">×{{ usosRestantes('CincuentaCincuenta') }}</span> }
                         </button>
                         }
+                        @if (activo('CambiarPregunta')) {
+                        <button class="comodin-btn" type="button" [disabled]="!canUseCambiarPregunta() || usingComodin()"
+                                title="Cambias tu pregunta por otra de la misma fase, con tiempo completo" (click)="useComodin('CambiarPregunta')">
+                            <span class="comodin-icon" aria-hidden="true">🔄</span>
+                            <span class="comodin-name">Cambiar pregunta</span>
+                            @if (usosRestantes('CambiarPregunta') > 1) { <span class="comodin-usos">×{{ usosRestantes('CambiarPregunta') }}</span> }
+                        </button>
+                        }
                         @if (activo('Pasar')) {
                         <button class="comodin-btn" type="button" [disabled]="!canUsePasar() || usingComodin()"
                                 title="Saltas la pregunta sin puntos y pasa el turno" (click)="useComodin('Pasar')">
@@ -348,6 +356,14 @@
                             <span class="comodin-icon" aria-hidden="true">🥷</span>
                             <span class="comodin-name">Robar</span>
                             @if (usosRestantes('Robo') > 1) { <span class="comodin-usos">×{{ usosRestantes('Robo') }}</span> }
+                        </button>
+                        }
+                        @if (activo('CambiarPreguntaRival')) {
+                        <button class="comodin-btn" type="button" [disabled]="!canUseCambiarRival() || usingComodin()"
+                                title="Cambias la pregunta de quien responde por otra de la misma fase" (click)="useComodin('CambiarPreguntaRival')">
+                            <span class="comodin-icon" aria-hidden="true">🔀</span>
+                            <span class="comodin-name">Cambiar su pregunta</span>
+                            @if (usosRestantes('CambiarPreguntaRival') > 1) { <span class="comodin-usos">×{{ usosRestantes('CambiarPreguntaRival') }}</span> }
                         </button>
                         }
                         @if (activo('OcultarTexto')) {
