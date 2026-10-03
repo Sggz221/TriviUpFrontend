@@ -165,6 +165,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak());
     private iBet = computed(() => this.bets().some(b => b.userId === this.myUserId()));
     canUseRuleta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('Ruleta') && !this.ruletaSpin());
+    canUseCincuentaCincuenta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('CincuentaCincuenta')
+        && !this.ruletaSpin());
     canUseDobleONada = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('DobleONada')
         && !this.doubleOrNothingPlayers().includes(this.myUserId()));
     /** Llamada: solo en presencial, en el turno propio y sin otra llamada en pantalla. */
@@ -960,6 +962,10 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 break;
             case 'Ruleta':
                 this.spinRuleta(data);
+                break;
+            case 'CincuentaCincuenta':
+                this.eliminatedAnswers.update(prev => [...new Set([...prev, ...(data.eliminatedAnswerIndexes ?? [])])]);
+                this.showToast(`${nombre}: ¡50/50! Se eliminan ${data.eliminatedAnswerIndexes?.length ?? 0} respuestas incorrectas`, 'info');
                 break;
             case 'DobleONada':
                 this.doubleOrNothingPlayers.update(ids => [...ids, data.userId]);

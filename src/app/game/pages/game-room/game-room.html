@@ -160,7 +160,7 @@
                                 <div class="flex flex-wrap gap-2">
                                     @for (u of item.usados; track u.tipo) {
                                         <button type="button" class="btn btn-xs btn-outline"
-                                                (click)="onReviveComodin(item.player.userId, u.tipo)">{{ u.tipo }}@if (u.gastados > 1) { ×{{ u.gastados }} }</button>
+                                                (click)="onReviveComodin(item.player.userId, u.tipo)">{{ u.tipo === 'CincuentaCincuenta' ? '50/50' : u.tipo }}@if (u.gastados > 1) { ×{{ u.gastados }} }</button>
                                     }
                                 </div>
                             </div>
@@ -300,6 +300,14 @@
                             <span class="comodin-icon" aria-hidden="true">🎡</span>
                             <span class="comodin-name">Ruleta</span>
                             @if (usosRestantes('Ruleta') > 1) { <span class="comodin-usos">×{{ usosRestantes('Ruleta') }}</span> }
+                        </button>
+                        }
+                        @if (activo('CincuentaCincuenta')) {
+                        <button class="comodin-btn" type="button" [disabled]="!canUseCincuentaCincuenta() || usingComodin()"
+                                title="Elimina la mitad de las respuestas incorrectas" (click)="useComodin('CincuentaCincuenta')">
+                            <span class="comodin-icon" aria-hidden="true">✂️</span>
+                            <span class="comodin-name">50/50</span>
+                            @if (usosRestantes('CincuentaCincuenta') > 1) { <span class="comodin-usos">×{{ usosRestantes('CincuentaCincuenta') }}</span> }
                         </button>
                         }
                         @if (activo('DobleONada')) {
