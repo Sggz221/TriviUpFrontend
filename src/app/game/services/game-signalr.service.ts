@@ -589,6 +589,14 @@ export class GameSignalrService {
     }
 
     /**
+     * Owner gives a player back a used comodín (or all of them when tipo is omitted)
+     */
+    async reviveComodin(roomCode: string, userId: number, tipo?: ComodinTipo): Promise<void> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        return this.hubConnection.invoke('ReviveComodin', roomCode, userId, tipo ?? null);
+    }
+
+    /**
      * Set whether the current user is the owner of the room
      */
     setIsOwner(value: boolean): void {

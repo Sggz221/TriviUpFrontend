@@ -139,6 +139,41 @@
                 </button>
             }
 
+            @if (isOwner() && currentQuestion() && !gameResults()) {
+                <button class="btn btn-sm btn-ghost pause-btn revive-btn" (click)="revivePanelOpen.set(true)"
+                        aria-label="Devolver comodines" title="Devolver comodines">
+                    Comodines
+                </button>
+            }
+
+            @if (revivePanelOpen() && isOwner()) {
+                <div class="modal modal-open" (click)="revivePanelOpen.set(false)">
+                    <div class="modal-box" (click)="$event.stopPropagation()">
+                        <h3 class="font-bold text-lg mb-3">Devolver comodines</h3>
+                        @for (item of revivables(); track item.player.userId) {
+                            <div class="py-2 border-b border-base-300">
+                                <div class="flex items-center justify-between gap-2 mb-1">
+                                    <span class="font-semibold">{{ item.player.username }}</span>
+                                    <button type="button" class="btn btn-xs btn-primary"
+                                            (click)="onReviveComodin(item.player.userId)">Todos</button>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    @for (c of item.usados; track c) {
+                                        <button type="button" class="btn btn-xs btn-outline"
+                                                (click)="onReviveComodin(item.player.userId, c)">{{ c }}</button>
+                                    }
+                                </div>
+                            </div>
+                        } @empty {
+                            <p class="opacity-70">Nadie ha usado comodines todavía.</p>
+                        }
+                        <div class="modal-action">
+                            <button type="button" class="btn btn-ghost" (click)="revivePanelOpen.set(false)">Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            }
+
             @if (phase()) {
                 <div class="phase-badge" aria-label="Fase actual"
                      [style.background-color]="phase()!.color"

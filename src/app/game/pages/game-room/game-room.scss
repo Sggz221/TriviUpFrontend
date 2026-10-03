@@ -944,3 +944,9 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
 @media (prefers-reduced-motion: reduce) {
     .turn-banner-text, .phase-banner-text { animation: none; }
 }
+
+.revive-btn {
+    left: 4.5rem;
+    width: auto;
+    padding: 0 0.9rem;
+}

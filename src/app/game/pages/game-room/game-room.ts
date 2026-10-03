@@ -122,6 +122,26 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
     private me = computed(() => this.players().find(p => p.userId === this.myUserId()));
     myComodines = computed<ComodinTipo[]>(() => this.me()?.availableComodines ?? []);
+
+    /** Panel del anfitrión para devolver comodines ya usados. */
+    revivePanelOpen = signal<boolean>(false);
+    /** Jugadores con comodines usados: lo que tiene cada modo menos lo que aún conserva. */
+    revivables = computed(() => {
+        const todos: ComodinTipo[] = this.isPresencial()
+            ? ['Ruleta', 'DobleONada', 'Robo', 'Apuesta', 'Llamada']
+            : ['Ruleta', 'DobleONada', 'Robo', 'Apuesta'];
+        return this.players()
+            .filter(p => !p.isOwner && !p.isSpectator)
+            .map(p => ({ player: p, usados: todos.filter(c => !(p.availableComodines ?? []).includes(c)) }))
+            .filter(x => x.usados.length > 0);
+    });
+
+    onReviveComodin(userId: number, tipo?: ComodinTipo): void {
+        this.gameSignalrService.reviveComodin(this.roomCode(), userId, tipo).catch(err => {
+            console.error('[GameRoom] Error al revivir comodín:', err);
+            this.errorMessage.set('No se pudo devolver el comodín');
+        });
+    }
     /** Jugador (no anfitrión ni espectador) con una pregunta activa y sin pausa ni resultado en pantalla. */
     canUseComodines = computed(() =>
         !!this.me() && !this.isOwner() && !this.isSpectator() && !!this.currentQuestion()
