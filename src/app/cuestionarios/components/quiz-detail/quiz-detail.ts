@@ -229,7 +229,8 @@ export class QuizDetailComponent implements OnInit {
         { tipo: 'Apuesta', etiqueta: 'Apuesta' },
         { tipo: 'Llamada', etiqueta: 'Llamada', soloPresencial: true }
     ];
-    readonly opcionesUsos = [1, 2, 3, 4, 5];
+    /** Tope de usos por comodín (el mismo que valida el servidor, ComodinReglas.MaxUsos). */
+    readonly maxUsos = 99;
     comodinConfig = signal<Record<ComodinTipo, { activo: boolean; usos: number }>>({
         Ruleta: { activo: true, usos: 1 },
         DobleONada: { activo: true, usos: 1 },
@@ -244,7 +245,9 @@ export class QuizDetailComponent implements OnInit {
     }
 
     onComodinUsosChange(tipo: ComodinTipo, event: Event): void {
-        const usos = Number((event.target as HTMLSelectElement).value);
+        const input = event.target as HTMLInputElement;
+        const usos = Math.min(this.maxUsos, Math.max(1, Math.floor(Number(input.value)) || 1));
+        input.value = String(usos);
         this.comodinConfig.update(c => ({ ...c, [tipo]: { ...c[tipo], usos } }));
     }
 

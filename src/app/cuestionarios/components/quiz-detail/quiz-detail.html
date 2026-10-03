@@ -125,13 +125,14 @@
                                                        (change)="onComodinActivoChange(c.tipo, $event)" />
                                                 <span>{{ c.etiqueta }}@if (c.soloPresencial) { <small class="opacity-60"> (presencial)</small> }</span>
                                             </label>
-                                            <select class="select select-bordered select-xs" aria-label="Usos de {{ c.etiqueta }}"
-                                                    [disabled]="!comodinConfig()[c.tipo].activo"
-                                                    (change)="onComodinUsosChange(c.tipo, $event)">
-                                                @for (n of opcionesUsos; track n) {
-                                                    <option [value]="n" [selected]="n === comodinConfig()[c.tipo].usos">{{ n }} {{ n === 1 ? 'uso' : 'usos' }}</option>
-                                                }
-                                            </select>
+                                            <label class="flex items-center gap-1 text-xs">
+                                                <input type="number" class="input input-bordered input-xs w-16" min="1" max="99" step="1"
+                                                       aria-label="Usos de {{ c.etiqueta }}"
+                                                       [value]="comodinConfig()[c.tipo].usos"
+                                                       [disabled]="!comodinConfig()[c.tipo].activo"
+                                                       (change)="onComodinUsosChange(c.tipo, $event)" />
+                                                <span class="opacity-70">usos</span>
+                                            </label>
                                         </div>
                                     }
                                 </div>
