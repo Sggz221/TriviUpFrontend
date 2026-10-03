@@ -284,6 +284,18 @@ export class BancoPreguntasPage implements OnInit {
 
     // ===== Editor =====
 
+    /** URL pública del servidor MCP del banco de preguntas. */
+    readonly mcpUrl = 'https://triviupmcpserver-production.up.railway.app/mcp';
+    mcpAbierto = signal(false);
+    mcpCopiado = signal(false);
+
+    copiarMcpUrl(): void {
+        navigator.clipboard.writeText(this.mcpUrl).then(() => {
+            this.mcpCopiado.set(true);
+            setTimeout(() => this.mcpCopiado.set(false), 2000);
+        }).catch(() => { /* sin permiso de portapapeles: el campo es seleccionable */ });
+    }
+
     /** Nueva pregunta; con una categoría activa en el filtro se crea directamente dentro de ella. */
     nueva(): void {
         this.errorMessage.set(null);

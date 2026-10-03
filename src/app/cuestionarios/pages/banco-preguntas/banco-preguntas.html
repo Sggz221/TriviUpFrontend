@@ -13,11 +13,34 @@
             <div class="flex gap-2">
                 <a routerLink="/cuestionarios/mis-cuestionarios" class="btn btn-outline btn-sm">Mis cuestionarios</a>
                 <a routerLink="/cuestionarios/crear" class="btn btn-outline btn-sm">Crear cuestionario</a>
+                <button type="button" class="btn btn-outline btn-sm" (click)="mcpAbierto.set(true)">Conectar por MCP</button>
                 <button type="button" class="btn btn-primary btn-sm" (click)="nueva()">
                     @if (categoriaActiva(); as cat) { Nueva pregunta en «{{ cat.nombre }}» } @else { Nueva pregunta }
                 </button>
             </div>
         </div>
+
+        @if (mcpAbierto()) {
+            <div class="modal modal-open" (click)="mcpAbierto.set(false)">
+                <div class="modal-box" style="background-color: var(--base-200);" (click)="$event.stopPropagation()">
+                    <h3 class="font-bold text-lg mb-2" style="color: var(--secondary);">Conectar tu banco por MCP</h3>
+                    <p class="text-sm opacity-70 mb-3" style="color: var(--base-content);">
+                        Añade esta URL como conector personalizado en Claude (Ajustes → Conectores) o en cualquier cliente MCP.
+                        Al conectar, inicia sesión con tu cuenta de TriviUp.
+                    </p>
+                    <div class="join w-full">
+                        <input type="text" readonly class="input input-bordered join-item w-full" [value]="mcpUrl"
+                               (focus)="$any($event.target).select()" />
+                        <button type="button" class="btn btn-primary join-item" (click)="copiarMcpUrl()">
+                            {{ mcpCopiado() ? 'Copiado' : 'Copiar' }}
+                        </button>
+                    </div>
+                    <div class="modal-action">
+                        <button type="button" class="btn btn-ghost" (click)="mcpAbierto.set(false)">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        }
 
         @if (errorMessage()) {
             <div class="alert alert-error mb-4"><span>{{ errorMessage() }}</span></div>

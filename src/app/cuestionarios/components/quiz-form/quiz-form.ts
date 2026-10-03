@@ -15,6 +15,7 @@ import { CategoriaElegida, CategoriaSelectorComponent } from '../../../shared/co
 import { DificultadSelectorComponent } from '../../../shared/components/dificultad-selector/dificultad-selector';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { PALETA_FASES, colorDeFase, esColorValido } from '../../models/fase-color';
+import { NavbarComponent } from '../../../shared/components/navbar/navbar.component';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
 
 interface RespuestaFormValue {
@@ -58,7 +59,7 @@ type ImagenPregunta = { uploading: boolean; url: string | null; preview: string 
     selector: 'app-quiz-form',
     standalone: true,
     imports: [
-        CommonModule, ReactiveFormsModule, RouterLink, AnswerShapeComponent, BancoPickerComponent,
+        CommonModule, ReactiveFormsModule, RouterLink, NavbarComponent, AnswerShapeComponent, BancoPickerComponent,
         CategoriaSelectorComponent, DificultadSelectorComponent,
         CdkDropListGroup, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPlaceholder
     ],
