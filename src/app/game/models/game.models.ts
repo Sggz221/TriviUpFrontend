@@ -15,6 +15,10 @@ export interface Player {
     isSpectator?: boolean;
     /** Comodines que aún puede usar (vacío para anfitrión y espectadores). */
     availableComodines?: ComodinTipo[] | null;
+    /** Usos que le quedan de cada comodín que aún puede usar. */
+    remainingUses?: Partial<Record<ComodinTipo, number>> | null;
+    /** Usos máximos por jugador de cada comodín activo en la sala (los ausentes están desactivados). */
+    maxUses?: Partial<Record<ComodinTipo, number>> | null;
 }
 
 export interface Question {
@@ -181,4 +185,6 @@ export interface ComodinUsedDto {
     ruletaHueco?: number | null;
     /** Lo que dura la animación; el servidor alarga el turno este tiempo. */
     ruletaDuracionMs?: number | null;
+    /** Usos que le quedan al jugador de cada comodín. */
+    remainingUses?: Partial<Record<ComodinTipo, number>> | null;
 }

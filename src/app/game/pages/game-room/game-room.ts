@@ -123,18 +123,29 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     private me = computed(() => this.players().find(p => p.userId === this.myUserId()));
     myComodines = computed<ComodinTipo[]>(() => this.me()?.availableComodines ?? []);
 
+    /** El anfitrión no desactivó este comodín en la sala (sin dato = activo, para salas antiguas). */
+    activo(tipo: ComodinTipo): boolean {
+        const maximos = this.me()?.maxUses;
+        return !maximos || tipo in maximos;
+    }
+
+    /** Usos que le quedan al jugador de un comodín. */
+    usosRestantes(tipo: ComodinTipo): number {
+        return this.me()?.remainingUses?.[tipo] ?? (this.hasComodin(tipo) ? 1 : 0);
+    }
+
     /** Panel del anfitrión para devolver comodines ya usados. */
     revivePanelOpen = signal<boolean>(false);
-    /** Jugadores con comodines usados: lo que tiene cada modo menos lo que aún conserva. */
-    revivables = computed(() => {
-        const todos: ComodinTipo[] = this.isPresencial()
-            ? ['Ruleta', 'DobleONada', 'Robo', 'Apuesta', 'Llamada']
-            : ['Ruleta', 'DobleONada', 'Robo', 'Apuesta'];
-        return this.players()
-            .filter(p => !p.isOwner && !p.isSpectator)
-            .map(p => ({ player: p, usados: todos.filter(c => !(p.availableComodines ?? []).includes(c)) }))
-            .filter(x => x.usados.length > 0);
-    });
+    /** Jugadores con comodines usados: usos máximos de cada comodín activo menos los que aún conserva. */
+    revivables = computed(() => this.players()
+        .filter(p => !p.isOwner && !p.isSpectator)
+        .map(p => ({
+            player: p,
+            usados: (Object.entries(p.maxUses ?? {}) as [ComodinTipo, number][])
+                .map(([tipo, max]) => ({ tipo, gastados: max - (p.remainingUses?.[tipo] ?? 0) }))
+                .filter(u => u.gastados > 0)
+        }))
+        .filter(x => x.usados.length > 0));
 
     onReviveComodin(userId: number, tipo?: ComodinTipo): void {
         this.gameSignalrService.reviveComodin(this.roomCode(), userId, tipo).catch(err => {
@@ -937,7 +948,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
     private onComodinUsed(data: ComodinUsedDto): void {
         this.players.update(list => list.map(p =>
-            p.userId === data.userId ? { ...p, availableComodines: data.availableComodines } : p));
+            p.userId === data.userId ? { ...p, availableComodines: data.availableComodines, remainingUses: data.remainingUses } : p));
         if (data.questionId !== this.currentQuestion()?.id) return;
 
         if (data.tipo !== 'Robo') this.comodinUsedOnQuestion.set(true);

@@ -112,6 +112,31 @@
                                 </div>
                             </div>
 
+                            <div class="mt-4">
+                                <h4 class="font-bold mb-1">Comodines</h4>
+                                <p class="text-xs opacity-70 mb-2">Elige cuáles se pueden usar y cuántas veces por jugador.</p>
+                                <div class="grid gap-2 sm:grid-cols-2">
+                                    @for (c of comodinesSala; track c.tipo) {
+                                        <div class="flex items-center justify-between gap-2 rounded-lg px-3 py-2"
+                                             style="background: color-mix(in oklab, var(--base-content) 8%, transparent);">
+                                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                                <input type="checkbox" class="checkbox checkbox-sm"
+                                                       [checked]="comodinConfig()[c.tipo].activo"
+                                                       (change)="onComodinActivoChange(c.tipo, $event)" />
+                                                <span>{{ c.etiqueta }}@if (c.soloPresencial) { <small class="opacity-60"> (presencial)</small> }</span>
+                                            </label>
+                                            <select class="select select-bordered select-xs" aria-label="Usos de {{ c.etiqueta }}"
+                                                    [disabled]="!comodinConfig()[c.tipo].activo"
+                                                    (change)="onComodinUsosChange(c.tipo, $event)">
+                                                @for (n of opcionesUsos; track n) {
+                                                    <option [value]="n" [selected]="n === comodinConfig()[c.tipo].usos">{{ n }} {{ n === 1 ? 'uso' : 'usos' }}</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
                             <div class="modal-action">
                                 <button class="btn btn-ghost btn-sm" type="button" [disabled]="creandoSala()" (click)="cerrarSelectorModo()">Cancelar</button>
                             </div>

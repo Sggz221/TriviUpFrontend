@@ -333,7 +333,7 @@ export class GameSignalrService {
         this.hubConnection.on('ComodinUsed', (data: ComodinUsedDto) => {
             console.log('[GameSignalr] Event: ComodinUsed', data);
             this.players.update(list => list.map(p =>
-                p.userId === data.userId ? { ...p, availableComodines: data.availableComodines } : p));
+                p.userId === data.userId ? { ...p, availableComodines: data.availableComodines, remainingUses: data.remainingUses } : p));
             // Para quien reentra sin un TurnStarted nuevo (ver lastTurnStarted)
             this.lastTurnStarted.update(t => t && t.question.id === data.questionId ? {
                 ...t,
@@ -412,9 +412,10 @@ export class GameSignalrService {
     /**
      * Create a new game room (requires authenticated user)
      */
-    async createGame(quizId: number, turnTimeLimitSeconds: number | null = null, mode: GameMode = 'Normal'): Promise<string> {
+    async createGame(quizId: number, turnTimeLimitSeconds: number | null = null, mode: GameMode = 'Normal',
+                     comodines: Partial<Record<ComodinTipo, number>> | null = null): Promise<string> {
         if (!this.hubConnection) throw new Error('Hub not connected');
-        const roomCode = await this.hubConnection.invoke<string>('CreateGame', quizId, turnTimeLimitSeconds, mode);
+        const roomCode = await this.hubConnection.invoke<string>('CreateGame', quizId, turnTimeLimitSeconds, mode, comodines);
         this.gameMode.set(mode);
         this.currentRoomCode.set(roomCode);
         return roomCode;

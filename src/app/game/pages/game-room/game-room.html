@@ -158,9 +158,9 @@
                                             (click)="onReviveComodin(item.player.userId)">Todos</button>
                                 </div>
                                 <div class="flex flex-wrap gap-2">
-                                    @for (c of item.usados; track c) {
+                                    @for (u of item.usados; track u.tipo) {
                                         <button type="button" class="btn btn-xs btn-outline"
-                                                (click)="onReviveComodin(item.player.userId, c)">{{ c }}</button>
+                                                (click)="onReviveComodin(item.player.userId, u.tipo)">{{ u.tipo }}@if (u.gastados > 1) { ×{{ u.gastados }} }</button>
                                     }
                                 </div>
                             </div>
@@ -294,35 +294,49 @@
             @if (canUseComodines() && myComodines().length > 0) {
                 <div class="comodines-bar" role="group" aria-label="Comodines">
                     @if (isMyTurn()) {
+                        @if (activo('Ruleta')) {
                         <button class="comodin-btn" type="button" [disabled]="!canUseRuleta() || usingComodin()"
                                 title="Elimina entre 0 y 3 respuestas incorrectas" (click)="useComodin('Ruleta')">
                             <span class="comodin-icon" aria-hidden="true">🎡</span>
                             <span class="comodin-name">Ruleta</span>
+                            @if (usosRestantes('Ruleta') > 1) { <span class="comodin-usos">×{{ usosRestantes('Ruleta') }}</span> }
                         </button>
+                        }
+                        @if (activo('DobleONada')) {
                         <button class="comodin-btn" type="button" [disabled]="!canUseDobleONada() || usingComodin()"
                                 title="Acierto: +200 · Fallo: −100" (click)="useComodin('DobleONada')">
                             <span class="comodin-icon" aria-hidden="true">🎲</span>
                             <span class="comodin-name">Doble o nada</span>
+                            @if (usosRestantes('DobleONada') > 1) { <span class="comodin-usos">×{{ usosRestantes('DobleONada') }}</span> }
                         </button>
+                        }
                         @if (isPresencial()) {
+                            @if (activo('Llamada')) {
                             <button class="comodin-btn" type="button" [disabled]="!canUseLlamada() || usingComodin()"
                                     title="Llamas a un amigo: el anfitrión quita el cartel cuando acabe" (click)="useComodin('Llamada')">
                                 <span class="comodin-icon" aria-hidden="true">📞</span>
                                 <span class="comodin-name">Llamada</span>
+                                @if (usosRestantes('Llamada') > 1) { <span class="comodin-usos">×{{ usosRestantes('Llamada') }}</span> }
                             </button>
+                            }
                         }
                     } @else {
+                        @if (activo('Robo')) {
                         <button class="comodin-btn" type="button" [disabled]="!canRobar() || usingComodin()"
                                 title="Responde tú. Si fallas: −50 y vuelve al jugador original" (click)="useComodin('Robo')">
                             <span class="comodin-icon" aria-hidden="true">🥷</span>
                             <span class="comodin-name">Robar</span>
+                            @if (usosRestantes('Robo') > 1) { <span class="comodin-usos">×{{ usosRestantes('Robo') }}</span> }
                         </button>
+                        }
+                        @if (activo('Apuesta')) {
                         <div class="comodin-apuesta">
                             <button class="comodin-btn" type="button" [disabled]="!canApostar() || usingComodin()"
                                     [attr.aria-expanded]="betPickerOpen()"
                                     title="Acierta tu apuesta: +50" (click)="toggleBetPicker()">
                                 <span class="comodin-icon" aria-hidden="true">💰</span>
                                 <span class="comodin-name">Apostar</span>
+                                @if (usosRestantes('Apuesta') > 1) { <span class="comodin-usos">×{{ usosRestantes('Apuesta') }}</span> }
                             </button>
                             @if (betPickerOpen() && canApostar()) {
                                 <div class="bet-picker">
@@ -332,6 +346,7 @@
                                 </div>
                             }
                         </div>
+                        }
                     }
                 </div>
             }

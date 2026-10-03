@@ -5,7 +5,7 @@ import { CuestionarioService } from '../../services/cuestionario.service';
 import { Cuestionario, FasePool, Pregunta, Respuesta, colorDificultad, etiquetaDificultad } from '../../models/cuestionario.model';
 import { colorDeFase } from '../../models/fase-color';
 import { GameSignalrService } from '../../../game/services/game-signalr.service';
-import { GameMode } from '../../../game/models/game.models';
+import { ComodinTipo, GameMode } from '../../../game/models/game.models';
 import { AuthService } from '../../../auth/auth.service';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
@@ -221,6 +221,45 @@ export class QuizDetailComponent implements OnInit {
         if (!this.creandoSala()) this.eligiendoModo.set(false);
     }
 
+    /** Comodines configurables de la sala: cuáles están activos y cuántas veces puede usarlos cada jugador. */
+    readonly comodinesSala: { tipo: ComodinTipo; etiqueta: string; soloPresencial?: boolean }[] = [
+        { tipo: 'Ruleta', etiqueta: 'Ruleta' },
+        { tipo: 'DobleONada', etiqueta: 'Doble o nada' },
+        { tipo: 'Robo', etiqueta: 'Robo' },
+        { tipo: 'Apuesta', etiqueta: 'Apuesta' },
+        { tipo: 'Llamada', etiqueta: 'Llamada', soloPresencial: true }
+    ];
+    readonly opcionesUsos = [1, 2, 3, 4, 5];
+    comodinConfig = signal<Record<ComodinTipo, { activo: boolean; usos: number }>>({
+        Ruleta: { activo: true, usos: 1 },
+        DobleONada: { activo: true, usos: 1 },
+        Robo: { activo: true, usos: 1 },
+        Apuesta: { activo: true, usos: 1 },
+        Llamada: { activo: true, usos: 1 }
+    });
+
+    onComodinActivoChange(tipo: ComodinTipo, event: Event): void {
+        const activo = (event.target as HTMLInputElement).checked;
+        this.comodinConfig.update(c => ({ ...c, [tipo]: { ...c[tipo], activo } }));
+    }
+
+    onComodinUsosChange(tipo: ComodinTipo, event: Event): void {
+        const usos = Number((event.target as HTMLSelectElement).value);
+        this.comodinConfig.update(c => ({ ...c, [tipo]: { ...c[tipo], usos } }));
+    }
+
+    /** Config a enviar al crear la sala; null si se deja como viene por defecto (todos, un uso). */
+    private comodinesParaEnviar(modo: GameMode): Partial<Record<ComodinTipo, number>> | null {
+        const config = this.comodinConfig();
+        const delModo = this.comodinesSala.filter(c => !c.soloPresencial || modo === 'Presencial');
+        if (delModo.every(c => config[c.tipo].activo && config[c.tipo].usos === 1)) return null;
+        const resultado: Partial<Record<ComodinTipo, number>> = {};
+        for (const c of delModo) {
+            if (config[c.tipo].activo) resultado[c.tipo] = config[c.tipo].usos;
+        }
+        return resultado;
+    }
+
     onTiempoTurnoChange(event: Event): void {
         this.tiempoTurno.set(Number((event.target as HTMLSelectElement).value));
     }
@@ -244,7 +283,7 @@ export class QuizDetailComponent implements OnInit {
         this.gameSignalrService.connect(token).then(() => {
             // Invocar CreateGame en el hub
             // En modo presencial no hay tiempo por turno (el servidor también lo fuerza).
-            return this.gameSignalrService.createGame(quiz.id, modo === 'Presencial' ? 0 : this.tiempoTurno(), modo);
+            return this.gameSignalrService.createGame(quiz.id, modo === 'Presencial' ? 0 : this.tiempoTurno(), modo, this.comodinesParaEnviar(modo));
         }).then((roomCode) => {
             console.log('[QuizDetail] ★★★ Sala creada:', roomCode);
             // Indicar que este usuario es el owner
