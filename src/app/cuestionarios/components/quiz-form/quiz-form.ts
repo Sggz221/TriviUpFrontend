@@ -621,6 +621,10 @@ export class QuizFormComponent {
         return pregunta.get('tipo')?.value === 'colores';
     }
 
+    esOcarina(pregunta: AbstractControl): boolean {
+        return pregunta.get('tipo')?.value === 'ocarina';
+    }
+
     cambiarTipo(pregunta: AbstractControl, tipo: TipoPregunta): void {
         pregunta.patchValue({ tipo });
         this.quizForm.markAsDirty();

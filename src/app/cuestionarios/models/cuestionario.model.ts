@@ -24,9 +24,10 @@ export interface Respuesta {
 
 /**
  * Tipo de pregunta: normal (por turnos), pulsador (responde el primer equipo en pulsar desde su móvil) o
- * colores (responde el que mejor imita un color al azar con tres sliders).
+ * colores (responde el que mejor imita un color al azar con tres sliders) u ocarina (responde el primero que
+ * toca una melodía al azar con los botones de la ocarina).
  */
-export type TipoPregunta = 'normal' | 'pulsador' | 'colores';
+export type TipoPregunta = 'normal' | 'pulsador' | 'colores' | 'ocarina';
 
 export interface Pregunta {
     id: number;

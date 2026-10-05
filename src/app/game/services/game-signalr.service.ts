@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, CallDismissedDto, HostQuestionInfoDto, ColorHsb, ColorSubmittedDto, ColorChallengeResultDto } from '../models/game.models';
+import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, CallDismissedDto, HostQuestionInfoDto, ColorHsb, ColorSubmittedDto, ColorChallengeResultDto, OcarinaWonDto } from '../models/game.models';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 import { colorDeFase } from '../../cuestionarios/models/fase-color';
 import { AuthService } from '../../auth/auth.service';
@@ -42,7 +42,8 @@ export class GameSignalrService {
         }
         // Local (ng serve): usar el host actual (permite probar desde el móvil en la LAN)
         const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-        const host = window.location.hostname;
+        // host incluye el puerto (4200 con ng serve): el proxy de desarrollo reenvía /hubs al backend.
+        const host = window.location.host;
         return `${protocol}//${host}/hubs/game`;
     }
 
@@ -70,6 +71,7 @@ export class GameSignalrService {
     private callDismissed$ = new Subject<CallDismissedDto>();
     private colorSubmitted$ = new Subject<ColorSubmittedDto>();
     private colorChallengeResult$ = new Subject<ColorChallengeResultDto>();
+    private ocarinaWon$ = new Subject<OcarinaWonDto>();
 
     // State signals
     isConnected = signal(false);
@@ -113,6 +115,7 @@ export class GameSignalrService {
     onTurnStarted = this.turnStarted$.asObservable();
     onColorSubmitted = this.colorSubmitted$.asObservable();
     onColorChallengeResult = this.colorChallengeResult$.asObservable();
+    onOcarinaWon = this.ocarinaWon$.asObservable();
     onTurnTimeout = this.turnTimeout$.asObservable();
     onAnswerSubmitted = this.answerSubmitted$.asObservable();
     onTurnResult = this.turnResult$.asObservable();
@@ -382,6 +385,10 @@ export class GameSignalrService {
             console.log('[GameSignalr] Event: ColorChallengeResult', data);
             this.colorChallengeResult$.next(data);
         });
+        this.hubConnection.on('OcarinaWon', (data: OcarinaWonDto) => {
+            console.log('[GameSignalr] Event: OcarinaWon', data);
+            this.ocarinaWon$.next(data);
+        });
         this.hubConnection.on('PhaseCompleted', (data: PhaseCompletedDto) => {
             console.log('[GameSignalr] Event: PhaseCompleted', data);
             this.phaseBreak.set(data);
@@ -524,6 +531,20 @@ export class GameSignalrService {
             throw new Error('User not configured');
         }
         return this.hubConnection.invoke('SubmitColor', roomCode, userId, questionId, color.hue, color.saturation, color.brightness);
+    }
+
+    /**
+     * Pregunta de ocarina: intento de tocar la melodía (botones 0-4 en orden).
+     * Resuelve true si acierta (y se lleva la pregunta) o false si falla y puede reintentar.
+     */
+    async submitOcarina(roomCode: string, questionId: number, notes: number[]): Promise<boolean> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        const userId = this.anonymousUserId ?? this.currentUserId();
+        if (userId === null) {
+            throw new Error('User not configured');
+        }
+        const result = await this.hubConnection.invoke<{ correct: boolean }>('SubmitOcarina', roomCode, userId, questionId, notes);
+        return result.correct;
     }
 
     async buzz(roomCode: string, questionId: number): Promise<void> {

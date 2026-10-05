@@ -106,6 +106,29 @@ export interface TurnStartedDto {
     colorTarget?: ColorHsb | null;
     /** Jugadores que ya han enviado su color (sin revelar cuál). */
     colorSubmittedPlayerIds?: number[] | null;
+    /** Pregunta de ocarina (isDynamic también es true: no tiene turno). */
+    isOcarina?: boolean;
+    /** Prueba de ocarina abierta: el primero que toque ocarinaMelody responde. */
+    ocarinaOpen?: boolean;
+    ocarinaMelody?: OcarinaNote[] | null;
+    /** Lo que le queda a la melodía por sonar, en ms (0 = ya se puede tocar). */
+    ocarinaListenRemainingMs?: number;
+}
+
+/** Figura musical de una nota (se dibuja así y marca su duración al sonar). */
+export type NoteFigure = 'Semicorchea' | 'Corchea' | 'Negra' | 'Blanca';
+
+/** Nota de la ocarina: botón 0-4 (Re, Fa, La, Si, Re agudo) y su figura. */
+export interface OcarinaNote {
+    pitch: number;
+    figure: NoteFigure;
+}
+
+/** Pregunta de ocarina: alguien tocó bien la melodía y se lleva la pregunta. */
+export interface OcarinaWonDto {
+    questionId: number;
+    playerId: number;
+    username: string;
 }
 
 /** Color en HSB: tono 0-359, saturación y brillo 0-100. */

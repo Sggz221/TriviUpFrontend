@@ -8,7 +8,8 @@ import { AuthService } from '../../../auth/auth.service';
 import { GameLobbyComponent } from '../../components/game-lobby/game-lobby.component';
 import { GameScoreboardComponent } from '../../components/game-scoreboard/game-scoreboard.component';
 import { PhaseLeaderboardComponent } from '../../components/phase-leaderboard/phase-leaderboard.component';
-import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto, Bet, ComodinTipo, ComodinUsedDto, TurnStartedDto, ColorHsb, ColorChallengeResultDto } from '../../models/game.models';
+import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto, Bet, ComodinTipo, ComodinUsedDto, TurnStartedDto, ColorHsb, ColorChallengeResultDto, OcarinaNote } from '../../models/game.models';
+import { OcarinaChallengeComponent } from '../../components/ocarina-challenge/ocarina-challenge.component';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { colorDeFase, textoSobreColor } from '../../../cuestionarios/models/fase-color';
 import { AudioService } from '../../../shared/services/audio.service';
@@ -21,7 +22,7 @@ import { clearLastGame, saveLastGame, touchLastGame } from '../../utils/last-gam
 @Component({
     selector: 'app-game-room',
     standalone: true,
-    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent, SoundControlsComponent],
+    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent, SoundControlsComponent, OcarinaChallengeComponent],
     templateUrl: './game-room.html',
     styleUrls: ['./game-room.scss', './game-room-comodines.scss', './game-room-presencial.scss']
 })
@@ -102,6 +103,16 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     private colorResultTimeout: ReturnType<typeof setTimeout> | null = null;
     private colorQuestionId: number | null = null;
     private static readonly COLOR_RESULT_MS = 6000;
+
+    // ---- Pregunta de ocarina: suena una melodía y el primero que la toca responde ----
+    ocarinaOpen = signal<boolean>(false);
+    ocarinaMelody = signal<OcarinaNote[]>([]);
+    /** Lo que le quedaba a la melodía por sonar al recibir la pregunta (ms). */
+    ocarinaListenMs = signal<number>(0);
+    /** Clave para recrear el componente en cada pregunta de ocarina (aunque vengan seguidas). */
+    ocarinaKey = computed(() => this.ocarinaOpen() && this.currentQuestion() ? [this.currentQuestion()!.id] : []);
+    /** Jugador (no anfitrión ni espectador) que puede tocar la ocarina. */
+    canPlayOcarina = computed(() => !!this.me() && !this.isOwner() && !this.isSpectator());
     usingComodin = signal<boolean>(false);
     betPickerOpen = signal<boolean>(false);
     /** Ruleta girando: resultado (respuestas eliminadas), valor del hueco en el que cae y si ya se paró. */
@@ -690,6 +701,10 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.betPickerOpen.set(false);
             if (data.isSteal) {
                 this.showTurnBanner(0, '¡Robo!', `${this.playerName(data.currentPlayerId)} roba a ${this.playerName(data.turnOwnerId)}`);
+            } else if (data.isOcarina && !data.ocarinaOpen) {
+                this.showTurnBanner(0, '¡Melodía tocada!', this.playerName(data.currentPlayerId));
+            } else if (data.ocarinaOpen) {
+                this.showTurnBanner(this.mostrarBannerFase(fase), '¡Ocarina!', 'Escucha y toca la melodía');
             } else if (data.isColor && !data.colorOpen) {
                 // El banner del ganador lo deja ver el resultado de la prueba (que llega justo antes).
                 this.showTurnBanner(this.colorResult() ? GameRoomComponent.COLOR_RESULT_MS : 0, '¡Mejor color!', this.playerName(data.currentPlayerId));
@@ -1006,6 +1021,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.colorOpen.set(!!data.colorOpen);
         this.colorTarget.set(data.colorOpen ? data.colorTarget ?? null : null);
         this.colorSubmittedIds.set(data.colorSubmittedPlayerIds ?? []);
+        this.ocarinaOpen.set(!!data.ocarinaOpen);
+        this.ocarinaMelody.set(data.ocarinaOpen ? data.ocarinaMelody ?? [] : []);
+        this.ocarinaListenMs.set(data.ocarinaListenRemainingMs ?? 0);
         if (data.colorOpen && this.colorQuestionId !== data.question.id) {
             // Pregunta de colores nueva: los sliders vuelven al centro.
             this.colorQuestionId = data.question.id;

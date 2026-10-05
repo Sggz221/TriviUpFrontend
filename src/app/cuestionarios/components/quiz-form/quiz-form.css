@@ -329,6 +329,10 @@
   box-shadow: inset 4px 0 0 var(--secondary);
 }
 
+.question-ocarina {
+  box-shadow: inset 4px 0 0 var(--info);
+}
+
 .question-number {
   display: flex;
   align-items: center;
@@ -381,6 +385,10 @@
 
 .colores-chip {
   background-color: color-mix(in srgb, var(--secondary) 18%, transparent);
+}
+
+.ocarina-chip {
+  background-color: color-mix(in srgb, var(--info) 18%, transparent);
 }
 
 .pulsador-chip-x {

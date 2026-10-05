@@ -1,0 +1,198 @@
+:host {
+    display: block;
+    width: 100%;
+}
+
+.ocarina {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    margin: 0.5rem 0 1rem;
+    color: var(--base-content);
+}
+
+.ocarina-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    text-align: center;
+}
+
+.ocarina-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.ocarina-phase {
+    font-size: 0.95rem;
+    opacity: 0.85;
+
+    &.listening {
+        animation: ocarina-pulse 1.2s ease-in-out infinite;
+    }
+}
+
+// Partitura sobre "papel" claro: las figuras se leen bien en el tema oscuro del juego.
+.staff-card {
+    position: relative;
+    width: min(100%, 36rem);
+    padding: 0.25rem 0.5rem;
+    border-radius: 1rem;
+    background: #fdfbf4;
+    box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.3);
+    overflow: hidden;
+
+    &.loading {
+        min-height: 150px;
+    }
+}
+
+.staff {
+    width: 100%;
+    min-height: 150px;
+
+    :deep(svg) {
+        display: block;
+        margin: 0 auto;
+    }
+}
+
+.staff-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.lane {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+}
+
+.lane-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: min(100%, 36rem);
+    font-size: 0.9rem;
+}
+
+.lane-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.lane-card {
+    transition: background-color 0.2s ease;
+
+    &.error {
+        background: #fde2e2;
+        animation: ocarina-shake 0.45s ease-in-out 2;
+    }
+
+    &.ok {
+        background: #dcfce7;
+    }
+}
+
+.lane-feedback {
+    font-size: 0.9rem;
+    font-weight: 600;
+
+    &.error {
+        color: var(--error);
+    }
+
+    &.ok {
+        color: var(--success);
+    }
+
+    &.hint {
+        font-weight: 400;
+        opacity: 0.7;
+    }
+}
+
+// Botones al estilo de la ocarina de Zelda: A azul y flechas C amarillas.
+.ocarina-buttons {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.6rem;
+    width: min(100%, 26rem);
+}
+
+.ocarina-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.1rem;
+    aspect-ratio: 1;
+    border: 0;
+    border-radius: 50%;
+    color: #1f2937;
+    font-weight: 900;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 0.35rem 0 rgb(0 0 0 / 0.35);
+    transition: transform 0.06s ease, box-shadow 0.06s ease, filter 0.15s ease;
+
+    &.btn-a {
+        background: #3b82f6;
+        color: #fff;
+    }
+
+    &.btn-c {
+        background: #facc15;
+    }
+
+    &:active:not(:disabled) {
+        transform: translateY(0.3rem);
+        box-shadow: 0 0.05rem 0 rgb(0 0 0 / 0.35);
+    }
+
+    &:disabled {
+        filter: grayscale(0.7) brightness(0.7);
+        cursor: not-allowed;
+    }
+}
+
+.ocarina-glyph {
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.ocarina-note-name {
+    font-size: 0.7rem;
+    opacity: 0.85;
+}
+
+@keyframes ocarina-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(6px); }
+}
+
+@keyframes ocarina-pulse {
+    50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lane-card.error,
+    .ocarina-phase.listening {
+        animation: none;
+    }
+}

@@ -1,0 +1,55 @@
+<section class="ocarina" aria-label="Prueba de la ocarina">
+    <header class="ocarina-header">
+        <span class="ocarina-title">🎵 Ocarina</span>
+        <span class="ocarina-phase" [class.listening]="listening()">
+            {{ listening() ? 'Escucha la melodía...' : canPlay() ? '¡Tócala! El primero que acierte responde' : 'Los equipos están tocando la melodía' }}
+        </span>
+    </header>
+
+    <div class="staff-card" [class.loading]="loading()">
+        <div #melodyStaff class="staff" aria-label="Melodía a tocar"></div>
+        @if (loading()) {
+            <span class="staff-loading">Cargando partitura...</span>
+        }
+    </div>
+
+    @if (soundBlocked()) {
+        <button class="btn btn-sm btn-warning" type="button" (click)="enableSound()">🔊 Activar sonido</button>
+    }
+
+    @if (canPlay()) {
+        <div class="lane">
+            <div class="lane-head">
+                <span>Tu melodía <b>{{ entered().length }}/{{ melody().length }}</b></span>
+                <div class="lane-actions">
+                    <button class="btn btn-xs btn-ghost" type="button" (click)="removeLast()"
+                            [disabled]="entered().length === 0 || status() !== 'idle'" aria-label="Borrar la última nota">⌫ Borrar</button>
+                    <button class="btn btn-xs btn-ghost" type="button" (click)="clear()"
+                            [disabled]="entered().length === 0 || status() !== 'idle'">Vaciar</button>
+                </div>
+            </div>
+            <div class="staff-card lane-card" [class.error]="status() === 'error'" [class.ok]="status() === 'ok'">
+                <div #laneStaff class="staff" aria-label="Notas que has tocado (pulsa una para quitarla)"></div>
+            </div>
+            @if (status() === 'error') {
+                <span class="lane-feedback error" aria-live="assertive">¡Esa no es! Vuelve a intentarlo</span>
+            } @else if (status() === 'ok') {
+                <span class="lane-feedback ok" aria-live="assertive">¡Perfecta! Te llevas la pregunta</span>
+            } @else if (status() === 'checking') {
+                <span class="lane-feedback">Comprobando...</span>
+            } @else if (entered().length > 0) {
+                <span class="lane-feedback hint">Pulsa una nota del carril para quitarla</span>
+            }
+        </div>
+
+        <div class="ocarina-buttons" role="group" aria-label="Botones de la ocarina">
+            @for (b of buttons; track b.pitch) {
+                <button type="button" class="ocarina-btn" [class.btn-a]="b.pitch === 0" [class.btn-c]="b.pitch !== 0"
+                        [disabled]="!canPress()" (click)="press(b.pitch)" [attr.aria-label]="'Nota ' + b.name + ' (' + b.glyph + ')'">
+                    <span class="ocarina-glyph">{{ b.glyph }}</span>
+                    <span class="ocarina-note-name">{{ b.name }}</span>
+                </button>
+            }
+        </div>
+    }
+</section>

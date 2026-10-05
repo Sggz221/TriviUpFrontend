@@ -291,6 +291,20 @@
                 </section>
             }
 
+            @for (key of ocarinaKey(); track key) {
+                <!-- La ocarina (Tone.js + VexFlow) solo se descarga cuando aparece una pregunta de ocarina. -->
+                @defer (on immediate) {
+                    <app-ocarina-challenge
+                        [roomCode]="roomCode()"
+                        [questionId]="key"
+                        [melody]="ocarinaMelody()"
+                        [listenRemainingMs]="ocarinaListenMs()"
+                        [canPlay]="canPlayOcarina()" />
+                } @placeholder {
+                    <span class="buzzer-hint">Preparando la ocarina...</span>
+                }
+            }
+
             <div class="answer-options">
                 @for (option of currentQuestion()!.options; track option; let i = $index) {
                     <button
@@ -339,19 +353,22 @@
                         <span class="host-controls-hint">
                             {{ buzzerOpen() ? 'Esperando a que un equipo pulse'
                                 : colorOpen() ? 'Esperando a que los equipos imiten el color'
+                                : ocarinaOpen() ? 'Esperando a que alguien toque la melodía'
                                 : selectedAnswer() === null ? 'Marca la respuesta que diga ' + getCurrentTurnPlayerName() : 'Puedes cambiarla hasta confirmar' }}
                         </span>
                     }
                 </div>
             }
 
-            @if (isOwner() && (buzzerOpen() || colorOpen()) && !showTurnResult()) {
+            @if (isOwner() && (buzzerOpen() || colorOpen() || ocarinaOpen()) && !showTurnResult()) {
                 <div class="host-controls">
                     <button class="btn btn-outline" type="button" [disabled]="isAdvancing() || isPaused()" (click)="onNextQuestion()">
                         {{ isAdvancing() ? 'Pasando...' : 'Saltar pregunta' }}
                     </button>
                     <span class="host-controls-hint">
-                        {{ colorOpen() ? 'Puedes saltar la pregunta sin esperar a los colores' : 'Si nadie pulsa, puedes pasar a la siguiente' }}
+                        {{ colorOpen() ? 'Puedes saltar la pregunta sin esperar a los colores'
+                            : ocarinaOpen() ? 'Si nadie consigue tocar la melodía, puedes pasar a la siguiente'
+                            : 'Si nadie pulsa, puedes pasar a la siguiente' }}
                     </span>
                 </div>
             }
@@ -461,6 +478,8 @@
                     <span class="waiting">{{ canBuzz() ? '¡Pulsa antes que los demás!' : 'Pregunta de pulsador: el primero en pulsar responde' }}</span>
                 } @else if (colorOpen()) {
                     <span class="waiting">{{ canSendColor() ? '¡Imita el color! Quien más se acerque responde' : 'Pregunta de colores: quien mejor imite el color responde' }}</span>
+                } @else if (ocarinaOpen()) {
+                    <span class="waiting">Pregunta de ocarina: el primero que toque la melodía responde</span>
                 } @else if (isSpectator()) {
                     <span class="badge badge-info badge-sm mb-1">Modo espectador</span><br />
                     <span class="waiting">Turno de {{ getCurrentTurnPlayerName() }}</span>

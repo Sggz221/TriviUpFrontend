@@ -180,6 +180,9 @@
                                 @if (pregunta.tipo === 'colores') {
                                     <span class="badge badge-secondary shrink-0" title="Responde quien mejor imite un color al azar">🎨 Colores</span>
                                 }
+                                @if (pregunta.tipo === 'ocarina') {
+                                    <span class="badge badge-info shrink-0" title="Responde el primero que toque la melodía">🎵 Ocarina</span>
+                                }
                                 @if (pregunta.dificultad) {
                                     <span class="badge shrink-0" style="color: var(--base-100);"
                                           [style.background-color]="colorDificultad(pregunta.dificultad)">{{ etiquetaDificultad(pregunta.dificultad) }}</span>
