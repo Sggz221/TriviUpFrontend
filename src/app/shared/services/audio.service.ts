@@ -92,6 +92,20 @@ export class AudioService {
         setTimeout(() => this.playTone(200, 0.3, 'sawtooth', 0.1), 150);
     }
 
+    /** Sorpresa al cambiar la pregunta de un rival: barrido que sube y "traqueteo" de dados. */
+    playReroll(): void {
+        [220, 277.18, 349.23, 440, 554.37, 698.46].forEach((freq, i) => {
+            setTimeout(() => this.playTone(freq, 0.09, 'square', 0.12), i * 55);
+        });
+        [0, 1, 2, 3].forEach(i => {
+            setTimeout(() => this.playTone(1800 - i * 200, 0.03, 'square', 0.07), 40 + i * 80);
+        });
+        // Remate: golpe grave y acorde brillante
+        setTimeout(() => this.playTone(130.81, 0.35, 'sawtooth', 0.22), 380);
+        setTimeout(() => this.playTone(523.25, 0.4, 'triangle', 0.2), 400);
+        setTimeout(() => this.playTone(783.99, 0.4, 'triangle', 0.16), 400);
+    }
+
     playTurnStart(): void {
         // Short notification sound
         this.playTone(440, 0.08, 'square', 0.15);

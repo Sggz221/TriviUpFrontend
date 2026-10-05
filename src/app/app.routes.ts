@@ -9,7 +9,6 @@ import { QuizDetailComponent } from './cuestionarios/components/quiz-detail/quiz
 import { QuizzesPublicComponent } from './cuestionarios/components/quizzes-public/quizzes-public.component';
 import { Profile } from './user/pages/profile/profile';
 import { ProfileEdit } from './user/pages/profile-edit/profile-edit';
-import { GameRoomComponent } from './game/pages/game-room/game-room';
 import { GameHistoryComponent } from './game/pages/game-history/game-history';
 import { GameDetailsComponent } from './game/pages/game-details/game-details';
 import { JoinRoomComponent } from './game/pages/join-room/join-room';
@@ -34,7 +33,8 @@ export const routes: Routes = [
     { path: 'game/history', component: GameHistoryComponent },
     { path: 'game/history/:gameId', component: GameDetailsComponent },
     { path: 'unirse', component: JoinRoomComponent },
-    { path: 'game/:roomCode', component: GameRoomComponent },
+    // La sala de juego es el componente más pesado: se descarga al entrar en una partida, no al abrir la web.
+    { path: 'game/:roomCode', loadComponent: () => import('./game/pages/game-room/game-room').then(m => m.GameRoomComponent) },
     { path: 'admin', component: AdminDashboardComponent, canActivate: [isAdminGuard] },
     { path: 'admin/users', component: AdminUsersComponent, canActivate: [isAdminGuard] },
     { path: 'informacion', component: InformacionComponent },

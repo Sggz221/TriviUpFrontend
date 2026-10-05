@@ -610,6 +610,24 @@
     </div>
 }
 
+@if (rerollAnnouncement(); as reroll) {
+    <div class="reroll-overlay" [class.to-me]="reroll.toMe" role="alert" aria-live="assertive">
+        <div class="reroll-card">
+            <div class="reroll-dice" aria-hidden="true">🎲</div>
+            <p class="reroll-title">
+                @if (reroll.toMe) {
+                    ¡{{ reroll.attacker }} te cambia la pregunta!
+                } @else if (reroll.byMe) {
+                    ¡Has cambiado la pregunta de {{ reroll.victim }}!
+                } @else {
+                    ¡{{ reroll.attacker }} cambia la pregunta de {{ reroll.victim }}!
+                }
+            </p>
+            <p class="reroll-sub">{{ reroll.toMe ? 'Nueva pregunta, tiempo completo' : 'Comodín: cambiar pregunta del rival' }}</p>
+        </div>
+    </div>
+}
+
 @if (ruletaSpin(); as spin) {
     <div class="ruleta-overlay" aria-live="assertive">
         <div class="ruleta-card">

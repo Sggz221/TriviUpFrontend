@@ -104,6 +104,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     private colorQuestionId: number | null = null;
     private static readonly COLOR_RESULT_MS = 6000;
 
+    /** Anuncio del comodín "cambiar la pregunta del rival" (quién la cambia y a quién). */
+    rerollAnnouncement = signal<{ attacker: string; victim: string; toMe: boolean; byMe: boolean } | null>(null);
+    private rerollTimeout: ReturnType<typeof setTimeout> | null = null;
+    private static readonly REROLL_ANNOUNCE_MS = 3200;
+
     // ---- Pregunta de ocarina: suena una melodía y el primero que la toca responde ----
     ocarinaOpen = signal<boolean>(false);
     ocarinaMelody = signal<OcarinaNote[]>([]);
@@ -333,6 +338,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.phaseBannerTimeout) clearTimeout(this.phaseBannerTimeout);
         if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
         if (this.colorResultTimeout) clearTimeout(this.colorResultTimeout);
+        if (this.rerollTimeout) clearTimeout(this.rerollTimeout);
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
         this.ruletaTimeouts.forEach(t => clearTimeout(t));
         // DON'T call leaveGame() or disconnect() here
@@ -1096,6 +1102,24 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             .finally(() => this.isBuzzing.set(false));
     }
 
+    /**
+     * Anuncio a pantalla completa de que alguien ha cambiado la pregunta de un rival, con sonido, vibración y
+     * una animación de dados. El afectado lo ve dirigido a él ("te cambia la pregunta").
+     */
+    private announceReroll(data: ComodinUsedDto): void {
+        const victimId = data.targetPlayerId ?? null;
+        this.rerollAnnouncement.set({
+            attacker: data.username,
+            victim: this.playerName(victimId),
+            toMe: victimId !== null && victimId === this.myUserId(),
+            byMe: data.userId === this.myUserId()
+        });
+        this.audioService.playReroll();
+        if (victimId === this.myUserId()) navigator.vibrate?.([120, 60, 120]);
+        if (this.rerollTimeout) clearTimeout(this.rerollTimeout);
+        this.rerollTimeout = setTimeout(() => this.rerollAnnouncement.set(null), GameRoomComponent.REROLL_ANNOUNCE_MS);
+    }
+
     private onComodinUsed(data: ComodinUsedDto): void {
         this.players.update(list => list.map(p =>
             p.userId === data.userId ? { ...p, availableComodines: data.availableComodines, remainingUses: data.remainingUses } : p));
@@ -1119,7 +1143,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 this.showToast(`${nombre} cambia su pregunta`, 'info');
                 break;
             case 'CambiarPreguntaRival':
-                this.showToast(`${nombre} cambia la pregunta de ${this.playerName(data.targetPlayerId)}`, 'info');
+                this.announceReroll(data);
                 break;
             case 'Pasar':
                 this.showToast(`${nombre} pasa la pregunta`, 'info');
