@@ -122,7 +122,10 @@ export interface AnswerMarkedDto {
 /** Presencial: respuesta correcta de la pregunta en curso (solo le llega al anfitrión). */
 export interface HostQuestionInfoDto {
     questionId: number;
-    correctAnswerIndex: number;
+    /** Solo en modo presencial; null en otro caso. */
+    correctAnswerIndex: number | null;
+    /** Dato curioso de la pregunta (se muestra al anfitrión tras revelarse la respuesta). */
+    curiosidad?: string | null;
 }
 
 /** Fase en curso (solo se muestra cuando la partida tiene más de una). */

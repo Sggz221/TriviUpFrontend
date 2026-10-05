@@ -78,6 +78,13 @@
                 }
             </div>
 
+            <label class="block mt-3">
+                <span class="text-xs opacity-70">💡 Curiosidad (opcional, solo la ve el anfitrión tras revelar la respuesta)</span>
+                <textarea class="textarea textarea-bordered textarea-sm w-full mt-1" rows="2" maxlength="1000"
+                          placeholder="Un dato curioso para comentar en voz alta..."
+                          [(ngModel)]="editor!.curiosidad"></textarea>
+            </label>
+
             <div class="space-y-2 mt-4">
                 @for (r of editor!.respuestas; track $index; let i = $index) {
                     <div class="flex items-center gap-2">

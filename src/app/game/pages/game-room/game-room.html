@@ -267,6 +267,15 @@
                 }
             </div>
 
+            @if (hostCuriosidad(); as curiosidad) {
+                <aside class="host-curiosidad" aria-live="polite">
+                    <span class="host-curiosidad-label">
+                        💡 {{ hostCuriosidadEsActual() ? 'Curiosidad' : 'Curiosidad de la pregunta anterior' }}
+                    </span>
+                    <p>{{ curiosidad }}</p>
+                </aside>
+            }
+
             @if (isHostMarking()) {
                 <div class="host-controls">
                     @if (showTurnResult()) {

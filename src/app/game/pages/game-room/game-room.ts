@@ -119,6 +119,16 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         const info = this.gameSignalrService.hostQuestionInfo();
         return this.isHostMarking() && info && info.questionId === this.currentQuestion()?.id ? info.correctAnswerIndex : null;
     });
+    /** Última pregunta cuya respuesta se ha revelado: su curiosidad es la que ve el anfitrión. */
+    private revealedQuestionId = signal<number | null>(null);
+    /** Curiosidad que ve el anfitrión: la de la última pregunta revelada (nunca la de una aún sin resolver). */
+    hostCuriosidad = computed(() => {
+        const id = this.revealedQuestionId();
+        return this.isOwner() && id !== null ? this.gameSignalrService.hostCuriosidades().get(id) ?? null : null;
+    });
+    /** La curiosidad visible es de la pregunta en pantalla (si no, de la anterior, ya resuelta). */
+    hostCuriosidadEsActual = computed(() =>
+        this.showTurnResult() && this.revealedQuestionId() === this.currentQuestion()?.id);
     isConfirming = signal<boolean>(false);
     isAdvancing = signal<boolean>(false);
 
@@ -430,6 +440,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                     if (pendingResult) {
                         this.lastTurnResult.set(pendingResult);
                         this.showTurnResult.set(true);
+                        if (pendingResult.correctAnswerIndex >= 0) this.revealedQuestionId.set(question.id);
                     }
                     if ((this.isMyTurn() || this.buzzerOpen()) && !this.isPaused()) {
                         this.startLocalTimer(this.gameSignalrService.timeRemaining());
@@ -1167,6 +1178,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
     /** Puntuaciones, apuestas y avisos al resolverse una respuesta (o un timeout). */
     private applyTurnOutcome(result: TurnResult, timedOut: boolean): void {
+        // Respuesta revelada (un robo fallido no la revela: correctAnswerIndex = -1). Llega antes que el
+        // TurnStarted siguiente, así que currentQuestion sigue siendo la pregunta resuelta.
+        const resuelta = this.currentQuestion();
+        if (result.correctAnswerIndex >= 0 && resuelta) this.revealedQuestionId.set(resuelta.id);
+
         const scores = new Map<number, number>([[result.playerId, result.newTotalScore]]);
         for (const bet of result.bets ?? []) scores.set(bet.userId, bet.newTotalScore);
         const refunded = new Set((result.bets ?? []).filter(b => b.refunded).map(b => b.userId));

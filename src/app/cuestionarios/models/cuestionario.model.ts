@@ -42,6 +42,8 @@ export interface Pregunta {
     tipo?: TipoPregunta;
     dificultad?: Dificultad | null;
     imagenUrl?: string | null;
+    /** Dato curioso: en la partida solo lo ve el anfitrión, tras revelarse la respuesta. */
+    curiosidad?: string | null;
 }
 
 export interface Cuestionario {
@@ -76,6 +78,7 @@ export interface CreateQuizRequest {
         faseColor?: string;
         tipo?: TipoPregunta;
         dificultad?: Dificultad;
+        curiosidad?: string;
     }[];
     pools?: FasePool[];
 }
@@ -127,6 +130,8 @@ export interface BancoPregunta {
     id: number;
     enunciado: string;
     imagenUrl?: string | null;
+    /** Dato curioso: en la partida solo lo ve el anfitrión, tras revelarse la respuesta. */
+    curiosidad?: string | null;
     respuestas: BancoRespuesta[];
     dificultad?: Dificultad | null;
     categoriaId?: number | null;
@@ -139,6 +144,7 @@ export interface BancoPregunta {
 export interface BancoPreguntaRequest {
     enunciado: string;
     imagenUrl?: string | null;
+    curiosidad?: string | null;
     respuestas: BancoRespuesta[];
     dificultad?: Dificultad | null;
     categoriaId?: number | null;

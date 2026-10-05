@@ -43,6 +43,32 @@
     }
 }
 
+// Curiosidad de la pregunta: solo la ve el anfitrión, una vez revelada la respuesta.
+.host-curiosidad {
+    width: 100%;
+    margin: 0.75rem 0;
+    padding: 0.75rem 1rem;
+    border-radius: 1rem;
+    border-left: 4px solid var(--warning);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    color: var(--base-content);
+
+    .host-curiosidad-label {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        opacity: 0.8;
+    }
+
+    p {
+        margin: 0;
+        line-height: 1.4;
+        white-space: pre-line;
+    }
+}
+
 // Pregunta de pulsador: pulsador de concurso en el móvil de cada equipo.
 .buzzer-zone {
     display: flex;

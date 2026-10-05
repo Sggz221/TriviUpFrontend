@@ -23,6 +23,7 @@ interface Editor {
     categoriaNombre: string | null;
     dificultad: Dificultad | null;
     imagenUrl: string | null;
+    curiosidad: string;
     subiendoImagen: boolean;
 }
 
@@ -307,6 +308,7 @@ export class BancoPreguntasPage implements OnInit {
             categoriaNombre: null,
             dificultad: this.dificultadActiva(),
             imagenUrl: null,
+            curiosidad: '',
             subiendoImagen: false
         };
     }
@@ -321,6 +323,7 @@ export class BancoPreguntasPage implements OnInit {
             categoriaNombre: null,
             dificultad: pregunta.dificultad ?? null,
             imagenUrl: pregunta.imagenUrl ?? null,
+            curiosidad: pregunta.curiosidad ?? '',
             subiendoImagen: false
         };
     }
@@ -406,6 +409,7 @@ export class BancoPreguntasPage implements OnInit {
         const request = {
             enunciado,
             imagenUrl: editor.imagenUrl,
+            curiosidad: editor.curiosidad.trim() || null,
             respuestas: editor.respuestas.map(r => ({ texto: r.texto.trim(), esCorrecta: r.esCorrecta })),
             dificultad: editor.dificultad,
             categoriaId: editor.categoriaId,

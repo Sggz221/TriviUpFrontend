@@ -29,6 +29,7 @@ interface PreguntaFormValue {
     enunciado: string;
     respuestas: RespuestaFormValue[];
     imagenUrl?: string | null;
+    curiosidad?: string | null;
 }
 
 /** Configuración del pool de una fase (los datos de fase, nombre y color, van en la propia fase). */
@@ -315,7 +316,7 @@ export class QuizFormComponent {
         });
     }
 
-    private crearPregunta(datos?: Partial<Pick<Pregunta, 'enunciado' | 'imagenUrl' | 'dificultad' | 'tipo'>> & {
+    private crearPregunta(datos?: Partial<Pick<Pregunta, 'enunciado' | 'imagenUrl' | 'dificultad' | 'tipo' | 'curiosidad'>> & {
         respuestas?: { texto: string; esCorrecta: boolean }[];
     }, tipo: TipoPregunta = 'normal'): FormGroup {
         const respuestas = datos?.respuestas ?? [
@@ -330,7 +331,8 @@ export class QuizFormComponent {
                 texto: [r.texto, Validators.required],
                 esCorrecta: [r.esCorrecta]
             }))),
-            imagenUrl: [(datos?.imagenUrl ?? null) as string | null]
+            imagenUrl: [(datos?.imagenUrl ?? null) as string | null],
+            curiosidad: [datos?.curiosidad ?? '', Validators.maxLength(1000)]
         });
     }
 
@@ -630,6 +632,7 @@ export class QuizFormComponent {
         const respuestas = control.get('respuestas') as FormArray;
         return !control.get('enunciado')?.value?.trim() &&
             !control.get('imagenUrl')?.value &&
+            !control.get('curiosidad')?.value?.trim() &&
             respuestas.controls.every(r => !r.get('texto')?.value?.trim());
     }
 
@@ -685,7 +688,8 @@ export class QuizFormComponent {
                 enunciado: p.enunciado,
                 respuestas: p.respuestas,
                 imagenUrl: p.imagenUrl ?? null,
-                dificultad: p.dificultad ?? null
+                dificultad: p.dificultad ?? null,
+                curiosidad: p.curiosidad ?? null
             });
             destino.push(grupo);
             if (p.imagenUrl) {
@@ -747,6 +751,7 @@ export class QuizFormComponent {
         this.bancoService.crear({
             enunciado: (control.get('enunciado')?.value ?? '').trim(),
             imagenUrl: control.get('imagenUrl')?.value || null,
+            curiosidad: control.get('curiosidad')?.value?.trim() || null,
             respuestas: respuestas.map(r => ({ texto: r.texto.trim(), esCorrecta: !!r.esCorrecta })),
             dificultad: control.get('dificultad')?.value ?? null,
             categoriaId: dialogo.categoriaId,
@@ -996,7 +1001,8 @@ export class QuizFormComponent {
                         esCorrecta: !!r.esCorrecta
                     })),
                     imagenUrl: item.imagenUrl || undefined,
-                    dificultad: item.dificultad || undefined
+                    dificultad: item.dificultad || undefined,
+                    curiosidad: item.curiosidad?.trim() || undefined
                 });
             }
         }

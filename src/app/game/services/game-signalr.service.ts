@@ -90,8 +90,13 @@ export class GameSignalrService {
     currentUserId = signal<number | null>(null);
     currentUsername = signal<string | null>(null);
     gameMode = signal<GameMode>('Normal');
-    /** Presencial: respuesta correcta de la pregunta en curso (solo la recibe el anfitrión). */
+    /** Datos de la pregunta en curso que solo recibe el anfitrión (respuesta correcta en presencial, curiosidad). */
     hostQuestionInfo = signal<HostQuestionInfoDto | null>(null);
+    /**
+     * Curiosidades recibidas por id de pregunta (solo el anfitrión). Se guardan todas porque en modo normal
+     * el servidor pasa a la pregunta siguiente justo tras el resultado, y la curiosidad se enseña después.
+     */
+    hostCuriosidades = signal<ReadonlyMap<number, string>>(new Map());
     /** Resultado recibido y aún en pantalla (presencial: hasta que el anfitrión pasa de pregunta). */
     pendingTurnResult = signal<TurnResult | null>(null);
 
@@ -355,6 +360,10 @@ export class GameSignalrService {
         this.hubConnection.on('HostQuestionInfo', (data: HostQuestionInfoDto) => {
             console.log('[GameSignalr] Event: HostQuestionInfo', data);
             this.hostQuestionInfo.set(data);
+            const curiosidad = data.curiosidad?.trim();
+            if (curiosidad) {
+                this.hostCuriosidades.update(m => new Map(m).set(data.questionId, curiosidad));
+            }
         });
         this.hubConnection.on('PhaseCompleted', (data: PhaseCompletedDto) => {
             console.log('[GameSignalr] Event: PhaseCompleted', data);
@@ -628,6 +637,7 @@ export class GameSignalrService {
         this.currentUsername.set(null);
         this.gameMode.set('Normal');
         this.hostQuestionInfo.set(null);
+        this.hostCuriosidades.set(new Map());
         this.pendingTurnResult.set(null);
     }
 }
