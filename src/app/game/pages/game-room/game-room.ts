@@ -10,6 +10,8 @@ import { GameScoreboardComponent } from '../../components/game-scoreboard/game-s
 import { PhaseLeaderboardComponent } from '../../components/phase-leaderboard/phase-leaderboard.component';
 import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto, Bet, ComodinTipo, ComodinUsedDto, TurnStartedDto, ColorHsb, ColorChallengeResultDto, OcarinaNote } from '../../models/game.models';
 import { OcarinaChallengeComponent } from '../../components/ocarina-challenge/ocarina-challenge.component';
+import { ComodinHandComponent } from '../../components/comodin-hand/comodin-hand.component';
+import { HandCard } from '../../components/comodin-hand/comodin-cards';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { colorDeFase, textoSobreColor } from '../../../cuestionarios/models/fase-color';
 import { AudioService } from '../../../shared/services/audio.service';
@@ -22,7 +24,7 @@ import { clearLastGame, saveLastGame, touchLastGame } from '../../utils/last-gam
 @Component({
     selector: 'app-game-room',
     standalone: true,
-    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent, SoundControlsComponent, OcarinaChallengeComponent],
+    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent, SoundControlsComponent, OcarinaChallengeComponent, ComodinHandComponent],
     templateUrl: './game-room.html',
     styleUrls: ['./game-room.scss', './game-room-comodines.scss', './game-room-presencial.scss']
 })
@@ -119,7 +121,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Jugador (no anfitrión ni espectador) que puede tocar la ocarina. */
     canPlayOcarina = computed(() => !!this.me() && !this.isOwner() && !this.isSpectator());
     usingComodin = signal<boolean>(false);
-    betPickerOpen = signal<boolean>(false);
     /** Ruleta girando: resultado (respuestas eliminadas), valor del hueco en el que cae y si ya se paró. */
     ruletaSpin = signal<{ username: string; resultado: number; valor: number; revealed: boolean } | null>(null);
     @ViewChild('ruletaWheel') private ruletaWheel?: ElementRef<HTMLElement>;
@@ -163,7 +164,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     isConfirming = signal<boolean>(false);
     isAdvancing = signal<boolean>(false);
 
-    private me = computed(() => this.players().find(p => p.userId === this.myUserId()));
+    protected me = computed(() => this.players().find(p => p.userId === this.myUserId()));
     myComodines = computed<ComodinTipo[]>(() => this.me()?.availableComodines ?? []);
 
     /** El anfitrión no desactivó este comodín en la sala (sin dato = activo, para salas antiguas). */
@@ -241,6 +242,37 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         && this.stolenById() === null && !this.comodinUsedOnQuestion() && this.turnOwnerId() !== this.myUserId());
     canApostar = computed(() => this.canUseComodines() && !this.isMyTurn() && this.hasComodin('Apuesta')
         && !this.isSteal() && this.stolenById() !== this.myUserId() && !this.iBet() && this.turnOwnerId() !== this.myUserId());
+
+    /** Si cada comodín se puede jugar ahora (las reglas de arriba, por tipo). */
+    private readonly canPlay: Record<ComodinTipo, () => boolean> = {
+        Ruleta: () => this.canUseRuleta(),
+        CincuentaCincuenta: () => this.canUseCincuentaCincuenta(),
+        CambiarPregunta: () => this.canUseCambiarPregunta(),
+        Pasar: () => this.canUsePasar(),
+        DobleONada: () => this.canUseDobleONada(),
+        Llamada: () => this.canUseLlamada(),
+        Robo: () => this.canRobar(),
+        CambiarPreguntaRival: () => this.canUseCambiarRival(),
+        OcultarTexto: () => this.canUseOcultarTexto(),
+        Apuesta: () => this.canApostar()
+    };
+    private static readonly HAND_TURNO: ComodinTipo[] = ['Ruleta', 'CincuentaCincuenta', 'CambiarPregunta', 'Pasar', 'DobleONada', 'Llamada'];
+    private static readonly HAND_ATAQUE: ComodinTipo[] = ['Robo', 'CambiarPreguntaRival', 'OcultarTexto', 'Apuesta'];
+
+    /** Cartas de la mano: las de turno en mi turno y las de ataque fuera de él (las que me quedan y están activas). */
+    handCards = computed<HandCard[]>(() => {
+        const tipos = this.isMyTurn() ? GameRoomComponent.HAND_TURNO : GameRoomComponent.HAND_ATAQUE;
+        return tipos
+            .filter(tipo => this.activo(tipo) && this.hasComodin(tipo) && (tipo !== 'Llamada' || this.isPresencial()))
+            .map(tipo => ({ tipo, uses: this.usosRestantes(tipo), enabled: this.canPlay[tipo]() }));
+    });
+
+    /** Usos que me quedan de cada comodín (todos): la mano lo usa para quemar la carta al gastar el último. */
+    myRemainingUses = computed<Partial<Record<ComodinTipo, number>>>(() => {
+        const usos: Partial<Record<ComodinTipo, number>> = {};
+        for (const tipo of this.myComodines()) usos[tipo] = this.usosRestantes(tipo);
+        return usos;
+    });
     /** Doble o nada activo para quien responde ahora. */
     answererDoubleOrNothing = computed(() => {
         const id = this.currentTurnPlayerId();
@@ -731,7 +763,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             // Si cambia el turno con la ruleta aún en pantalla (p. ej. un robo), quitarla ya
             if (this.ruletaSpin()) this.cancelRuleta();
             this.applyTurnState(data);
-            this.betPickerOpen.set(false);
             if (data.isSteal) {
                 this.showTurnBanner(0, '¡Robo!', `${this.playerName(data.currentPlayerId)} roba a ${this.playerName(data.turnOwnerId)}`);
             } else if (data.isOcarina && !data.ocarinaOpen) {
@@ -925,7 +956,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     submitAnswer(answerIndex: number): void {
         if (!this.currentQuestion() || this.isEliminated(answerIndex) || this.ruletaSpin()) return;
         this.selectedAnswer.set(answerIndex);
-        this.betPickerOpen.set(false);
         this.gameSignalrService.submitAnswer(this.roomCode(), this.currentQuestion()!.id, answerIndex)
             .catch((error) => {
                 console.error('[GameRoom] Error al responder:', error);
@@ -1007,7 +1037,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         const question = this.currentQuestion();
         if (!question || this.usingComodin()) return;
         this.usingComodin.set(true);
-        this.betPickerOpen.set(false);
         this.gameSignalrService.useComodin(this.roomCode(), tipo, question.id, predictsCorrect)
             .catch((error) => {
                 console.error('[GameRoom] Error al usar comodín:', error);
@@ -1027,10 +1056,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 this.callActive.set(true);
                 this.showToast(this.hubErrorMessage(error, 'No se pudo quitar el cartel'), 'error');
             });
-    }
-
-    toggleBetPicker(): void {
-        this.betPickerOpen.update(open => !open);
     }
 
     betLabel(bet: Bet): string {

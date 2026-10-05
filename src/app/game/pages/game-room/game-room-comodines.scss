@@ -116,72 +116,9 @@
     }
 }
 
-.comodines-bar {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: flex-start;
-    gap: 0.75rem;
-    margin-top: 1rem;
-}
-
-.comodin-apuesta {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.comodin-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-height: 44px;
-    padding: 0.5rem 1rem;
-    border-radius: 999px;
-    border: 2px solid color-mix(in oklab, var(--secondary) 70%, transparent);
-    background: color-mix(in oklab, var(--secondary) 18%, var(--base-100));
-    color: var(--base-content);
-    font-weight: 700;
-    cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
-
-    &:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 18px color-mix(in oklab, var(--secondary) 40%, transparent);
-    }
-
-    &:focus-visible {
-        outline: 3px solid var(--primary);
-        outline-offset: 2px;
-    }
-
-    &:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-    }
-
-    .comodin-icon {
-        font-size: 1.25rem;
-        line-height: 1;
-    }
-}
-
-.bet-picker {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 1rem;
-    background: var(--base-200);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-
-    .bet-picker-label {
-        font-size: 0.85rem;
-        font-weight: 600;
-        opacity: 0.8;
-    }
+// Mano de comodines (bandeja fija abajo): hueco para que la bandeja plegada no tape las respuestas
+.game-board.has-hand {
+    padding-bottom: 8rem;
 }
 
 // Ruleta
@@ -348,8 +285,7 @@
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
     animation: call-screen-in 0.35s ease-out;
 
-    // Durante la llamada solo importa la pregunta: fuera comodines y avisos de turno
-    .comodines-bar,
+    // Durante la llamada solo importa la pregunta: fuera avisos de turno (la mano de comodines se oculta sola)
     .turn-info,
     .comodin-status {
         display: none;
@@ -493,13 +429,6 @@
     .call-hangup {
         width: 100%;
     }
-}
-
-.comodin-usos {
-    margin-left: 0.25rem;
-    font-size: 0.75rem;
-    font-weight: 700;
-    opacity: 0.85;
 }
 
 .chip-oculto {

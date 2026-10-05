@@ -92,6 +92,14 @@ export class AudioService {
         setTimeout(() => this.playTone(200, 0.3, 'sawtooth', 0.1), 150);
     }
 
+    /** Carta quemándose: chisporroteo (clics agudos al azar) sobre un soplo grave que se apaga. */
+    playBurn(): void {
+        this.playTone(90, 0.9, 'sawtooth', 0.08);
+        for (let i = 0; i < 14; i++) {
+            setTimeout(() => this.playTone(1200 + Math.random() * 2200, 0.02, 'square', 0.05), 40 + Math.random() * 900);
+        }
+    }
+
     /** Tono de llamada de teléfono: dos pitidos dobles ("brrr-brrr") al empezar la llamada. */
     playCallRing(): void {
         [0, 120, 600, 720].forEach(at => {

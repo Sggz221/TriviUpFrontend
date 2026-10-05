@@ -1,0 +1,106 @@
+@if (expanded() && visible()) {
+    <div class="hand-backdrop" (click)="close()" aria-hidden="true"></div>
+}
+
+<section class="hand-tray" [class.visible]="visible() && cards().length > 0" [class.expanded]="expanded()"
+         role="group" aria-label="Tus comodines">
+    @if (!expanded()) {
+        <!-- Plegada: abanico de cartas; tocarlo despliega el carril -->
+        <button type="button" class="fan" (click)="toggle()" aria-expanded="false"
+                [attr.aria-label]="'Ver tus comodines (' + cards().length + ')'">
+            @for (card of cards(); track card.tipo; let i = $index) {
+                <span class="card fan-card" [class.ataque]="info[card.tipo].ataque" [class.disabled]="!card.enabled"
+                      [class.stack-1]="stackDepth(card.uses) === 1" [class.stack-2]="stackDepth(card.uses) === 2"
+                      [style.transform]="fanStyle(i, cards().length)" aria-hidden="true">
+                    <span class="card-icon">{{ info[card.tipo].icon }}</span>
+                    <span class="card-name">{{ info[card.tipo].name }}</span>
+                    <span class="card-uses">×{{ card.uses }}</span>
+                </span>
+            }
+            <span class="fan-hint">Comodines</span>
+        </button>
+    } @else {
+        <!-- Desplegada: carril horizontal con todas las cartas a tamaño completo -->
+        <div class="lane-head">
+            <button type="button" class="lane-grip" (click)="close()" aria-expanded="true" aria-label="Plegar los comodines">
+                <span class="grip-bar" aria-hidden="true"></span>
+            </button>
+            <span class="lane-title">Tus comodines</span>
+            <button type="button" class="lane-close" (click)="close()" aria-label="Cerrar">✕</button>
+        </div>
+        <div class="lane">
+            @for (card of cards(); track card.tipo; let i = $index) {
+                <div class="card-slot" [style.animation-delay.ms]="i * 45">
+                    <button type="button" class="card lane-card" [class.ataque]="info[card.tipo].ataque"
+                            [class.disabled]="!card.enabled"
+                            [class.stack-1]="stackDepth(card.uses) === 1" [class.stack-2]="stackDepth(card.uses) === 2"
+                            [class.flipped]="card.tipo === 'Apuesta' && betOpen()"
+                            [disabled]="!card.enabled || busy()" [attr.aria-label]="ariaLabel(card)"
+                            [title]="card.enabled ? info[card.tipo].description : 'No puedes jugar esta carta ahora'"
+                            (click)="onCard(card)">
+                        <span class="card-uses">×{{ card.uses }}</span>
+                        <span class="card-icon">{{ info[card.tipo].icon }}</span>
+                        <span class="card-name">{{ info[card.tipo].name }}</span>
+                        <span class="card-desc">{{ info[card.tipo].description }}</span>
+                        <span class="card-kind">{{ info[card.tipo].ataque ? 'Ataque' : 'Tu turno' }}</span>
+                    </button>
+                    @if (card.tipo === 'Apuesta' && betOpen()) {
+                        <div class="bet-back" role="group" aria-label="Apuesta">
+                            <span class="bet-who">{{ betTarget() }}...</span>
+                            <button type="button" class="btn btn-sm btn-success" [disabled]="busy()" (click)="bet(true)">Acierta</button>
+                            <button type="button" class="btn btn-sm btn-error" [disabled]="busy()" (click)="bet(false)">Falla</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</section>
+
+<!-- Cartas quemándose: capa propia para que se vean aunque la mano se oculte al jugarlas -->
+<div class="burn-layer" aria-hidden="true">
+    @for (b of burning(); track b.key) {
+        <div class="burn-slot">
+            <div class="card lane-card burn-card" [class.ataque]="info[b.tipo].ataque" [style.filter]="'url(#burn-' + b.key + ')'">
+                <span class="card-icon">{{ info[b.tipo].icon }}</span>
+                <span class="card-name">{{ info[b.tipo].name }}</span>
+                <span class="card-desc">{{ info[b.tipo].description }}</span>
+            </div>
+            @for (e of [1, 2, 3, 4, 5, 6, 7, 8]; track e) {
+                <span [class]="'ember ember-' + e"></span>
+            }
+        </div>
+    }
+</div>
+
+<!--
+    Filtro de quemado: ruido fractal → máscara (lo que cae por debajo del corte desaparece) y, un poco por
+    delante del corte, un anillo naranja difuminado que hace de borde incandescente.
+-->
+<svg class="burn-defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <defs>
+        @for (b of burning(); track b.key) {
+            <filter [attr.id]="'burn-' + b.key" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.028" numOctaves="3" [attr.seed]="b.seed" result="noise" />
+                <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0" result="n" />
+                <feComponentTransfer in="n" result="mask">
+                    <feFuncA type="linear" slope="12" [attr.intercept]="burnIntercept(b)" />
+                </feComponentTransfer>
+                <feComponentTransfer in="n" result="outer">
+                    <feFuncA type="linear" slope="12" [attr.intercept]="burnIntercept(b, true)" />
+                </feComponentTransfer>
+                <feComposite in="outer" in2="mask" operator="out" result="ring" />
+                <feFlood flood-color="#ff9a1f" result="fire" />
+                <feComposite in="fire" in2="ring" operator="in" result="fireRing" />
+                <feGaussianBlur in="fireRing" stdDeviation="2" result="glow" />
+                <feComposite in="SourceGraphic" in2="mask" operator="in" result="card" />
+                <feComposite in="glow" in2="SourceAlpha" operator="in" result="glowIn" />
+                <feMerge>
+                    <feMergeNode in="card" />
+                    <feMergeNode in="glowIn" />
+                    <feMergeNode in="fireRing" />
+                </feMerge>
+            </filter>
+        }
+    </defs>
+</svg>
