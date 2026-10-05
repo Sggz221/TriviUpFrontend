@@ -657,6 +657,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 this.showTurnBanner(0, '¡Robo!', `${this.playerName(data.currentPlayerId)} roba a ${this.playerName(data.turnOwnerId)}`);
             } else if (data.isDynamic && !data.buzzerOpen) {
                 this.showTurnBanner(0, '¡Primero en pulsar!', this.playerName(data.currentPlayerId));
+            } else if (data.buzzerOpen) {
+                // Pulsador abierto: aún no responde nadie, así que no se nombra a ningún jugador.
+                this.showTurnBanner(this.mostrarBannerFase(fase), '¡Pulsador!', 'El primero en pulsar responde');
             } else {
                 this.showTurnBanner(this.mostrarBannerFase(fase));
             }
