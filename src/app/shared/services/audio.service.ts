@@ -92,6 +92,16 @@ export class AudioService {
         setTimeout(() => this.playTone(200, 0.3, 'sawtooth', 0.1), 150);
     }
 
+    /** Tono de llamada de teléfono: dos pitidos dobles ("brrr-brrr") al empezar la llamada. */
+    playCallRing(): void {
+        [0, 120, 600, 720].forEach(at => {
+            setTimeout(() => {
+                this.playTone(440, 0.1, 'sine', 0.2);
+                this.playTone(480, 0.1, 'sine', 0.2);
+            }, at);
+        });
+    }
+
     /** Sorpresa al cambiar la pregunta de un rival: barrido que sube y "traqueteo" de dados. */
     playReroll(): void {
         [220, 277.18, 349.23, 440, 554.37, 698.46].forEach((freq, i) => {

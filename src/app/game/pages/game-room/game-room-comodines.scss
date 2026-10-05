@@ -339,50 +339,160 @@
 }
 
 
-// Cartel de la Llamada (presencial): lo ve toda la sala; solo el anfitrión tiene el botón de cancelar
-.call-banner {
-    position: fixed;
-    top: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 900;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    max-width: calc(100vw - 2rem);
-    padding: 0.75rem 1.25rem;
-    border-radius: 999px;
-    background: #0e7490;
-    color: white;
-    font-weight: 700;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-    animation: call-banner-in 0.3s ease-out;
+// Llamada (presencial): toda la sala ve el juego como una llamada de teléfono. Arriba, el grupo que llama,
+// el estado y el cronómetro; debajo, la pregunta con sus respuestas. Solo el anfitrión puede colgar.
+.game-board.calling {
+    padding-top: 1rem;
+    border-radius: 1.5rem;
+    background: linear-gradient(180deg, #0b3b3f 0%, #0f2a30 55%, #101820 100%);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+    animation: call-screen-in 0.35s ease-out;
 
-    .call-banner-icon {
-        font-size: 1.5rem;
-        animation: call-banner-ring 1s ease-in-out infinite;
+    // Durante la llamada solo importa la pregunta: fuera comodines y avisos de turno
+    .comodines-bar,
+    .turn-info,
+    .comodin-status {
+        display: none;
     }
 
-    .call-banner-cancel {
-        border: none;
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
+    .question-card {
+        border: 1px solid rgb(255 255 255 / 0.12);
+    }
+}
 
-        &:hover {
-            background: rgba(255, 255, 255, 0.35);
+.call-screen {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border-radius: 1.25rem;
+    background: rgb(255 255 255 / 0.08);
+    color: #fff;
+    box-sizing: border-box;
+}
+
+.call-avatar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 50%;
+    background: #14b8a6;
+    font-size: 1.5rem;
+    font-weight: 800;
+
+    // Ondas de "llamando" alrededor del avatar
+    &::before,
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 2px solid #14b8a6;
+        animation: call-wave 1.8s ease-out infinite;
+    }
+
+    &::after {
+        animation-delay: 0.9s;
+    }
+}
+
+.call-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.call-group {
+    overflow: hidden;
+    font-size: 1.15rem;
+    font-weight: 800;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.call-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    opacity: 0.85;
+
+    .call-icon {
+        display: inline-block;
+        animation: call-ring 1s ease-in-out infinite;
+    }
+
+    &.connected {
+        color: #5eead4;
+        opacity: 1;
+
+        .call-icon {
+            animation: none;
         }
     }
 }
 
-@keyframes call-banner-in {
-    from { opacity: 0; transform: translate(-50%, -20px); }
-    to { opacity: 1; transform: translate(-50%, 0); }
+.call-clock {
+    font-size: 1.5rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
 }
 
-@keyframes call-banner-ring {
+.call-hangup {
+    flex-shrink: 0;
+    padding: 0.5rem 0.85rem;
+    border: 0;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:hover {
+        background: #b91c1c;
+    }
+}
+
+@keyframes call-screen-in {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes call-wave {
+    from { transform: scale(1); opacity: 0.7; }
+    to { transform: scale(1.7); opacity: 0; }
+}
+
+@keyframes call-ring {
     0%, 100% { transform: rotate(0); }
     25% { transform: rotate(-15deg); }
     75% { transform: rotate(15deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .game-board.calling,
+    .call-avatar::before,
+    .call-avatar::after,
+    .call-status .call-icon {
+        animation: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .call-screen {
+        flex-wrap: wrap;
+    }
+
+    .call-hangup {
+        width: 100%;
+    }
 }
 
 .comodin-usos {

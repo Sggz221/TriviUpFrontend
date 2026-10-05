@@ -283,7 +283,33 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         return `shape-${this.getShapeType(index)}`;
     }
 
+    /** Llamada en curso y pregunta aún sin resolver: la pantalla se convierte en una llamada. */
+    callOn = computed(() => this.callActive() && !this.showTurnResult());
+    /** Segundos que lleva la llamada. */
+    callSeconds = signal<number>(0);
+    /** "Llamando..." los primeros segundos y "En llamada" después, como en un teléfono. */
+    callStatus = computed(() => this.callSeconds() < 3 ? 'Llamando...' : 'En llamada');
+    /** Cronómetro de la llamada en formato mm:ss. */
+    callClock = computed(() => {
+        const s = this.callSeconds();
+        return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    });
+    private callTimer: ReturnType<typeof setInterval> | null = null;
+
     constructor() {
+        // Cronómetro de la llamada: arranca al empezar y se para (y se pone a cero) al colgar o resolverse la pregunta
+        effect(() => {
+            const on = this.callOn();
+            if (this.callTimer) {
+                clearInterval(this.callTimer);
+                this.callTimer = null;
+            }
+            this.callSeconds.set(0);
+            if (on) {
+                this.callTimer = setInterval(() => this.callSeconds.update(s => s + 1), 1000);
+            }
+        });
+
         // Música de fondo mientras se juega (no en el lobby ni en los resultados)
         effect(() => {
             if (this.gameState() === 'playing' && !this.gameResults()) this.audioService.startMusic();
@@ -339,6 +365,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
         if (this.colorResultTimeout) clearTimeout(this.colorResultTimeout);
         if (this.rerollTimeout) clearTimeout(this.rerollTimeout);
+        if (this.callTimer) clearInterval(this.callTimer);
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
         this.ruletaTimeouts.forEach(t => clearTimeout(t));
         // DON'T call leaveGame() or disconnect() here
@@ -1131,6 +1158,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         switch (data.tipo) {
             case 'Llamada':
                 this.callActive.set(true);
+                this.audioService.playCallRing();
                 break;
             case 'Ruleta':
                 this.spinRuleta(data);

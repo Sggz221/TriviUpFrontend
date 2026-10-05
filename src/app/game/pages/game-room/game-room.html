@@ -121,8 +121,28 @@
         </div>
     } @else if (currentQuestion()) {
         <!-- Game Playing -->
-        <div class="game-board">
+        <div class="game-board" [class.calling]="callOn()">
             <app-sound-controls class="sound-toggle" />
+
+            @if (callOn()) {
+                <!-- Pantalla de llamada: el juego se ve como si el equipo estuviera llamando a un amigo -->
+                <header class="call-screen" role="status" aria-live="polite">
+                    <div class="call-avatar" aria-hidden="true">{{ getCurrentTurnPlayerName().charAt(0).toUpperCase() }}</div>
+                    <div class="call-info">
+                        <span class="call-group">{{ getCurrentTurnPlayerName() }}</span>
+                        <span class="call-status" [class.connected]="callSeconds() >= 3">
+                            <span class="call-icon" aria-hidden="true">📞</span>
+                            {{ callStatus() }}
+                        </span>
+                    </div>
+                    <span class="call-clock" aria-label="Duración de la llamada">{{ callClock() }}</span>
+                    @if (isHostMarking()) {
+                        <button class="call-hangup" type="button" (click)="dismissCall()" aria-label="Colgar la llamada">
+                            <span aria-hidden="true">📵</span> Colgar
+                        </button>
+                    }
+                </header>
+            }
 
             @if (isOwner() && currentQuestion() && !gameResults()) {
                 <button class="btn btn-circle btn-ghost pause-btn" (click)="togglePause()">
@@ -650,16 +670,6 @@
                 }
             </p>
         </div>
-    </div>
-}
-
-@if (callActive() && !showTurnResult()) {
-    <div class="call-banner" role="status" aria-live="polite">
-        <span class="call-banner-icon" aria-hidden="true">📞</span>
-        <span class="call-banner-text">Llamada de {{ getCurrentTurnPlayerName() }}</span>
-        @if (isHostMarking()) {
-            <button class="btn btn-sm call-banner-cancel" type="button" (click)="dismissCall()">Cancelar</button>
-        }
     </div>
 }
 
