@@ -177,6 +177,9 @@
                                 @if (pregunta.tipo === 'pulsador') {
                                     <span class="badge badge-error shrink-0" title="Responde el primer equipo en pulsar desde su móvil">🔔 Pulsador</span>
                                 }
+                                @if (pregunta.tipo === 'colores') {
+                                    <span class="badge badge-secondary shrink-0" title="Responde quien mejor imite un color al azar">🎨 Colores</span>
+                                }
                                 @if (pregunta.dificultad) {
                                     <span class="badge shrink-0" style="color: var(--base-100);"
                                           [style.background-color]="colorDificultad(pregunta.dificultad)">{{ etiquetaDificultad(pregunta.dificultad) }}</span>

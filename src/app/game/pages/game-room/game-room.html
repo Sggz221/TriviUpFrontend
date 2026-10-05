@@ -203,7 +203,7 @@
                 }
             </div>
 
-            @if ((isMyTurn() || buzzerOpen()) && !showTurnResult() && !isPaused() && turnTimeLimit() > 0) {
+            @if ((isMyTurn() || buzzerOpen() || colorOpen()) && !showTurnResult() && !isPaused() && turnTimeLimit() > 0) {
                 <div class="turn-timer" [class.time-warning]="localTimeRemaining() <= 10" [class.time-danger]="localTimeRemaining() <= 5">
                     <div class="timer-bar">
                         <div class="timer-progress" [style.width.%]="(localTimeRemaining() / turnTimeLimit()) * 100"></div>
@@ -241,6 +241,54 @@
                         <span class="buzzer-hint">Pregunta de pulsador: esperando a que un equipo pulse...</span>
                     }
                 </div>
+            }
+
+            @if (colorOpen() && colorTarget(); as target) {
+                <section class="color-zone" aria-label="Prueba de colores">
+                    <div class="color-swatches">
+                        <div class="color-swatch-block">
+                            <div class="color-swatch" [style.background]="hsbCss(target)" role="img" aria-label="Color a imitar"></div>
+                            <span>Color a imitar</span>
+                        </div>
+                        @if (canSendColor()) {
+                            <div class="color-swatch-block">
+                                <div class="color-swatch" [style.background]="hsbCss(myColor())" role="img" aria-label="Tu color"></div>
+                                <span>Tu color</span>
+                            </div>
+                        }
+                    </div>
+
+                    @if (canSendColor()) {
+                        <div class="color-sliders">
+                            <label>
+                                <span>Tono <b>{{ myColor().hue }}º</b></span>
+                                <input type="range" min="0" max="359" [value]="myColor().hue"
+                                       [style.background]="colorSliderBackground('hue')"
+                                       (input)="setMyColor('hue', $any($event.target).value)" />
+                            </label>
+                            <label>
+                                <span>Saturación <b>{{ myColor().saturation }}%</b></span>
+                                <input type="range" min="0" max="100" [value]="myColor().saturation"
+                                       [style.background]="colorSliderBackground('saturation')"
+                                       (input)="setMyColor('saturation', $any($event.target).value)" />
+                            </label>
+                            <label>
+                                <span>Brillo <b>{{ myColor().brightness }}%</b></span>
+                                <input type="range" min="0" max="100" [value]="myColor().brightness"
+                                       [style.background]="colorSliderBackground('brightness')"
+                                       (input)="setMyColor('brightness', $any($event.target).value)" />
+                            </label>
+                        </div>
+                        <button class="btn btn-primary btn-lg" type="button" [disabled]="isSendingColor()" (click)="onSendColor()">
+                            {{ isSendingColor() ? 'Enviando...' : 'Enviar mi color' }}
+                        </button>
+                    } @else {
+                        <span class="buzzer-hint">
+                            {{ iSentColor() ? 'Color enviado. Esperando a los demás' : 'Los equipos están imitando el color' }}
+                            ({{ colorSubmittedIds().length }}/{{ colorContenders() }})
+                        </span>
+                    }
+                </section>
             }
 
             <div class="answer-options">
@@ -290,18 +338,21 @@
                         </button>
                         <span class="host-controls-hint">
                             {{ buzzerOpen() ? 'Esperando a que un equipo pulse'
+                                : colorOpen() ? 'Esperando a que los equipos imiten el color'
                                 : selectedAnswer() === null ? 'Marca la respuesta que diga ' + getCurrentTurnPlayerName() : 'Puedes cambiarla hasta confirmar' }}
                         </span>
                     }
                 </div>
             }
 
-            @if (isOwner() && buzzerOpen() && !showTurnResult()) {
+            @if (isOwner() && (buzzerOpen() || colorOpen()) && !showTurnResult()) {
                 <div class="host-controls">
                     <button class="btn btn-outline" type="button" [disabled]="isAdvancing() || isPaused()" (click)="onNextQuestion()">
                         {{ isAdvancing() ? 'Pasando...' : 'Saltar pregunta' }}
                     </button>
-                    <span class="host-controls-hint">Si nadie pulsa, puedes pasar a la siguiente</span>
+                    <span class="host-controls-hint">
+                        {{ colorOpen() ? 'Puedes saltar la pregunta sin esperar a los colores' : 'Si nadie pulsa, puedes pasar a la siguiente' }}
+                    </span>
                 </div>
             }
 
@@ -408,6 +459,8 @@
             <div class="turn-info">
                 @if (buzzerOpen()) {
                     <span class="waiting">{{ canBuzz() ? '¡Pulsa antes que los demás!' : 'Pregunta de pulsador: el primero en pulsar responde' }}</span>
+                } @else if (colorOpen()) {
+                    <span class="waiting">{{ canSendColor() ? '¡Imita el color! Quien más se acerque responde' : 'Pregunta de colores: quien mejor imite el color responde' }}</span>
                 } @else if (isSpectator()) {
                     <span class="badge badge-info badge-sm mb-1">Modo espectador</span><br />
                     <span class="waiting">Turno de {{ getCurrentTurnPlayerName() }}</span>
@@ -502,6 +555,38 @@
         <div class="turn-banner-text">
             <span class="turn-banner-label">{{ turnBannerLabel() }}</span>
             <span class="turn-banner-name">{{ turnBanner() }}</span>
+        </div>
+    </div>
+}
+
+@if (colorResult(); as resultado) {
+    <div class="color-result-overlay" aria-live="assertive" (click)="closeColorResult()">
+        <div class="color-result-card" (click)="$event.stopPropagation()">
+            <div class="color-result-header">
+                <div class="color-swatch small" [style.background]="hsbCss(resultado.target)" role="img" aria-label="Color objetivo"></div>
+                <div>
+                    @if (resultado.winnerUsername) {
+                        <p class="color-result-title">¡{{ resultado.winnerUsername }} se lleva la pregunta!</p>
+                        @if (resultado.tieBroken) {
+                            <p class="color-result-sub">Empate en el mejor color: ganador elegido al azar</p>
+                        }
+                    } @else {
+                        <p class="color-result-title">Nadie ha enviado su color</p>
+                        <p class="color-result-sub">La pregunta se pasa sin puntos</p>
+                    }
+                </div>
+            </div>
+            <ol class="color-result-list">
+                @for (g of resultado.guesses; track g.playerId; let i = $index) {
+                    <li [class.winner]="g.playerId === resultado.winnerId">
+                        <span class="color-result-pos">{{ i + 1 }}</span>
+                        <span class="color-swatch tiny" [style.background]="hsbCss(g.color)" aria-hidden="true"></span>
+                        <span class="color-result-name">{{ g.username }}</span>
+                        <span class="color-result-pct">{{ g.similarity }}%</span>
+                    </li>
+                }
+            </ol>
+            <button class="btn btn-sm btn-ghost" type="button" (click)="closeColorResult()">Cerrar</button>
         </div>
     </div>
 }

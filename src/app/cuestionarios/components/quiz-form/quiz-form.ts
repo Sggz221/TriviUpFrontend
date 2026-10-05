@@ -617,6 +617,10 @@ export class QuizFormComponent {
         return pregunta.get('tipo')?.value === 'pulsador';
     }
 
+    esColores(pregunta: AbstractControl): boolean {
+        return pregunta.get('tipo')?.value === 'colores';
+    }
+
     cambiarTipo(pregunta: AbstractControl, tipo: TipoPregunta): void {
         pregunta.patchValue({ tipo });
         this.quizForm.markAsDirty();

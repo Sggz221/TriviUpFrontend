@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, CallDismissedDto, HostQuestionInfoDto } from '../models/game.models';
+import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, CallDismissedDto, HostQuestionInfoDto, ColorHsb, ColorSubmittedDto, ColorChallengeResultDto } from '../models/game.models';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 import { colorDeFase } from '../../cuestionarios/models/fase-color';
 import { AuthService } from '../../auth/auth.service';
@@ -68,6 +68,8 @@ export class GameSignalrService {
     private comodinUsed$ = new Subject<ComodinUsedDto>();
     private answerMarked$ = new Subject<AnswerMarkedDto>();
     private callDismissed$ = new Subject<CallDismissedDto>();
+    private colorSubmitted$ = new Subject<ColorSubmittedDto>();
+    private colorChallengeResult$ = new Subject<ColorChallengeResultDto>();
 
     // State signals
     isConnected = signal(false);
@@ -109,6 +111,8 @@ export class GameSignalrService {
     onGameStarting = this.gameStarting$.asObservable();
     onGameStarted = this.gameStarted$.asObservable();
     onTurnStarted = this.turnStarted$.asObservable();
+    onColorSubmitted = this.colorSubmitted$.asObservable();
+    onColorChallengeResult = this.colorChallengeResult$.asObservable();
     onTurnTimeout = this.turnTimeout$.asObservable();
     onAnswerSubmitted = this.answerSubmitted$.asObservable();
     onTurnResult = this.turnResult$.asObservable();
@@ -365,6 +369,19 @@ export class GameSignalrService {
                 this.hostCuriosidades.update(m => new Map(m).set(data.questionId, curiosidad));
             }
         });
+        this.hubConnection.on('ColorSubmitted', (data: ColorSubmittedDto) => {
+            console.log('[GameSignalr] Event: ColorSubmitted', data);
+            // Para quien reentra sin un TurnStarted nuevo (ver lastTurnStarted)
+            this.lastTurnStarted.update(t => t && t.question.id === data.questionId ? {
+                ...t,
+                colorSubmittedPlayerIds: [...(t.colorSubmittedPlayerIds ?? []), data.playerId]
+            } : t);
+            this.colorSubmitted$.next(data);
+        });
+        this.hubConnection.on('ColorChallengeResult', (data: ColorChallengeResultDto) => {
+            console.log('[GameSignalr] Event: ColorChallengeResult', data);
+            this.colorChallengeResult$.next(data);
+        });
         this.hubConnection.on('PhaseCompleted', (data: PhaseCompletedDto) => {
             console.log('[GameSignalr] Event: PhaseCompleted', data);
             this.phaseBreak.set(data);
@@ -499,6 +516,16 @@ export class GameSignalrService {
     /**
      * Pregunta de pulsador: pulsa el botón del equipo. Gana el primero; al resto el hub le devuelve un error.
      */
+    /** Pregunta de colores: envía la imitación del color objetivo (una sola vez por pregunta). */
+    async submitColor(roomCode: string, questionId: number, color: ColorHsb): Promise<void> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        const userId = this.anonymousUserId ?? this.currentUserId();
+        if (userId === null) {
+            throw new Error('User not configured');
+        }
+        return this.hubConnection.invoke('SubmitColor', roomCode, userId, questionId, color.hue, color.saturation, color.brightness);
+    }
+
     async buzz(roomCode: string, questionId: number): Promise<void> {
         if (!this.hubConnection) throw new Error('Hub not connected');
         const userId = this.anonymousUserId ?? this.currentUserId();

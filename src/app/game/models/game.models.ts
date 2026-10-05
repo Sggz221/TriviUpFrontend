@@ -99,6 +99,44 @@ export interface TurnStartedDto {
     buzzerOpen?: boolean;
     /** Jugador al que se le oculta el texto de las respuestas en esta pregunta. */
     textHiddenForPlayerId?: number | null;
+    /** Pregunta de colores (isDynamic también es true: no tiene turno). */
+    isColor?: boolean;
+    /** Prueba de colores abierta: todos imitan colorTarget (currentPlayerId = 0 hasta que haya ganador). */
+    colorOpen?: boolean;
+    colorTarget?: ColorHsb | null;
+    /** Jugadores que ya han enviado su color (sin revelar cuál). */
+    colorSubmittedPlayerIds?: number[] | null;
+}
+
+/** Color en HSB: tono 0-359, saturación y brillo 0-100. */
+export interface ColorHsb {
+    hue: number;
+    saturation: number;
+    brightness: number;
+}
+
+/** Pregunta de colores: alguien ha enviado su color. */
+export interface ColorSubmittedDto {
+    questionId: number;
+    playerId: number;
+}
+
+export interface ColorGuess {
+    playerId: number;
+    username: string;
+    color: ColorHsb;
+    /** Parecido con el objetivo, 0-100. */
+    similarity: number;
+}
+
+/** Resultado de la prueba de colores: colores de todos (el ganador primero) y ganador (null si nadie envió). */
+export interface ColorChallengeResultDto {
+    questionId: number;
+    target: ColorHsb;
+    guesses: ColorGuess[];
+    winnerId: number | null;
+    winnerUsername: string | null;
+    tieBroken: boolean;
 }
 
 /** Pregunta de pulsador: el equipo que ha pulsado primero. */

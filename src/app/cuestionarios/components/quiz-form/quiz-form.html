@@ -166,6 +166,12 @@
                                                     <span>Pulsador <small class="block opacity-70">El primer equipo en pulsar responde</small></span>
                                                 </button>
                                             </li>
+                                            <li>
+                                                <button type="button" (click)="agregarPregunta(f, 'colores')">
+                                                    <span aria-hidden="true">🎨</span>
+                                                    <span>Colores <small class="block opacity-70">Responde quien mejor imite un color</small></span>
+                                                </button>
+                                            </li>
                                         </ul>
                                     </div>
                                     }
@@ -326,6 +332,7 @@
                                 @for (pregunta of preguntasDe(f).controls; track pregunta; let p = $index) {
                                     <div class="question-card rounded-xl shadow-md p-3 sm:p-5"
                                          [class.question-pulsador]="esPulsador(pregunta)"
+                                         [class.question-colores]="esColores(pregunta)"
                                          [formGroupName]="p"
                                          cdkDrag cdkDragLockAxis="y">
                                         <div class="question-drop-placeholder" *cdkDragPlaceholder></div>
@@ -341,6 +348,14 @@
                                                 @if (esPulsador(pregunta)) {
                                                     <div class="pulsador-chip">
                                                         <span>🔔 Pulsador · responde el primer equipo en pulsar</span>
+                                                        <button type="button" class="pulsador-chip-x" title="Convertir en pregunta normal"
+                                                                aria-label="Convertir en pregunta normal"
+                                                                (click)="cambiarTipo(pregunta, 'normal')">✕</button>
+                                                    </div>
+                                                }
+                                                @if (esColores(pregunta)) {
+                                                    <div class="pulsador-chip colores-chip">
+                                                        <span>🎨 Colores · responde quien mejor imite un color al azar (60 s)</span>
                                                         <button type="button" class="pulsador-chip-x" title="Convertir en pregunta normal"
                                                                 aria-label="Convertir en pregunta normal"
                                                                 (click)="cambiarTipo(pregunta, 'normal')">✕</button>
@@ -480,6 +495,7 @@
                                             <button type="button" class="btn btn-sm btn-outline" (click)="agregarPregunta(f)">+ Pregunta</button>
                                             <button type="button" class="btn btn-sm btn-outline" (click)="abrirBanco(f)">Desde mi banco</button>
                                             <button type="button" class="btn btn-sm btn-outline" (click)="agregarPregunta(f, 'pulsador')">🔔 Pulsador</button>
+                                            <button type="button" class="btn btn-sm btn-outline" (click)="agregarPregunta(f, 'colores')">🎨 Colores</button>
                                         </div>
                                     </div>
                                 }

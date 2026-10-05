@@ -8,7 +8,7 @@ import { AuthService } from '../../../auth/auth.service';
 import { GameLobbyComponent } from '../../components/game-lobby/game-lobby.component';
 import { GameScoreboardComponent } from '../../components/game-scoreboard/game-scoreboard.component';
 import { PhaseLeaderboardComponent } from '../../components/phase-leaderboard/phase-leaderboard.component';
-import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto, Bet, ComodinTipo, ComodinUsedDto, TurnStartedDto } from '../../models/game.models';
+import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto, Bet, ComodinTipo, ComodinUsedDto, TurnStartedDto, ColorHsb, ColorChallengeResultDto } from '../../models/game.models';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { colorDeFase, textoSobreColor } from '../../../cuestionarios/models/fase-color';
 import { AudioService } from '../../../shared/services/audio.service';
@@ -87,6 +87,21 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Pregunta de pulsador: el pulsador sigue abierto y todavía no responde nadie. */
     buzzerOpen = signal<boolean>(false);
     isBuzzing = signal<boolean>(false);
+
+    // ---- Pregunta de colores: todos imitan un color y el que más se acerca responde ----
+    /** Prueba de colores en curso (todavía no responde nadie). */
+    colorOpen = signal<boolean>(false);
+    colorTarget = signal<ColorHsb | null>(null);
+    /** Jugadores que ya han enviado su color en la prueba actual. */
+    colorSubmittedIds = signal<number[]>([]);
+    /** Color que voy componiendo con los sliders. */
+    myColor = signal<ColorHsb>({ hue: 180, saturation: 50, brightness: 50 });
+    isSendingColor = signal<boolean>(false);
+    /** Resultado de la última prueba de colores (se muestra unos segundos). */
+    colorResult = signal<ColorChallengeResultDto | null>(null);
+    private colorResultTimeout: ReturnType<typeof setTimeout> | null = null;
+    private colorQuestionId: number | null = null;
+    private static readonly COLOR_RESULT_MS = 6000;
     usingComodin = signal<boolean>(false);
     betPickerOpen = signal<boolean>(false);
     /** Ruleta girando: resultado (respuestas eliminadas), valor del hueco en el que cae y si ya se paró. */
@@ -175,6 +190,14 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     canBuzz = computed(() =>
         this.buzzerOpen() && !!this.me() && !this.isOwner() && !this.isSpectator()
         && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak());
+    /** Pregunta de colores: ya he enviado mi color. */
+    iSentColor = computed(() => this.colorSubmittedIds().includes(this.myUserId()));
+    /** Pregunta de colores: un jugador (no anfitrión ni espectador) puede enviar su color una vez. */
+    canSendColor = computed(() =>
+        this.colorOpen() && !!this.me() && !this.isOwner() && !this.isSpectator()
+        && !this.iSentColor() && !this.isPaused() && !this.phaseBreak());
+    /** Jugadores que compiten en la prueba de colores (los conectados que juegan). */
+    colorContenders = computed(() => this.players().filter(p => !p.isOwner && !p.isSpectator && p.isConnected).length);
     private iBet = computed(() => this.bets().some(b => b.userId === this.myUserId()));
     canUseRuleta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('Ruleta') && !this.ruletaSpin());
     canUseCincuentaCincuenta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('CincuentaCincuenta')
@@ -298,6 +321,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
         if (this.phaseBannerTimeout) clearTimeout(this.phaseBannerTimeout);
         if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
+        if (this.colorResultTimeout) clearTimeout(this.colorResultTimeout);
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
         this.ruletaTimeouts.forEach(t => clearTimeout(t));
         // DON'T call leaveGame() or disconnect() here
@@ -442,7 +466,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                         this.showTurnResult.set(true);
                         if (pendingResult.correctAnswerIndex >= 0) this.revealedQuestionId.set(question.id);
                     }
-                    if ((this.isMyTurn() || this.buzzerOpen()) && !this.isPaused()) {
+                    if ((this.isMyTurn() || this.buzzerOpen() || this.colorOpen()) && !this.isPaused()) {
                         this.startLocalTimer(this.gameSignalrService.timeRemaining());
                     }
                 }
@@ -666,19 +690,24 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.betPickerOpen.set(false);
             if (data.isSteal) {
                 this.showTurnBanner(0, '¡Robo!', `${this.playerName(data.currentPlayerId)} roba a ${this.playerName(data.turnOwnerId)}`);
-            } else if (data.isDynamic && !data.buzzerOpen) {
+            } else if (data.isColor && !data.colorOpen) {
+                // El banner del ganador lo deja ver el resultado de la prueba (que llega justo antes).
+                this.showTurnBanner(this.colorResult() ? GameRoomComponent.COLOR_RESULT_MS : 0, '¡Mejor color!', this.playerName(data.currentPlayerId));
+            } else if (data.isDynamic && !data.buzzerOpen && !data.colorOpen) {
                 this.showTurnBanner(0, '¡Primero en pulsar!', this.playerName(data.currentPlayerId));
             } else if (data.buzzerOpen) {
                 // Pulsador abierto: aún no responde nadie, así que no se nombra a ningún jugador.
                 this.showTurnBanner(this.mostrarBannerFase(fase), '¡Pulsador!', 'El primero en pulsar responde');
+            } else if (data.colorOpen) {
+                this.showTurnBanner(this.mostrarBannerFase(fase), '¡Colores!', 'Quien mejor imite el color responde');
             } else {
                 this.showTurnBanner(this.mostrarBannerFase(fase));
             }
             if (isMyTurn) {
                 this.audioService.playTurnStart();
                 this.startLocalTimer(data.timeLimit);
-            } else if (data.buzzerOpen) {
-                // Pulsador abierto: todos ven correr el tiempo para pulsar.
+            } else if (data.buzzerOpen || data.colorOpen) {
+                // Pulsador o prueba de colores abiertos: todos ven correr el tiempo.
                 this.startLocalTimer(data.timeLimit);
             } else {
                 this.clearTimerInterval();
@@ -737,6 +766,16 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         // Presencial: el anfitrión quitó el cartel de la Llamada
         this.gameSignalrService.onCallDismissed.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             if (data.questionId === this.currentQuestion()?.id) this.callActive.set(false);
+        });
+
+        // Pregunta de colores: alguien envió su color / resultado de la prueba
+        this.gameSignalrService.onColorSubmitted.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+            if (data.questionId !== this.currentQuestion()?.id) return;
+            this.colorSubmittedIds.update(ids => ids.includes(data.playerId) ? ids : [...ids, data.playerId]);
+        });
+        this.gameSignalrService.onColorChallengeResult.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+            console.log('[GameRoom] Resultado de colores:', data);
+            this.onColorChallengeResult(data);
         });
 
         // Comodín usado por cualquier jugador
@@ -964,6 +1003,66 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.isDynamic.set(!!data.isDynamic);
         this.buzzerOpen.set(!!data.buzzerOpen);
         this.isBuzzing.set(false);
+        this.colorOpen.set(!!data.colorOpen);
+        this.colorTarget.set(data.colorOpen ? data.colorTarget ?? null : null);
+        this.colorSubmittedIds.set(data.colorSubmittedPlayerIds ?? []);
+        if (data.colorOpen && this.colorQuestionId !== data.question.id) {
+            // Pregunta de colores nueva: los sliders vuelven al centro.
+            this.colorQuestionId = data.question.id;
+            this.myColor.set({ hue: 180, saturation: 50, brightness: 50 });
+        }
+    }
+
+    /** Pregunta de colores: mueve uno de los sliders. */
+    setMyColor(channel: keyof ColorHsb, value: number | string): void {
+        this.myColor.update(c => ({ ...c, [channel]: Number(value) }));
+    }
+
+    /** Pregunta de colores: envía mi color (una sola vez). */
+    onSendColor(): void {
+        const question = this.currentQuestion();
+        if (!question || !this.canSendColor() || this.isSendingColor()) return;
+        this.isSendingColor.set(true);
+        this.gameSignalrService.submitColor(this.roomCode(), question.id, this.myColor())
+            .then(() => this.colorSubmittedIds.update(ids => ids.includes(this.myUserId()) ? ids : [...ids, this.myUserId()]))
+            .catch((error) => {
+                console.error('[GameRoom] Error al enviar el color:', error);
+                this.showToast(this.hubErrorMessage(error, 'No se pudo enviar el color'), 'info');
+            })
+            .finally(() => this.isSendingColor.set(false));
+    }
+
+    private onColorChallengeResult(data: ColorChallengeResultDto): void {
+        this.colorOpen.set(false);
+        this.colorTarget.set(null);
+        this.clearTimerInterval();
+        if (this.colorResultTimeout) clearTimeout(this.colorResultTimeout);
+        this.colorResult.set(data);
+        this.colorResultTimeout = setTimeout(() => this.colorResult.set(null), GameRoomComponent.COLOR_RESULT_MS);
+    }
+
+    closeColorResult(): void {
+        if (this.colorResultTimeout) clearTimeout(this.colorResultTimeout);
+        this.colorResult.set(null);
+    }
+
+    /** Color HSB (como los sliders) en CSS: el navegador entiende HSL, así que se convierte. */
+    hsbCss(color: ColorHsb | null | undefined): string {
+        if (!color) return 'transparent';
+        const s = color.saturation / 100;
+        const v = color.brightness / 100;
+        const l = v * (1 - s / 2);
+        const sl = l === 0 || l === 1 ? 0 : (v - l) / Math.min(l, 1 - l);
+        return `hsl(${color.hue} ${Math.round(sl * 100)}% ${Math.round(l * 100)}%)`;
+    }
+
+    /** Fondo de un slider: degradado de lo que pasa al mover ese canal, con los otros dos fijos. */
+    colorSliderBackground(channel: keyof ColorHsb): string {
+        const c = this.myColor();
+        const stops = channel === 'hue'
+            ? [0, 60, 120, 180, 240, 300, 359].map(h => this.hsbCss({ ...c, hue: h }))
+            : [0, 50, 100].map(x => this.hsbCss({ ...c, [channel]: x }));
+        return `linear-gradient(to right, ${stops.join(', ')})`;
     }
 
     /** Pregunta de pulsador: pulsa por mi equipo. Si otro llegó antes, el servidor lo rechaza y se avisa. */

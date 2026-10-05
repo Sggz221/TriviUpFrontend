@@ -22,8 +22,11 @@ export interface Respuesta {
     esCorrecta: boolean;
 }
 
-/** Tipo de pregunta: normal (por turnos) o pulsador (responde el primer equipo en pulsar desde su móvil). */
-export type TipoPregunta = 'normal' | 'pulsador';
+/**
+ * Tipo de pregunta: normal (por turnos), pulsador (responde el primer equipo en pulsar desde su móvil) o
+ * colores (responde el que mejor imita un color al azar con tres sliders).
+ */
+export type TipoPregunta = 'normal' | 'pulsador' | 'colores';
 
 export interface Pregunta {
     id: number;
