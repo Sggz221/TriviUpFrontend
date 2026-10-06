@@ -254,7 +254,7 @@
                         <button class="buzzer-btn locked" type="button" disabled aria-label="Prepárate: aún no se puede pulsar">
                             Prepárate...
                         </button>
-                        <span class="buzzer-hint">Pulsa cuando acabe la cuenta atrás</span>
+                        <span class="buzzer-hint">{{ buzzerWaiting() && buzzerCountdown() === null ? 'Esperando a que el anfitrión empiece la cuenta atrás' : '¡Atento a la cuenta atrás!' }}</span>
                     } @else if (canBuzz()) {
                         <button class="buzzer-btn" type="button" [disabled]="isBuzzing()" (click)="onBuzz()"
                                 aria-label="Pulsar para responder">
@@ -262,7 +262,9 @@
                         </button>
                         <span class="buzzer-hint">El primero en pulsar responde</span>
                     } @else {
-                        <span class="buzzer-hint">Pregunta de pulsador: esperando a que un equipo pulse...</span>
+                        <span class="buzzer-hint">{{ buzzerWaiting() && buzzerCountdown() === null
+                            ? (isOwner() ? 'Pregunta de pulsador: lanza la cuenta atrás cuando todos estén listos' : 'Pregunta de pulsador: esperando a que el anfitrión empiece la cuenta atrás')
+                            : 'Pregunta de pulsador: esperando a que un equipo pulse...' }}</span>
                     }
                 </div>
             }
@@ -379,6 +381,25 @@
                                 : selectedAnswer() === null ? 'Marca la respuesta que diga ' + getCurrentTurnPlayerName() : 'Puedes cambiarla hasta confirmar' }}
                         </span>
                     }
+                </div>
+            }
+
+            @if (isOwner() && buzzerOpen() && buzzerWaiting() && !showTurnResult()) {
+                <!-- El anfitrión decide cuándo empieza la cuenta atrás; la de broma acaba en "¡Ah, no!" -->
+                <div class="host-controls buzzer-host-controls">
+                    <div class="buzzer-host-buttons">
+                        <button class="btn btn-success btn-lg" type="button"
+                                [disabled]="isStartingCountdown() || buzzerCountdown() !== null || isPaused()"
+                                (click)="startBuzzerCountdown(false)">
+                            ▶ Empezar cuenta atrás
+                        </button>
+                        <button class="btn btn-warning btn-lg" type="button"
+                                [disabled]="isStartingCountdown() || buzzerCountdown() !== null || isPaused()"
+                                (click)="startBuzzerCountdown(true)">
+                            🤡 Cuenta atrás de broma
+                        </button>
+                    </div>
+                    <span class="host-controls-hint">Nadie puede pulsar hasta que lances la de verdad</span>
                 </div>
             }
 
@@ -521,10 +542,17 @@
 }
 
 @if (buzzerCountdown(); as n) {
-    <div class="buzzer-countdown" [class.go]="n === '¡YA!'" aria-live="assertive">
+    <div class="buzzer-countdown" [class.go]="n === '¡YA!'" [class.troll]="n === 'troll'" aria-live="assertive">
         @for (k of [n]; track k) {
             <div class="countdown-halftone" aria-hidden="true"></div>
-            <span class="countdown-number">{{ n }}</span>
+            @if (n === 'troll') {
+                <div class="countdown-troll">
+                    <span class="countdown-number">¡Ah, no!</span>
+                    <span class="troll-sub">Es broma 🤡</span>
+                </div>
+            } @else {
+                <span class="countdown-number">{{ n }}</span>
+            }
         }
     </div>
 }

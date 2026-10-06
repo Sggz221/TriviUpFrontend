@@ -289,6 +289,14 @@
     font-variant-numeric: tabular-nums;
 }
 
+// Botones del anfitrión para lanzar la cuenta atrás del pulsador
+.buzzer-host-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
 // Pulsador aún cerrado durante el banner y la cuenta atrás
 .buzzer-btn.locked {
     animation: none;

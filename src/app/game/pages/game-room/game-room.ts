@@ -101,16 +101,22 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     isDynamic = signal<boolean>(false);
     /** Pregunta de pulsador: el pulsador sigue abierto y todavía no responde nadie. */
     buzzerOpen = signal<boolean>(false);
-    /** Pulsador aún cerrado: se está mostrando el banner o la cuenta atrás (el servidor rechaza pulsar antes). */
+    /** Pulsador aún cerrado: esperando al anfitrión o en plena cuenta atrás (el servidor rechaza pulsar antes). */
     buzzerLocked = signal<boolean>(false);
-    /** Número de la cuenta atrás del pulsador en pantalla (3, 2, 1, ¡YA!). */
+    /** Pulsador esperando a que el anfitrión lance la cuenta atrás de verdad. */
+    buzzerWaiting = signal<boolean>(false);
+    isStartingCountdown = signal<boolean>(false);
+    /** Lo que se ve de la cuenta atrás en pantalla (5…1, ¡YA!, o la broma). */
     buzzerCountdown = signal<string | null>(null);
+    static readonly BUZZER_TROLL = 'troll';
     private buzzerTimers: ReturnType<typeof setTimeout>[] = [];
     /** Cuándo termina la cuenta atrás (performance.now), para congelarla si se pausa. */
     private buzzerLockEndsAt: number | null = null;
     /** Lo que le quedaba a la cuenta atrás al pausar. */
     private pausedBuzzerLockMs: number | null = null;
-    private static readonly BUZZER_COUNTDOWN_MS = 3000;
+    /** Lo que se queda en pantalla el "¡YA!" y el "¡Ah, no! Es broma" de la cuenta atrás de broma. */
+    private static readonly BUZZER_GO_MS = 1250;
+    private static readonly BUZZER_TROLL_MS = 2250;
     isBuzzing = signal<boolean>(false);
 
     // ---- Pregunta de colores: todos imitan un color y el que más se acerca responde ----
@@ -471,43 +477,88 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     /**
-     * Pulsador: espera `lockMs` (banner y cuenta atrás) antes de dejar pulsar. Los últimos 3 s muestran
-     * 3, 2, 1 y "¡YA!" con pitidos; al abrirse empieza a correr el tiempo para pulsar.
+     * Pulsador esperando al anfitrión: nadie puede pulsar ni corre el tiempo hasta que lance la cuenta atrás.
      */
-    private startBuzzerLock(lockMs: number, timeLimit: number): void {
+    private waitForBuzzerCountdown(timeLimit: number): void {
         this.clearBuzzerLock();
         this.clearTimerInterval();
-        if (lockMs <= 0) {
-            this.startLocalTimer(timeLimit);
-            return;
-        }
-
+        this.buzzerWaiting.set(true);
         this.buzzerLocked.set(true);
-        this.buzzerLockEndsAt = performance.now() + lockMs;
         this.localTimeRemaining.set(timeLimit);
-        const countdown = GameRoomComponent.BUZZER_COUNTDOWN_MS;
-        [3, 2, 1].forEach((n, i) => {
-            const at = lockMs - countdown + i * 1000;
-            if (at < 0) return;
+    }
+
+    /**
+     * Cuenta atrás del pulsador (5, 4, 3, 2, 1, ¡YA!) con pitidos. De verdad, al llegar al "¡YA!" se puede pulsar y
+     * empieza a correr el tiempo. De broma, tras el "¡YA!" sale "¡Ah, no! Es broma" con risas enlatadas y el pulsador
+     * sigue cerrado. `remainingMs` < `countdownMs` al reconectar con la cuenta atrás ya empezada.
+     */
+    private runBuzzerCountdown(remainingMs: number, fake: boolean, timeLimit: number): void {
+        this.clearBuzzerLock();
+        this.clearTimerInterval();
+        this.buzzerWaiting.set(fake);
+        this.buzzerLocked.set(true);
+        this.localTimeRemaining.set(timeLimit);
+        if (!fake) this.buzzerLockEndsAt = performance.now() + remainingMs;
+
+        for (let n = Math.ceil(remainingMs / 1000); n >= 1; n--) {
+            const at = Math.max(0, remainingMs - n * 1000);
             this.buzzerTimers.push(setTimeout(() => {
                 this.buzzerCountdown.set(String(n));
                 this.audioService.playCountdownBeep();
             }, at));
-        });
+        }
         this.buzzerTimers.push(setTimeout(() => {
-            this.buzzerLocked.set(false);
-            this.buzzerLockEndsAt = null;
             this.buzzerCountdown.set('¡YA!');
             this.audioService.playGo();
+            if (fake) return;
+            this.buzzerLocked.set(false);
+            this.buzzerLockEndsAt = null;
             this.startLocalTimer(timeLimit);
-        }, lockMs));
-        this.buzzerTimers.push(setTimeout(() => this.buzzerCountdown.set(null), lockMs + 700));
+        }, remainingMs));
+
+        const goEnds = remainingMs + GameRoomComponent.BUZZER_GO_MS;
+        if (fake) {
+            this.buzzerTimers.push(setTimeout(() => {
+                this.buzzerCountdown.set(GameRoomComponent.BUZZER_TROLL);
+                this.audioService.playLaughTrack();
+            }, goEnds));
+            this.buzzerTimers.push(setTimeout(() => this.buzzerCountdown.set(null), goEnds + GameRoomComponent.BUZZER_TROLL_MS));
+        } else {
+            this.buzzerTimers.push(setTimeout(() => this.buzzerCountdown.set(null), goEnds));
+        }
+    }
+
+    /** Anfitrión: lanza la cuenta atrás del pulsador, de verdad o de broma. */
+    async startBuzzerCountdown(fake: boolean): Promise<void> {
+        const question = this.currentQuestion();
+        if (!question || this.isStartingCountdown() || this.buzzerCountdown() !== null) return;
+        this.isStartingCountdown.set(true);
+        try {
+            await this.gameSignalrService.startBuzzerCountdown(this.roomCode(), question.id, fake);
+        } catch (error) {
+            this.showToast(this.hubErrorMessage(error, 'No se pudo empezar la cuenta atrás'), 'error');
+        } finally {
+            this.isStartingCountdown.set(false);
+        }
+    }
+
+    /** Estado del pulsador al empezar la pregunta (o al reconectar): esperando, en cuenta atrás o ya abierto. */
+    private startBuzzerFromTurn(data: TurnStartedDto | null, timeLimit: number): void {
+        if (data?.buzzerWaitingForHost) {
+            this.waitForBuzzerCountdown(timeLimit);
+        } else if ((data?.buzzerLockedRemainingMs ?? 0) > 0) {
+            this.runBuzzerCountdown(data!.buzzerLockedRemainingMs!, false, timeLimit);
+        } else {
+            this.clearBuzzerLock();
+            this.startLocalTimer(timeLimit);
+        }
     }
 
     private clearBuzzerLock(): void {
         this.buzzerTimers.forEach(t => clearTimeout(t));
         this.buzzerTimers = [];
         this.buzzerLocked.set(false);
+        this.buzzerWaiting.set(false);
         this.buzzerLockEndsAt = null;
         this.buzzerCountdown.set(null);
     }
@@ -630,7 +681,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                         if (pendingResult.correctAnswerIndex >= 0) this.revealedQuestionId.set(question.id);
                     }
                     if (this.buzzerOpen() && !this.isPaused()) {
-                        this.startBuzzerLock(lastTurn?.buzzerLockedRemainingMs ?? 0, this.gameSignalrService.timeRemaining());
+                        this.startBuzzerFromTurn(lastTurn, this.gameSignalrService.timeRemaining());
                     } else if ((this.isMyTurn() || this.colorOpen()) && !this.isPaused()) {
                         this.startLocalTimer(this.gameSignalrService.timeRemaining());
                     }
@@ -880,7 +931,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 this.startLocalTimer(data.timeLimit);
             } else if (data.buzzerOpen) {
                 // Pulsador: todos ven la cuenta atrás y después corre el tiempo para pulsar.
-                this.startBuzzerLock(data.buzzerLockedRemainingMs ?? 0, data.timeLimit);
+                this.startBuzzerFromTurn(data, data.timeLimit);
             } else if (data.colorOpen) {
                 // Prueba de colores abierta: todos ven correr el tiempo.
                 this.startLocalTimer(data.timeLimit);
@@ -997,6 +1048,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 this.clearBuzzerLock();
                 this.buzzerLocked.set(true);
             }
+            // Una cuenta atrás de broma en pantalla se corta; el pulsador sigue esperando al anfitrión
+            if (this.buzzerWaiting() && this.buzzerCountdown() !== null) this.waitForBuzzerCountdown(this.turnTimeLimit());
         });
 
         // Game resumed
@@ -1006,10 +1059,17 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             if (this.pausedBuzzerLockMs !== null) {
                 const lockMs = this.pausedBuzzerLockMs;
                 this.pausedBuzzerLockMs = null;
-                this.startBuzzerLock(lockMs, this.turnTimeLimit());
+                this.runBuzzerCountdown(lockMs, false, this.turnTimeLimit());
             } else {
                 this.startLocalTimer(data.timeRemaining);
             }
+        });
+
+        // Pulsador: el anfitrión lanzó la cuenta atrás (de verdad o de broma)
+        this.gameSignalrService.onBuzzerCountdown.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+            if (data.questionId !== this.currentQuestion()?.id || !this.buzzerOpen()) return;
+            this.turnTimeLimit.set(data.timeLimit);
+            this.runBuzzerCountdown(data.countdownMs, data.fake, data.timeLimit);
         });
 
         // Ocarina: quien la toca bien se lleva la pregunta y la melodía vuelve a sonar para todos

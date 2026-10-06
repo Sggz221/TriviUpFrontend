@@ -308,6 +308,62 @@ export class AudioService {
         this.playNoise(0.3, 7000, 0.08, { type: 'highpass' });
     }
 
+    /**
+     * Sílaba con voz sintetizada: una sierra (cuerdas vocales) pasada por dos filtros de formante de la vocal
+     * "a", con un golpe de aire al principio. Sirve para las risas enlatadas.
+     */
+    private playVoiced(pitch: number, duration: number, at: number, gainValue: number): void {
+        if (!this.canPlaySfx()) return;
+        try {
+            const ctx = this.getAudioContext();
+            const start = ctx.currentTime + at;
+            const end = start + duration;
+            const source = ctx.createOscillator();
+            source.type = 'sawtooth';
+            source.frequency.setValueAtTime(pitch * 1.08, start);
+            source.frequency.exponentialRampToValueAtTime(pitch * 0.9, end);
+
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.exponentialRampToValueAtTime(Math.max(gainValue * this.sfxVolumeSignal(), 0.0002), start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, end);
+
+            // Formantes de la "a" (≈ 800 y 1200 Hz)
+            [[800, 6], [1200, 8]].forEach(([freq, q]) => {
+                const formant = ctx.createBiquadFilter();
+                formant.type = 'bandpass';
+                formant.frequency.value = freq;
+                formant.Q.value = q;
+                source.connect(formant).connect(gain);
+            });
+            gain.connect(this.getSfxBus(ctx));
+            source.start(start);
+            source.stop(end + 0.02);
+            // La "h" del "ja"
+            this.playNoise(0.05, 1500, gainValue * 0.5, { at });
+        } catch (error) {
+            console.warn('[AudioService] Error playing voice:', error);
+        }
+    }
+
+    /** Risas enlatadas (~2 s): un público de varias voces riéndose "ja-ja-ja" a destiempo, que crece y se apaga. */
+    playLaughTrack(): void {
+        const voices = 7;
+        for (let v = 0; v < voices; v++) {
+            const pitch = 160 + Math.random() * 220;
+            let at = Math.random() * 0.25;
+            const syllables = 6 + Math.floor(Math.random() * 6);
+            for (let i = 0; i < syllables && at < 2; i++) {
+                // Más fuerte al principio, se apaga al final
+                const level = 0.05 * (1 - at / 2.2);
+                this.playVoiced(pitch * (1 - i * 0.015), 0.09 + Math.random() * 0.05, at, level);
+                at += 0.15 + Math.random() * 0.08;
+            }
+        }
+        // Murmullo del público debajo
+        this.playNoise(2, 900, 0.05, { type: 'bandpass', q: 0.6, attack: 0.3 });
+    }
+
     /** Descarga eléctrica (50/50, ocultar texto). */
     playZap(): void {
         this.playTone(1800, 0.25, 'sawtooth', 0.1, { slideTo: 120 });

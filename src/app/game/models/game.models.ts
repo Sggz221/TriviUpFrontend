@@ -111,8 +111,10 @@ export interface TurnStartedDto {
     ocarinaMelody?: OcarinaNote[] | null;
     /** Lo que le queda a la melodía por sonar, en ms (0 = ya se puede tocar). */
     ocarinaListenRemainingMs?: number;
-    /** Lo que falta para poder pulsar (banner + cuenta atrás 3-2-1), en ms (0 = ya se puede). */
+    /** Lo que falta para poder pulsar en una cuenta atrás ya lanzada, en ms (0 = ya se puede o no ha empezado). */
     buzzerLockedRemainingMs?: number;
+    /** Pulsador esperando a que el anfitrión lance la cuenta atrás de verdad. */
+    buzzerWaitingForHost?: boolean;
 }
 
 /** Figura musical de una nota (se dibuja así y marca su duración al sonar). */
@@ -172,6 +174,15 @@ export interface BuzzerWonDto {
 /** Presencial: el anfitrión quitó el cartel de la Llamada. */
 export interface CallDismissedDto {
     questionId: number;
+}
+
+/** Pulsador: el anfitrión lanzó la cuenta atrás (de broma acaba en "¡Ah, no!" y no abre el pulsador). */
+export interface BuzzerCountdownDto {
+    questionId: number;
+    fake: boolean;
+    countdownMs: number;
+    /** Segundos para pulsar una vez abierto. */
+    timeLimit: number;
 }
 
 /** Presencial: el anfitrión marcó (o desmarcó, con null) una opción. */

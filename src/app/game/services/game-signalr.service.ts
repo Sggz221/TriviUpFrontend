@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, CallDismissedDto, HostQuestionInfoDto, ColorHsb, ColorSubmittedDto, ColorChallengeResultDto, OcarinaWonDto } from '../models/game.models';
+import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, CallDismissedDto, BuzzerCountdownDto, HostQuestionInfoDto, ColorHsb, ColorSubmittedDto, ColorChallengeResultDto, OcarinaWonDto } from '../models/game.models';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 import { colorDeFase } from '../../cuestionarios/models/fase-color';
 import { AuthService } from '../../auth/auth.service';
@@ -69,6 +69,7 @@ export class GameSignalrService {
     private comodinUsed$ = new Subject<ComodinUsedDto>();
     private answerMarked$ = new Subject<AnswerMarkedDto>();
     private callDismissed$ = new Subject<CallDismissedDto>();
+    private buzzerCountdown$ = new Subject<BuzzerCountdownDto>();
     private colorSubmitted$ = new Subject<ColorSubmittedDto>();
     private colorChallengeResult$ = new Subject<ColorChallengeResultDto>();
     private ocarinaWon$ = new Subject<OcarinaWonDto>();
@@ -129,6 +130,7 @@ export class GameSignalrService {
     onComodinUsed = this.comodinUsed$.asObservable();
     onAnswerMarked = this.answerMarked$.asObservable();
     onCallDismissed = this.callDismissed$.asObservable();
+    onBuzzerCountdown = this.buzzerCountdown$.asObservable();
     /** Último TurnStarted recibido (para recuperar robo/comodines si el componente se suscribe tarde). */
     lastTurnStarted = signal<TurnStartedDto | null>(null);
 
@@ -354,6 +356,11 @@ export class GameSignalrService {
             } : t);
             this.comodinUsed$.next(data);
         });
+        this.hubConnection.on('BuzzerCountdown', (data: BuzzerCountdownDto) => {
+            console.log('[GameSignalr] Event: BuzzerCountdown', data);
+            this.buzzerCountdown$.next(data);
+        });
+
         this.hubConnection.on('CallDismissed', (data: CallDismissedDto) => {
             console.log('[GameSignalr] Event: CallDismissed', data);
             this.lastTurnStarted.update(t => t && t.question.id === data.questionId ? { ...t, callActive: false } : t);
@@ -580,6 +587,14 @@ export class GameSignalrService {
     /**
      * Presencial: remove the Llamada banner for everyone (requires owner)
      */
+    /**
+     * Pulsador: el anfitrión lanza la cuenta atrás, de verdad o de broma (requires owner)
+     */
+    async startBuzzerCountdown(roomCode: string, questionId: number, fake: boolean): Promise<void> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        return this.hubConnection.invoke('StartBuzzerCountdown', roomCode, questionId, fake);
+    }
+
     async dismissCall(roomCode: string, questionId: number): Promise<void> {
         if (!this.hubConnection) throw new Error('Hub not connected');
         return this.hubConnection.invoke('DismissCall', roomCode, questionId);
