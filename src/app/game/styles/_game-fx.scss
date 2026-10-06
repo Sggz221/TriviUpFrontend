@@ -1,0 +1,101 @@
+// ============ Efectos de la partida: tipografía de impacto, tramas cómic y golpes ============
+// Tokens (--font-display, --font-game, --fx-*) y @property --dot en src/styles.css.
+// Los keyframes se copian en cada componente que importa este parcial (Angular los aísla por componente).
+
+// Titular de impacto: Climate Crisis con degradado, borde negro y sombra de tinta desplazada.
+@mixin display-title($gradient: var(--fx-gradient), $stroke: 0.06em) {
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 0.95;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    background: $gradient;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: $stroke var(--fx-ink);
+    paint-order: stroke fill;
+    filter: drop-shadow(0.06em 0.07em 0 var(--fx-ink));
+}
+
+// Texto del juego en Blinker, grueso y espaciado.
+@mixin game-label($weight: 800) {
+    font-family: var(--font-game);
+    font-weight: $weight;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+// Trama de puntos tipo cómic: puntos de tamaño --dot sobre una máscara radial desde $origin.
+// Cerca del origen los puntos crecen hasta juntarse; animando --dot y --reach se "extiende".
+@mixin halftone($color, $origin: center, $cell: 14px) {
+    background-image: radial-gradient(circle, #{$color} var(--dot), transparent calc(var(--dot) + 0.6px));
+    background-size: $cell $cell;
+    background-position: center;
+    -webkit-mask-image: radial-gradient(circle at #{$origin}, #000 0%, #000 calc(var(--reach, 60%) * 0.35), transparent var(--reach, 60%));
+    mask-image: radial-gradient(circle at #{$origin}, #000 0%, #000 calc(var(--reach, 60%) * 0.35), transparent var(--reach, 60%));
+}
+
+// Rayos de cómic girando detrás de un titular.
+@mixin speed-rays($color: rgba(255, 255, 255, 0.12), $count: 24) {
+    background: repeating-conic-gradient(from 0deg, #{$color} 0deg calc(360deg / #{$count} / 2), transparent calc(360deg / #{$count} / 2) calc(360deg / #{$count}));
+    border-radius: 50%;
+}
+
+// Borde y sombra de tinta para tarjetas/chips estilo cómic.
+@mixin ink-box($shadow: 4px) {
+    border: 3px solid var(--fx-ink);
+    box-shadow: $shadow $shadow 0 var(--fx-ink);
+}
+
+@keyframes impact-slam {
+    0% { transform: scale(2.6) rotate(-6deg); opacity: 0; }
+    35% { transform: scale(0.88) rotate(2deg); opacity: 1; }
+    52% { transform: scale(1.08) rotate(-1deg); }
+    68% { transform: scale(0.97) rotate(0); }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+@keyframes screen-shake {
+    0%, 100% { transform: translate(0, 0); }
+    15% { transform: translate(-8px, 4px) rotate(-0.6deg); }
+    30% { transform: translate(7px, -5px) rotate(0.5deg); }
+    45% { transform: translate(-5px, -3px); }
+    60% { transform: translate(4px, 3px); }
+    80% { transform: translate(-2px, 1px); }
+}
+
+@keyframes flash-burst {
+    0% { opacity: 0.95; }
+    100% { opacity: 0; }
+}
+
+@keyframes rays-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes halftone-spread {
+    0% { --dot: 0px; --reach: 0%; }
+    60% { --dot: 6px; }
+    100% { --dot: 7.5px; --reach: 140%; }
+}
+
+@keyframes halftone-close {
+    0% { --dot: 7.5px; --reach: 150%; }
+    100% { --dot: 2px; --reach: 30%; }
+}
+
+@keyframes count-pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.35); }
+    100% { transform: scale(1); }
+}
+
+@keyframes wobble {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-10px) rotate(-2deg); }
+    40% { transform: translateX(9px) rotate(2deg); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(4px); }
+}

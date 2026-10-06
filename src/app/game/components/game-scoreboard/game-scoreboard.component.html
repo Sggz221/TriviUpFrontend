@@ -1,5 +1,5 @@
-<div class="scoreboard">
-  <header class="scoreboard-header">
+<div class="scoreboard" [class.dramatic]="dramatic" [class.drumroll]="current() === 'drum'" [class.winner-moment]="current() === 'p1'">
+  <header class="scoreboard-header" [class.step-hidden]="!shown('headline')">
     <h2 class="scoreboard-headline">{{ headline }}</h2>
     @if (quizTitle) {
       <p class="scoreboard-quiz">{{ quizTitle }}</p>
@@ -12,67 +12,23 @@
   @if (podiumCount() > 0) {
     <div class="podium" [attr.data-count]="podiumCount()">
       @if (second()) {
-        <article class="pedestal place-2" style="--delay: 0.08s">
-          <div class="medal" aria-hidden="true">2</div>
-          <div class="pedestal-body">
-            <p class="pedestal-name" [title]="second()!.username">{{ second()!.username }}</p>
-            @if (isOwner(second()!)) {
-              <span class="owner-chip">Anfitrión</span>
-            }
-            <p class="pedestal-score">{{ second()!.finalScore }} <span>pts</span></p>
-            <p class="pedestal-stats">
-              <span class="ok">{{ second()!.correctAnswers }} aciertos</span>
-              <span class="pct">{{ percentage(second()!) }}%</span>
-            </p>
-          </div>
-          <div class="plinth" aria-hidden="true"></div>
-        </article>
+        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: second()!, place: 2, visible: shown('p2') }" />
       }
-
       @if (first()) {
-        <article class="pedestal place-1" style="--delay: 0s">
-          <div class="medal" aria-hidden="true">1</div>
-          <div class="pedestal-body">
-            <p class="pedestal-name" [title]="first()!.username">{{ first()!.username }}</p>
-            @if (isOwner(first()!)) {
-              <span class="owner-chip">Anfitrión</span>
-            }
-            <p class="pedestal-score">{{ first()!.finalScore }} <span>pts</span></p>
-            <p class="pedestal-stats">
-              <span class="ok">{{ first()!.correctAnswers }} aciertos</span>
-              <span class="pct">{{ percentage(first()!) }}%</span>
-            </p>
-          </div>
-          <div class="plinth" aria-hidden="true"></div>
-        </article>
+        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: first()!, place: 1, visible: shown('p1') }" />
       }
-
       @if (third()) {
-        <article class="pedestal place-3" style="--delay: 0.16s">
-          <div class="medal" aria-hidden="true">3</div>
-          <div class="pedestal-body">
-            <p class="pedestal-name" [title]="third()!.username">{{ third()!.username }}</p>
-            @if (isOwner(third()!)) {
-              <span class="owner-chip">Anfitrión</span>
-            }
-            <p class="pedestal-score">{{ third()!.finalScore }} <span>pts</span></p>
-            <p class="pedestal-stats">
-              <span class="ok">{{ third()!.correctAnswers }} aciertos</span>
-              <span class="pct">{{ percentage(third()!) }}%</span>
-            </p>
-          </div>
-          <div class="plinth" aria-hidden="true"></div>
-        </article>
+        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: third()!, place: 3, visible: shown('p3') }" />
       }
     </div>
   }
 
   @if (restPlayers().length > 0) {
-    <div class="rest-block">
+    <div class="rest-block" [class.step-hidden]="dramatic && !shown('headline')">
       <h3 class="rest-title">Clasificación</h3>
       <ul class="rest-list">
         @for (player of restPlayers(); track player.userId) {
-          <li class="rest-row">
+          <li class="rest-row" [class.step-hidden]="!shownRest(player)">
             <span class="rest-rank">{{ player.rank }}</span>
             <div class="rest-info">
               <span class="rest-name" [title]="player.username">{{ player.username }}</span>
@@ -80,7 +36,7 @@
                 <span class="owner-chip">Anfitrión</span>
               }
             </div>
-            <span class="rest-score">{{ player.finalScore }} pts</span>
+            <span class="rest-score">{{ displayScore(player) }} pts</span>
             <span class="rest-stats">
               <span class="ok">{{ player.correctAnswers }}</span>
               <span class="pct">{{ percentage(player) }}%</span>
@@ -90,4 +46,55 @@
       </ul>
     </div>
   }
+
+  @if (revealing()) {
+    <button type="button" class="skip-btn" (click)="skip()">Saltar ⏭</button>
+  }
 </div>
+
+<ng-template #pedestal let-player let-place="place" let-visible="visible">
+  <article class="pedestal" [class]="'place-' + place" [class.step-hidden]="!visible">
+    @if (place === 1) {
+      <div class="crown" aria-hidden="true">👑</div>
+    }
+    <div class="medal" aria-hidden="true">{{ place }}</div>
+    <div class="pedestal-body">
+      <p class="pedestal-name" [title]="player.username">{{ player.username }}</p>
+      @if (isOwner(player)) {
+        <span class="owner-chip">Anfitrión</span>
+      }
+      <p class="pedestal-score">{{ displayScore(player) }} <span>pts</span></p>
+      <p class="pedestal-stats">
+        <span class="ok">{{ player.correctAnswers }} aciertos</span>
+        <span class="pct">{{ percentage(player) }}%</span>
+      </p>
+    </div>
+    <div class="plinth" aria-hidden="true">
+      @if (place === 1 && !visible) {
+        <span class="plinth-mystery">?</span>
+      }
+    </div>
+  </article>
+</ng-template>
+
+@if (winnerSplash() && first()) {
+  <div class="winner-splash" role="status" aria-live="assertive">
+    <div class="winner-rays" aria-hidden="true"></div>
+    <div class="winner-halftone" aria-hidden="true"></div>
+    <div class="winner-flash" aria-hidden="true"></div>
+    <div class="winner-text">
+      <span class="winner-label">¡Ganador!</span>
+      <span class="winner-crown" aria-hidden="true">👑</span>
+      <span class="winner-name">{{ first()!.username }}</span>
+    </div>
+  </div>
+}
+
+@if (dramatic && shown('p1')) {
+  <div class="fx-confetti" aria-hidden="true">
+    @for (c of confettiPieces; track $index) {
+      <i [style.left]="c.left" [style.background]="c.color" [style.--delay]="c.delay" [style.--dur]="c.duration"
+         [style.--dx]="c.dx" [style.--rot]="c.rot" [class.round]="c.round"></i>
+    }
+  </div>
+}

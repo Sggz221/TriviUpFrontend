@@ -1,5 +1,6 @@
 import { Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { Player } from '../../models/game.models';
+import { countUp, prefersReducedMotion } from '../../utils/count-up';
 
 /** Fila del marcador con su posición y puntuación antes y después de la fase. */
 interface Fila {
@@ -144,32 +145,17 @@ export class PhaseLeaderboardComponent implements OnInit {
             return;
         }
 
-        const reducirMovimiento = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (reducirMovimiento) {
+        if (prefersReducedMotion()) {
             this.animando.set(true);
             this.progreso.set(1);
             return;
         }
 
-        // Conteo basado en el tiempo transcurrido con un intervalo (no con requestAnimationFrame): en una
-        // pestaña en segundo plano rAF se pausa y el marcador se quedaría a medias; así llega al valor final.
-        let intervalo: ReturnType<typeof setInterval> | null = null;
-        const arranque = setTimeout(() => {
-            this.animando.set(true);
-            const inicio = performance.now();
-            intervalo = setInterval(() => {
-                const t = Math.min((performance.now() - inicio) / DURACION_CONTEO_MS, 1);
-                this.progreso.set(1 - Math.pow(1 - t, 3));
-                if (t >= 1 && intervalo) {
-                    clearInterval(intervalo);
-                    intervalo = null;
-                }
-            }, 30);
-        }, PAUSA_INICIAL_MS);
-
+        const arranque = setTimeout(() => this.animando.set(true), PAUSA_INICIAL_MS);
+        const cancelar = countUp(DURACION_CONTEO_MS, p => this.progreso.set(p), PAUSA_INICIAL_MS);
         this.destroyRef.onDestroy(() => {
             clearTimeout(arranque);
-            if (intervalo) clearInterval(intervalo);
+            cancelar();
         });
     }
 

@@ -1,0 +1,335 @@
+// Efectos de la partida: banners de fase y turno, cartel de resultado.
+@use '../../styles/game-fx' as fx;
+
+// Banner grande de inicio de fase (antes del "Turno de:")
+.phase-banner {
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    pointer-events: none;
+    font-family: var(--font-game);
+    background:
+        radial-gradient(circle at center, color-mix(in oklab, var(--fase) 55%, transparent) 0%, transparent 70%),
+        color-mix(in oklab, var(--base-100) 85%, transparent);
+    animation: phase-backdrop 2.8s ease both;
+
+    // Rayos de cómic girando detrás del número
+    &::before {
+        content: '';
+        position: absolute;
+        width: 180vmax;
+        height: 180vmax;
+        @include fx.speed-rays(color-mix(in oklab, var(--fase) 22%, transparent), 28);
+        animation: rays-spin 14s linear infinite;
+    }
+
+    // Trama de puntos que se abre desde el centro
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        @include fx.halftone(color-mix(in oklab, var(--fase) 55%, transparent), center, 16px);
+        animation: halftone-spread 1s ease-out both;
+        opacity: 0.55;
+    }
+}
+
+.phase-banner-text {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 1rem;
+    text-align: center;
+    animation: phase-pop 2.8s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+
+.phase-banner-label {
+    @include fx.game-label(900);
+    font-size: clamp(1.25rem, 5vw, 2.25rem);
+    letter-spacing: 0.5em;
+    color: #fff;
+    -webkit-text-stroke: 1px var(--fx-ink);
+    paint-order: stroke fill;
+    text-shadow: 3px 3px 0 var(--fx-ink);
+}
+
+.phase-banner-numero {
+    @include fx.display-title(linear-gradient(180deg, #fff 0%, var(--fase) 55%, color-mix(in oklab, var(--fase) 60%, #000) 100%), 0.05em);
+    font-size: clamp(6rem, 30vw, 15rem);
+
+    small { font-size: 0.3em; }
+}
+
+.phase-banner-nombre {
+    @include fx.display-title(var(--fx-gradient), 0.07em);
+    margin-top: 0.75rem;
+    max-width: 90vw;
+    font-size: clamp(1.5rem, 7vw, 3.5rem);
+    line-height: 1.1;
+    word-break: break-word;
+}
+
+@keyframes phase-backdrop {
+    0% { opacity: 0; }
+    10%, 82% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes phase-pop {
+    0% { transform: scale(2.6) rotate(-6deg); opacity: 0; }
+    12% { transform: scale(0.88) rotate(2deg); opacity: 1; }
+    18% { transform: scale(1.08) rotate(-1deg); }
+    24% { transform: scale(1) rotate(0); }
+    82% { transform: scale(1.04); opacity: 1; }
+    100% { transform: scale(0.6) translateY(-30vh); opacity: 0; }
+}
+
+// ============ Turn Result Overlay ============
+.turn-result-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    overflow: hidden;
+    font-family: var(--font-game);
+    background: rgba(5, 5, 12, 0.72);
+    animation: fadeIn 0.2s ease;
+
+    &.is-correct { --tone: #22c55e; --tone-dots: rgba(74, 222, 128, 0.55); }
+    &.is-wrong { --tone: #ef4444; --tone-dots: rgba(248, 113, 113, 0.55); }
+}
+
+// Trama cómic que se expande y cubre la pantalla
+.result-halftone {
+    position: absolute;
+    inset: -10%;
+    @include fx.halftone(var(--tone-dots), center, 18px);
+    animation: halftone-spread 0.7s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+
+    .is-wrong & {
+        @include fx.halftone(var(--tone-dots), 50% 0%, 18px);
+    }
+}
+
+.result-rays {
+    position: absolute;
+    width: 160vmax;
+    height: 160vmax;
+    @include fx.speed-rays(rgba(255, 255, 255, 0.1), 32);
+    animation: rays-spin 10s linear infinite, fadeIn 0.4s ease;
+}
+
+.result-flash {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    pointer-events: none;
+    animation: flash-burst 0.35s ease-out both;
+
+    .is-wrong & { background: #ff2a2a; }
+}
+
+// Estallido tipo "¡POW!" con el texto
+.result-burst {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: clamp(1.5rem, 5vw, 3rem) clamp(2rem, 8vw, 4.5rem);
+    max-width: calc(100vw - 2rem);
+    box-sizing: border-box;
+    text-align: center;
+    animation: impact-slam 0.55s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+
+    // Estrella de cómic detrás del texto
+    &::before {
+        content: '';
+        position: absolute;
+        inset: -18% -10%;
+        z-index: -1;
+        background: var(--tone);
+        clip-path: polygon(50% 0%, 61% 18%, 82% 6%, 78% 29%, 100% 32%, 84% 50%, 100% 68%, 78% 71%, 82% 94%, 61% 82%, 50% 100%, 39% 82%, 18% 94%, 22% 71%, 0% 68%, 16% 50%, 0% 32%, 22% 29%, 18% 6%, 39% 18%);
+    }
+
+    // Contorno negro de la estrella (clip-path recorta los bordes, así que va en otra capa)
+    &::after {
+        content: '';
+        position: absolute;
+        inset: calc(-18% - 6px) calc(-10% - 6px);
+        z-index: -2;
+        background: var(--fx-ink);
+        transform: translate(6px, 6px);
+        clip-path: polygon(50% 0%, 61% 18%, 82% 6%, 78% 29%, 100% 32%, 84% 50%, 100% 68%, 78% 71%, 82% 94%, 61% 82%, 50% 100%, 39% 82%, 18% 94%, 22% 71%, 0% 68%, 16% 50%, 0% 32%, 22% 29%, 18% 6%, 39% 18%);
+    }
+
+    .is-wrong & { animation: impact-slam 0.45s ease both, wobble 0.5s 0.4s ease both; }
+}
+
+.result-word {
+    @include fx.display-title(var(--fx-gradient), 0.07em);
+    font-size: clamp(1.8rem, 8vw, 4.25rem);
+
+    .is-wrong & { @include fx.display-title(linear-gradient(180deg, #fff 0%, #ffd0d0 40%, #ff6a6a 100%), 0.07em); }
+}
+
+.result-points {
+    @include fx.game-label(900);
+    font-size: clamp(1.25rem, 5vw, 2.25rem);
+    letter-spacing: 0.06em;
+    color: #fff;
+    -webkit-text-stroke: 1.5px var(--fx-ink);
+    paint-order: stroke fill;
+    text-shadow: 3px 3px 0 var(--fx-ink);
+    font-variant-numeric: tabular-nums;
+    animation: count-pop 0.4s 0.45s ease both;
+}
+
+// Fallo: el tablero se sacude y pierde color un momento. Se aplica a los hijos y no al tablero: un
+// transform/filter en el tablero haría que el cartel (position: fixed, dentro de él) quedara encerrado en su caja.
+.game-board.fx-shake > :not(.turn-result-overlay):not(app-comodin-hand) {
+    animation: screen-shake 0.5s ease both, board-desaturate 1.2s ease both;
+}
+
+@keyframes board-desaturate {
+    0% { filter: saturate(1); }
+    20% { filter: saturate(0.2) brightness(0.85); }
+    100% { filter: saturate(1); }
+}
+
+// Banner "Turno de: Nombre": franja diagonal que cruza la pantalla con el nombre en Climate Crisis
+.turn-banner {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    pointer-events: none;
+    font-family: var(--font-game);
+    background: color-mix(in oklab, #05050c 55%, transparent);
+    animation: banner-backdrop 2s ease both;
+}
+
+.turn-banner-strip {
+    position: absolute;
+    left: -10%;
+    right: -10%;
+    height: clamp(9rem, 34vw, 17rem);
+    transform: skewY(-6deg);
+    background: linear-gradient(90deg, #1d2bff 0%, #8b2cff 50%, #ff2c8b 100%);
+    border-block: 6px solid var(--fx-ink);
+    box-shadow: 0 10px 0 var(--fx-ink);
+    overflow: hidden;
+    animation: strip-sweep 2s cubic-bezier(0.7, 0, 0.2, 1) both;
+
+    // Trama de puntos desde el borde
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        @include fx.halftone(rgba(0, 0, 0, 0.35), 0% 50%, 14px);
+        --dot: 6px;
+        --reach: 70%;
+    }
+
+    // Líneas de velocidad
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(90deg, transparent 0 60px, rgba(255, 255, 255, 0.18) 60px 64px, transparent 64px 140px);
+        animation: speed-lines 0.5s linear infinite;
+    }
+}
+
+.turn-banner-text {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0 1rem;
+    max-width: 96vw;
+    text-align: center;
+    transform: rotate(-6deg);
+}
+
+.turn-banner-label {
+    @include fx.game-label(900);
+    font-size: clamp(1.1rem, 4vw, 2rem);
+    letter-spacing: 0.35em;
+    color: #fff;
+    -webkit-text-stroke: 1px var(--fx-ink);
+    paint-order: stroke fill;
+    text-shadow: 3px 3px 0 var(--fx-ink);
+    animation: label-slide 2s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+.turn-banner-name {
+    @include fx.display-title(var(--fx-gradient), 0.06em);
+    font-size: clamp(2.25rem, 11vw, 6.5rem);
+    word-break: break-word;
+    animation: name-slam 2s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+
+    // Textos largos ("El primero en pulsar responde"): Climate Crisis es muy ancha
+    &.long { font-size: clamp(1.4rem, 6vw, 3.5rem); line-height: 1.05; }
+}
+
+@keyframes banner-backdrop {
+    0% { opacity: 0; }
+    10%, 82% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes strip-sweep {
+    0% { transform: skewY(-6deg) translateX(-110%); }
+    15% { transform: skewY(-6deg) translateX(0); }
+    80% { transform: skewY(-6deg) translateX(0); }
+    100% { transform: skewY(-6deg) translateX(110%); }
+}
+
+@keyframes speed-lines {
+    to { background-position: -140px 0; }
+}
+
+@keyframes label-slide {
+    0%, 8% { transform: translateX(-60vw); opacity: 0; }
+    20% { transform: translateX(0); opacity: 1; }
+    80% { transform: translateX(0); opacity: 1; }
+    100% { transform: translateX(60vw); opacity: 0; }
+}
+
+@keyframes name-slam {
+    0%, 10% { transform: scale(2.8) rotate(-4deg); opacity: 0; }
+    22% { transform: scale(0.9) rotate(1deg); opacity: 1; }
+    28% { transform: scale(1.06); }
+    34% { transform: scale(1); }
+    80% { transform: scale(1.04); opacity: 1; }
+    100% { transform: scale(1.04) translateX(60vw); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .game-room-container::before,
+    .phase-banner::before,
+    .phase-banner-text, .turn-banner-strip, .turn-banner-strip::after,
+    .turn-banner-label, .turn-banner-name,
+    .result-rays, .result-burst, .result-points,
+    .game-board.fx-shake > *, .turn-info .your-turn,
+    .turn-timer, .turn-timer.time-danger,
+    .answer-btn.btn-success, .answer-btn.btn-error,
+    .turn-result-indicator { animation: none; }
+    .result-halftone, .phase-banner::after { animation: none; --dot: 6px; --reach: 140%; }
+    .result-flash, .fx-confetti { display: none; }
+}

@@ -44,98 +44,260 @@ export class AudioService {
         return this.audioContext;
     }
 
-    private playTone(frequency: number, duration: number, type: OscillatorType = 'sine', gainValue: number = 0.3): void {
-        if (this.isMuted() || this.sfxVolumeSignal() === 0) return;
+    /** Salida común de los efectos: pasa por un compresor suave para que las capas no saturen. */
+    private sfxBus: DynamicsCompressorNode | null = null;
+    private noiseBuffer: AudioBuffer | null = null;
+
+    private canPlaySfx(): boolean {
+        return typeof window !== 'undefined' && !this.isMuted() && this.sfxVolumeSignal() > 0;
+    }
+
+    private getSfxBus(ctx: AudioContext): AudioNode {
+        if (!this.sfxBus) {
+            this.sfxBus = ctx.createDynamicsCompressor();
+            this.sfxBus.threshold.value = -12;
+            this.sfxBus.ratio.value = 4;
+            this.sfxBus.connect(ctx.destination);
+        }
+        return this.sfxBus;
+    }
+
+    /**
+     * Nota sintetizada programada en el reloj de audio (sin setTimeout).
+     * `at` es el desfase en segundos desde ahora; `slideTo` hace un barrido de frecuencia hasta el final.
+     */
+    private playTone(frequency: number, duration: number, type: OscillatorType = 'sine', gainValue: number = 0.3,
+                     opts: { at?: number; slideTo?: number; attack?: number; vibrato?: number; detune?: number } = {}): void {
+        if (!this.canPlaySfx()) return;
 
         try {
             const ctx = this.getAudioContext();
+            void ctx.resume().catch(() => { /* espera al primer gesto */ });
+            const start = ctx.currentTime + (opts.at ?? 0);
+            const end = start + duration;
+            const attack = Math.min(opts.attack ?? 0.005, duration / 2);
+            const peak = gainValue * this.sfxVolumeSignal();
+
             const oscillator = ctx.createOscillator();
             const gainNode = ctx.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(ctx.destination);
-
             oscillator.type = type;
-            oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+            oscillator.detune.value = opts.detune ?? 0;
+            oscillator.frequency.setValueAtTime(frequency, start);
+            if (opts.slideTo) oscillator.frequency.exponentialRampToValueAtTime(opts.slideTo, end);
 
-            gainNode.gain.setValueAtTime(gainValue * this.sfxVolumeSignal(), ctx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+            if (opts.vibrato) {
+                const lfo = ctx.createOscillator();
+                const lfoGain = ctx.createGain();
+                lfo.frequency.value = 6;
+                lfoGain.gain.value = opts.vibrato;
+                lfo.connect(lfoGain).connect(oscillator.frequency);
+                lfo.start(start);
+                lfo.stop(end);
+            }
 
-            oscillator.start(ctx.currentTime);
-            oscillator.stop(ctx.currentTime + duration);
+            gainNode.gain.setValueAtTime(0.0001, start);
+            gainNode.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0002), start + attack);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, end);
+
+            oscillator.connect(gainNode).connect(this.getSfxBus(ctx));
+            oscillator.start(start);
+            oscillator.stop(end + 0.02);
         } catch (error) {
             console.warn('[AudioService] Error playing tone:', error);
+        }
+    }
+
+    /** Ráfaga de ruido filtrado: golpes, soplidos, redobles y brillos metálicos. */
+    private playNoise(duration: number, filterFreq: number, gainValue: number,
+                      opts: { at?: number; type?: BiquadFilterType; sweepTo?: number; q?: number; attack?: number } = {}): void {
+        if (!this.canPlaySfx()) return;
+
+        try {
+            const ctx = this.getAudioContext();
+            if (!this.noiseBuffer) {
+                const length = ctx.sampleRate * 2;
+                this.noiseBuffer = ctx.createBuffer(1, length, ctx.sampleRate);
+                const data = this.noiseBuffer.getChannelData(0);
+                for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+            }
+            const start = ctx.currentTime + (opts.at ?? 0);
+            const end = start + duration;
+            const attack = Math.min(opts.attack ?? 0.003, duration / 2);
+
+            const source = ctx.createBufferSource();
+            source.buffer = this.noiseBuffer;
+            const filter = ctx.createBiquadFilter();
+            filter.type = opts.type ?? 'bandpass';
+            filter.Q.value = opts.q ?? 1;
+            filter.frequency.setValueAtTime(filterFreq, start);
+            if (opts.sweepTo) filter.frequency.exponentialRampToValueAtTime(opts.sweepTo, end);
+
+            const gainNode = ctx.createGain();
+            gainNode.gain.setValueAtTime(0.0001, start);
+            gainNode.gain.exponentialRampToValueAtTime(Math.max(gainValue * this.sfxVolumeSignal(), 0.0002), start + attack);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, end);
+
+            source.connect(filter).connect(gainNode).connect(this.getSfxBus(ctx));
+            source.start(start, Math.random());
+            source.stop(end + 0.02);
+        } catch (error) {
+            console.warn('[AudioService] Error playing noise:', error);
         }
     }
 
     /** Clic corto de la ruleta al pasar el puntero por cada hueco. */
     playRuletaTick(): void {
         this.playTone(1400, 0.03, 'square', 0.06);
+        this.playNoise(0.02, 4000, 0.05, { type: 'highpass' });
     }
 
     /** Golpe final al detenerse la ruleta. */
     playRuletaStop(): void {
-        this.playTone(220, 0.25, 'triangle', 0.3);
-        setTimeout(() => this.playTone(440, 0.3, 'sine', 0.2), 90);
+        this.playImpact(0.8);
+        this.playTone(440, 0.3, 'triangle', 0.2, { at: 0.09 });
+        this.playTone(659.25, 0.4, 'triangle', 0.16, { at: 0.09 });
     }
 
+    /** Acierto: arpegio brillante con chispa de ruido y nota final sostenida. */
     playCorrect(): void {
-        // Pleasant ascending tones for correct answer
-        this.playTone(523.25, 0.1, 'sine', 0.25); // C5
-        setTimeout(() => this.playTone(659.25, 0.15, 'sine', 0.25), 100); // E5
-        setTimeout(() => this.playTone(783.99, 0.2, 'sine', 0.2), 200); // G5
+        [523.25, 659.25, 783.99].forEach((f, i) => {
+            this.playTone(f, 0.14, 'square', 0.1, { at: i * 0.08 });
+            this.playTone(f, 0.18, 'triangle', 0.18, { at: i * 0.08 });
+        });
+        this.playTone(1046.5, 0.5, 'triangle', 0.2, { at: 0.24, vibrato: 6 });
+        this.playTone(1046.5, 0.5, 'square', 0.06, { at: 0.24, detune: 8 });
+        this.playNoise(0.25, 8000, 0.08, { at: 0.24, type: 'highpass' });
     }
 
+    /** Fallo: zumbido de concurso que cae, con golpe sordo. */
     playWrong(): void {
-        // Descending tone for wrong answer
-        this.playTone(300, 0.15, 'sawtooth', 0.15);
-        setTimeout(() => this.playTone(200, 0.3, 'sawtooth', 0.1), 150);
+        this.playTone(220, 0.45, 'sawtooth', 0.14, { slideTo: 110 });
+        this.playTone(233, 0.45, 'sawtooth', 0.12, { slideTo: 116 });
+        this.playImpact(0.6);
     }
 
     /** Carta quemándose: chisporroteo (clics agudos al azar) sobre un soplo grave que se apaga. */
     playBurn(): void {
-        this.playTone(90, 0.9, 'sawtooth', 0.08);
+        this.playNoise(0.9, 600, 0.12, { type: 'lowpass', sweepTo: 200, attack: 0.1 });
         for (let i = 0; i < 14; i++) {
-            setTimeout(() => this.playTone(1200 + Math.random() * 2200, 0.02, 'square', 0.05), 40 + Math.random() * 900);
+            this.playTone(1200 + Math.random() * 2200, 0.02, 'square', 0.05, { at: 0.04 + Math.random() * 0.9 });
         }
     }
 
-    /** Tono de llamada de teléfono: dos pitidos dobles ("brrr-brrr") al empezar la llamada. */
+    /** Comodín de la llamada: melodía corta de móvil (~1,5 s) con vibrato. */
     playCallRing(): void {
-        [0, 120, 600, 720].forEach(at => {
-            setTimeout(() => {
-                this.playTone(440, 0.1, 'sine', 0.2);
-                this.playTone(480, 0.1, 'sine', 0.2);
-            }, at);
-        });
+        const E6 = 1318.5, D6 = 1174.7, Fs5 = 740, Gs5 = 830.6, Cs6 = 1108.7, B5 = 987.8, D5 = 587.3, E5 = 659.3;
+        const melody: [number, number][] = [
+            [E6, 0.12], [D6, 0.12], [Fs5, 0.24], [Gs5, 0.24],
+            [Cs6, 0.12], [B5, 0.12], [D5, 0.24], [E5, 0.36],
+        ];
+        let t = 0;
+        for (const [freq, len] of melody) {
+            this.playTone(freq, len * 0.9, 'square', 0.07, { at: t, vibrato: 4 });
+            this.playTone(freq, len * 0.9, 'triangle', 0.14, { at: t });
+            t += len * 0.85;
+        }
     }
 
     /** Sorpresa al cambiar la pregunta de un rival: barrido que sube y "traqueteo" de dados. */
     playReroll(): void {
-        [220, 277.18, 349.23, 440, 554.37, 698.46].forEach((freq, i) => {
-            setTimeout(() => this.playTone(freq, 0.09, 'square', 0.12), i * 55);
-        });
-        [0, 1, 2, 3].forEach(i => {
-            setTimeout(() => this.playTone(1800 - i * 200, 0.03, 'square', 0.07), 40 + i * 80);
-        });
-        // Remate: golpe grave y acorde brillante
-        setTimeout(() => this.playTone(130.81, 0.35, 'sawtooth', 0.22), 380);
-        setTimeout(() => this.playTone(523.25, 0.4, 'triangle', 0.2), 400);
-        setTimeout(() => this.playTone(783.99, 0.4, 'triangle', 0.16), 400);
+        [220, 277.18, 349.23, 440, 554.37, 698.46].forEach((freq, i) => this.playTone(freq, 0.09, 'square', 0.12, { at: i * 0.055 }));
+        [0, 1, 2, 3].forEach(i => this.playNoise(0.03, 2500 + i * 300, 0.12, { at: 0.04 + i * 0.08, q: 6 }));
+        this.playImpact(0.8, 0.38);
+        this.playTone(523.25, 0.4, 'triangle', 0.2, { at: 0.4 });
+        this.playTone(783.99, 0.4, 'triangle', 0.16, { at: 0.4 });
     }
 
+    /** Empieza tu turno: soplido rápido y doble nota ascendente. */
     playTurnStart(): void {
-        // Short notification sound
-        this.playTone(440, 0.08, 'square', 0.15);
-        setTimeout(() => this.playTone(880, 0.1, 'square', 0.12), 80);
+        this.playWhoosh();
+        this.playTone(440, 0.08, 'square', 0.14, { at: 0.12 });
+        this.playTone(880, 0.16, 'square', 0.12, { at: 0.2 });
+        this.playTone(880, 0.2, 'triangle', 0.14, { at: 0.2 });
     }
 
     playGameOver(): void {
-        // Victory fanfare-like sound
-        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-        notes.forEach((freq, i) => {
-            setTimeout(() => this.playTone(freq, 0.2, 'sine', 0.2), i * 150);
+        this.playFanfare();
+    }
+
+    /** Apuesta: caja registradora ("cha-ching"). */
+    playMoney(): void {
+        // "cha": cajón metálico
+        this.playNoise(0.08, 3000, 0.25, { q: 2 });
+        this.playTone(180, 0.06, 'square', 0.1);
+        // "ching": dos campanas agudas con armónicos inarmónicos
+        [[2093, 0.12], [2637, 0.2]].forEach(([f, at]) => {
+            this.playTone(f, 0.6, 'sine', 0.18, { at });
+            this.playTone(f * 2.76, 0.4, 'sine', 0.06, { at });
+            this.playTone(f * 5.4, 0.2, 'sine', 0.03, { at });
         });
+        this.playNoise(0.3, 9000, 0.05, { at: 0.12, type: 'highpass' });
+    }
+
+    /** Apuesta ganada: lluvia de monedas que suben. */
+    playCoinsWin(): void {
+        [988, 1319, 1568, 1976, 2349, 2637].forEach((f, i) => {
+            this.playTone(f, 0.12, 'square', 0.06, { at: i * 0.07 });
+            this.playTone(f * 1.5, 0.18, 'sine', 0.1, { at: i * 0.07 + 0.03 });
+        });
+    }
+
+    /** Apuesta perdida: "womp womp" descendente. */
+    playLose(): void {
+        [[392, 0], [370, 0.3], [349, 0.6]].forEach(([f, at]) =>
+            this.playTone(f, 0.28, 'sawtooth', 0.1, { at, slideTo: f * 0.94, vibrato: 3 }));
+        this.playTone(330, 0.7, 'sawtooth', 0.1, { at: 0.9, slideTo: 262, vibrato: 8 });
+    }
+
+    /** Soplido rápido (entradas de banner, robo). */
+    playWhoosh(at = 0): void {
+        this.playNoise(0.35, 400, 0.18, { at, sweepTo: 4000, q: 1.5, attack: 0.15 });
+    }
+
+    /** Golpe grave con chasquido; `strength` 0-1. */
+    playImpact(strength = 1, at = 0): void {
+        this.playTone(120, 0.35, 'sine', 0.45 * strength, { at, slideTo: 40 });
+        this.playNoise(0.12, 1200, 0.3 * strength, { at, type: 'lowpass' });
+        this.playNoise(0.04, 5000, 0.12 * strength, { at, type: 'highpass' });
+    }
+
+    /** Redoble de tambor con crescendo durante `ms`. */
+    playDrumroll(ms = 1800): void {
+        const total = ms / 1000;
+        const hits = Math.floor(total / 0.045);
+        for (let i = 0; i < hits; i++) {
+            const k = i / hits;
+            this.playNoise(0.05, 1800, 0.05 + k * 0.2, { at: i * 0.045, q: 0.8 });
+        }
+        this.playTone(80, total, 'sine', 0.15, { attack: total * 0.9 });
+    }
+
+    /** Fanfarria de trompetas (sierras desafinadas) para el ganador. */
+    playFanfare(): void {
+        const chord = (freqs: number[], at: number, len: number, g = 0.07) => freqs.forEach(f => {
+            this.playTone(f, len, 'sawtooth', g, { at, detune: -7, attack: 0.02 });
+            this.playTone(f, len, 'sawtooth', g, { at, detune: 7, attack: 0.02 });
+        });
+        chord([392, 523.25], 0, 0.12);
+        chord([392, 523.25], 0.15, 0.12);
+        chord([392, 523.25], 0.3, 0.12);
+        chord([523.25, 659.25, 783.99], 0.45, 0.4);
+        chord([466.16, 587.33, 698.46], 0.9, 0.3);
+        chord([523.25, 659.25, 783.99, 1046.5], 1.2, 1.2, 0.08);
+        this.playImpact(1, 0.45);
+        this.playNoise(1.4, 7000, 0.06, { at: 1.2, type: 'highpass', attack: 0.05 });
+    }
+
+    /** Tic de reloj o de revelación; `pitch` sube la altura. */
+    playTick(pitch = 1): void {
+        this.playTone(900 * pitch, 0.05, 'square', 0.08);
+        this.playNoise(0.03, 3000 * pitch, 0.08, { q: 4 });
+    }
+
+    /** Descarga eléctrica (50/50, ocultar texto). */
+    playZap(): void {
+        this.playTone(1800, 0.25, 'sawtooth', 0.1, { slideTo: 120 });
+        this.playNoise(0.2, 6000, 0.12, { sweepTo: 500, q: 3 });
     }
 
     // ============ Música de fondo (canal independiente de los efectos) ============

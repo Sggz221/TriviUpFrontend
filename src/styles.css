@@ -1,6 +1,8 @@
 /* Import Google Font - Outfit */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Odibee+Sans&display=swap');
+/* Partida: Climate Crisis (titulares de impacto) y Blinker (texto del juego) */
+@import url('https://fonts.googleapis.com/css2?family=Blinker:wght@400;600;700;800;900&family=Climate+Crisis&display=swap');
 /* Import Tailwind CSS */
 @import "tailwindcss";
 
@@ -88,6 +90,63 @@ body {
 
 .triviup {
     font-family: 'Odibee Sans', system-ui, -apple-system, sans-serif;
+}
+
+/* Partida: tokens de efectos (ver src/app/game/styles/_game-fx.scss) */
+:root {
+    --font-display: 'Climate Crisis', 'Blinker', system-ui, sans-serif;
+    --font-game: 'Blinker', 'Outfit', system-ui, sans-serif;
+    --fx-ink: #0b0b12;
+    --fx-gradient: linear-gradient(180deg, #fff35c 0%, #ffb02e 45%, #ff4f6d 100%);
+    --fx-gradient-cool: linear-gradient(180deg, #a6ffcb 0%, #3fe0a0 45%, #12b5cb 100%);
+    --fx-gradient-hot: linear-gradient(180deg, #ffd1a6 0%, #ff6a3d 50%, #c4123a 100%);
+}
+
+/* Tamaño de los puntos de las tramas tipo cómic; registrado para poder animarlo. */
+@property --dot {
+    syntax: '<length>';
+    inherits: true;
+    initial-value: 0px;
+}
+
+@property --reach {
+    syntax: '<percentage>';
+    inherits: true;
+    initial-value: 60%;
+}
+
+/* Confeti de la partida: cada pieza trae sus variables inline (src/app/game/utils/confetti.ts) */
+.fx-confetti {
+    position: fixed;
+    inset: 0;
+    z-index: 105;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.fx-confetti > i {
+    position: absolute;
+    top: 0;
+    width: 10px;
+    height: 16px;
+    border: 2px solid var(--fx-ink);
+    border-radius: 2px;
+    animation: fx-confetti-fall var(--dur, 3s) cubic-bezier(0.25, 0.4, 0.5, 1) var(--delay, 0s) both;
+}
+
+.fx-confetti > i.round {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+@keyframes fx-confetti-fall {
+    0% { transform: translate3d(0, -10vh, 0) rotate(0deg); opacity: 1; }
+    100% { transform: translate3d(var(--dx, 0), 110vh, 0) rotate(var(--rot, 720deg)); opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fx-confetti { display: none; }
 }
 
 /* Answer Shape Colors - Using DaisyUI semantic colors */

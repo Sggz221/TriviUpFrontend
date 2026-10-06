@@ -1,9 +1,13 @@
+@use '../../styles/game-fx' as fx;
+
 :host {
   display: block;
   width: 100%;
 }
 
 .scoreboard {
+  position: relative;
+  font-family: var(--font-game);
   width: 100%;
   max-width: 42rem;
   margin: 0 auto;
@@ -18,10 +22,9 @@
 
 .scoreboard-headline {
   margin: 0;
-  font-size: clamp(1.6rem, 4vw, 2.1rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--warning);
+  @include fx.display-title(var(--fx-gradient), 0.06em);
+  font-size: clamp(1.5rem, 6vw, 2.6rem);
+  line-height: 1.05;
 }
 
 .scoreboard-quiz {
@@ -352,4 +355,268 @@
     align-items: center;
     justify-content: flex-start;
   }
+}
+
+/* ---- Comic: medallas y pedestales con tinta ---- */
+.medal {
+  font-family: var(--font-game);
+  font-weight: 900 !important;
+  font-size: 1.15rem !important;
+  border: 3px solid var(--fx-ink) !important;
+  box-shadow: 3px 3px 0 var(--fx-ink) !important;
+}
+
+.pedestal-score {
+  font-variant-numeric: tabular-nums;
+}
+
+.place-1 .pedestal-name {
+  @include fx.display-title(var(--fx-gradient), 0.05em);
+  font-size: 1.15rem;
+  white-space: nowrap;
+  filter: drop-shadow(2px 2px 0 var(--fx-ink));
+}
+
+.crown {
+  font-size: 2rem;
+  line-height: 1;
+  margin-bottom: -0.3rem;
+  filter: drop-shadow(2px 2px 0 var(--fx-ink));
+  animation: crown-bob 2.4s ease-in-out infinite;
+}
+
+.plinth {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  // Trama cómic en los escalones del podio
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    @include fx.halftone(rgba(0, 0, 0, 0.28), 50% 0%, 9px);
+    --dot: 3px;
+    --reach: 140%;
+  }
+}
+
+.place-1 .plinth { box-shadow: 0 0 40px color-mix(in oklab, var(--warning) 50%, transparent); }
+
+.skip-btn {
+  position: absolute;
+  top: -0.25rem;
+  right: 0;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  border: 2px solid var(--fx-ink);
+  box-shadow: 2px 2px 0 var(--fx-ink);
+  background: var(--base-300);
+  color: var(--base-content);
+  font-family: var(--font-game);
+  font-weight: 800;
+  font-size: 0.8rem;
+  cursor: pointer;
+  z-index: 3;
+}
+
+/* ---- Revelación dramática ---- */
+.dramatic {
+  .scoreboard-header:not(.step-hidden) .scoreboard-headline {
+    animation: impact-slam 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+
+  .scoreboard-header.step-hidden,
+  .rest-block.step-hidden,
+  .rest-row.step-hidden {
+    visibility: hidden;
+  }
+
+  .rest-row:not(.step-hidden) {
+    animation: row-rise 0.45s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+  }
+
+  // Pedestal aún sin revelar: solo se intuye el hueco
+  .pedestal {
+    animation: none;
+  }
+
+  .pedestal.step-hidden {
+    .medal, .pedestal-body, .crown { visibility: hidden; }
+    .plinth { transform: scaleY(0.25); transform-origin: bottom; filter: brightness(0.35) saturate(0); }
+  }
+
+  .pedestal:not(.step-hidden) {
+    .plinth { animation: plinth-rise 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; transform-origin: bottom; }
+    .medal { animation: impact-slam 0.5s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+    .pedestal-body { animation: body-drop 0.5s 0.1s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+  }
+
+  .place-1:not(.step-hidden) {
+    .pedestal-body, .medal, .crown { animation-delay: 2s; }
+    .crown { animation: crown-drop 0.6s 2s cubic-bezier(0.2, 1.4, 0.4, 1) both, crown-bob 2.4s 2.6s ease-in-out infinite; }
+  }
+}
+
+// Redoble: todo se oscurece y el hueco del ganador tiembla con un "?"
+.drumroll {
+  &::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 40%, transparent 0%, rgba(0, 0, 0, 0.75) 60%);
+    animation: fade-in 0.4s ease both;
+  }
+
+  .place-1 .plinth {
+    z-index: 1;
+    transform: scaleY(1) !important;
+    filter: none !important;
+    transition: transform 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+    animation: drum-shake 0.12s linear infinite;
+  }
+}
+
+.plinth-mystery {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  color: #fff;
+  -webkit-text-stroke: 2px var(--fx-ink);
+  paint-order: stroke fill;
+  opacity: 0;
+
+  .drumroll & { opacity: 1; animation: count-pop 0.5s ease-in-out infinite; }
+}
+
+.winner-moment {
+  animation: screen-shake 0.6s ease both;
+}
+
+// Nombre del ganador a pantalla completa
+.winner-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(circle, #3b1d7a 0%, #12081f 75%);
+  animation: splash-life 2.3s ease both;
+}
+
+.winner-rays {
+  position: absolute;
+  width: 200vmax;
+  height: 200vmax;
+  @include fx.speed-rays(rgba(255, 214, 64, 0.16), 36);
+  animation: rays-spin 8s linear infinite;
+}
+
+.winner-halftone {
+  position: absolute;
+  inset: -10%;
+  @include fx.halftone(rgba(255, 79, 109, 0.4), center, 20px);
+  animation: halftone-spread 0.9s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.winner-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  animation: flash-burst 0.5s ease-out both;
+}
+
+.winner-text {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 1rem;
+  max-width: 96vw;
+  text-align: center;
+}
+
+.winner-label {
+  @include fx.game-label(900);
+  font-size: clamp(1.25rem, 5vw, 2.25rem);
+  letter-spacing: 0.4em;
+  color: #fff;
+  -webkit-text-stroke: 1px var(--fx-ink);
+  paint-order: stroke fill;
+  text-shadow: 3px 3px 0 var(--fx-ink);
+  animation: impact-slam 0.5s 0.1s ease both;
+}
+
+.winner-crown {
+  font-size: clamp(3rem, 12vw, 6rem);
+  line-height: 1;
+  filter: drop-shadow(4px 4px 0 var(--fx-ink));
+  animation: crown-drop 0.6s 0.25s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.winner-name {
+  @include fx.display-title(var(--fx-gradient), 0.06em);
+  font-size: clamp(2.5rem, 13vw, 8rem);
+  word-break: break-word;
+  animation: impact-slam 0.7s 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+.fx-confetti { z-index: 210; }
+
+@keyframes row-rise {
+  from { opacity: 0; transform: translateY(40px) scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes plinth-rise {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@keyframes body-drop {
+  from { opacity: 0; transform: translateY(-60px) scale(1.1); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes crown-drop {
+  0% { opacity: 0; transform: translateY(-120px) rotate(-30deg); }
+  70% { opacity: 1; transform: translateY(8px) rotate(6deg); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes crown-bob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-5px) rotate(4deg); }
+}
+
+@keyframes drum-shake {
+  0%, 100% { translate: 0 0; }
+  25% { translate: -3px 1px; }
+  75% { translate: 3px -1px; }
+}
+
+@keyframes splash-life {
+  0% { opacity: 0; }
+  6%, 82% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.15); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pedestal, .crown, .winner-moment, .drumroll .place-1 .plinth,
+  .dramatic .rest-row, .dramatic .pedestal * { animation: none !important; }
+  .fx-confetti, .winner-splash { display: none; }
 }

@@ -20,13 +20,15 @@ import { IconComponent } from '../../../shared/components/icon/icon.component';
 import { SoundControlsComponent } from '../../../shared/components/sound-controls/sound-controls.component';
 import { clearAnonymousIdentity, getOrCreateAnonymousUserId, getSavedAnonymousIdentity, saveAnonymousIdentity, touchAnonymousIdentity } from '../../utils/anonymous-identity.utils';
 import { clearLastGame, saveLastGame, touchLastGame } from '../../utils/last-game.utils';
+import { countUp } from '../../utils/count-up';
+import { confettiPieces } from '../../utils/confetti';
 
 @Component({
     selector: 'app-game-room',
     standalone: true,
     imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent, SoundControlsComponent, OcarinaChallengeComponent, ComodinHandComponent],
     templateUrl: './game-room.html',
-    styleUrls: ['./game-room.scss', './game-room-comodines.scss', './game-room-presencial.scss']
+    styleUrls: ['./game-room.scss', './game-room-fx.scss', './game-room-comodines.scss', './game-room-presencial.scss']
 })
 export class GameRoomComponent implements OnInit, OnDestroy {
     private route = inject(ActivatedRoute);
@@ -59,6 +61,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     showResultOverlay = signal<boolean>(false);
     private resultOverlayTimeout: ReturnType<typeof setTimeout> | null = null;
     private static readonly PRESENCIAL_OVERLAY_MS = 2500;
+    /** Puntos del cartel de resultado: cuentan desde 0 hasta los ganados (o perdidos). */
+    resultPoints = signal(0);
+    private cancelResultCount: (() => void) | null = null;
+    /** Piezas de confeti del cartel de acierto (posición y color salen del CSS). */
+    readonly confettiPieces = confettiPieces(40);
     lastTurnResult = signal<TurnResult | null>(null);
     gameResults = signal<GameResult | null>(null);
     isPaused = signal<boolean>(false);
@@ -153,14 +160,16 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     });
     /** Última pregunta cuya respuesta se ha revelado: su curiosidad es la que ve el anfitrión. */
     private revealedQuestionId = signal<number | null>(null);
-    /** Curiosidad que ve el anfitrión: la de la última pregunta revelada (nunca la de una aún sin resolver). */
-    hostCuriosidad = computed(() => {
-        const id = this.revealedQuestionId();
-        return this.isOwner() && id !== null ? this.gameSignalrService.hostCuriosidades().get(id) ?? null : null;
-    });
-    /** La curiosidad visible es de la pregunta en pantalla (si no, de la anterior, ya resuelta). */
+    /** La curiosidad solo se ve con la respuesta de la pregunta en pantalla ya revelada; al pasar de pregunta se oculta. */
     hostCuriosidadEsActual = computed(() =>
         this.showTurnResult() && this.revealedQuestionId() === this.currentQuestion()?.id);
+    /** Curiosidad que ve el anfitrión: la de la pregunta en pantalla, solo una vez revelada su respuesta. */
+    hostCuriosidad = computed(() => {
+        const id = this.revealedQuestionId();
+        return this.isOwner() && id !== null && this.hostCuriosidadEsActual()
+            ? this.gameSignalrService.hostCuriosidades().get(id) ?? null
+            : null;
+    });
     isConfirming = signal<boolean>(false);
     isAdvancing = signal<boolean>(false);
 
@@ -395,6 +404,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
         if (this.phaseBannerTimeout) clearTimeout(this.phaseBannerTimeout);
         if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
+        this.cancelResultCount?.();
         if (this.colorResultTimeout) clearTimeout(this.colorResultTimeout);
         if (this.rerollTimeout) clearTimeout(this.rerollTimeout);
         if (this.callTimer) clearInterval(this.callTimer);
@@ -427,6 +437,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.bannerTimeout = setTimeout(() => {
             this.turnBannerLabel.set(label);
             this.turnBanner.set(texto ?? this.getCurrentTurnPlayerName());
+            // Franja que entra y golpe cuando cae el nombre
+            this.audioService.playWhoosh();
+            this.audioService.playImpact(0.5, 0.42);
             this.bannerTimeout = setTimeout(() => this.turnBanner.set(null), 2000);
         }, retrasoMs);
     }
@@ -438,6 +451,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.lastBannerPhase = fase.numero;
         if (this.phaseBannerTimeout) clearTimeout(this.phaseBannerTimeout);
         this.phaseBanner.set(fase);
+        this.audioService.playWhoosh();
+        this.audioService.playImpact(1, 0.3);
         this.phaseBannerTimeout = setTimeout(() => this.phaseBanner.set(null), GameRoomComponent.PHASE_BANNER_MS);
         return GameRoomComponent.PHASE_BANNER_MS;
     }
@@ -448,6 +463,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (timeLimit <= 0) return;
         this.timerInterval = setInterval(() => {
             this.localTimeRemaining.update(t => Math.max(0, t - 1));
+            const left = this.localTimeRemaining();
+            if (left > 0 && left <= 5 && !this.isPaused()) this.audioService.playTick(1 + (5 - left) * 0.12);
         }, 1000);
     }
 
@@ -822,6 +839,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 this.resultOverlayTimeout = setTimeout(() => this.showResultOverlay.set(false), GameRoomComponent.PRESENCIAL_OVERLAY_MS);
             }
             this.clearTimerInterval();
+            this.cancelResultCount?.();
+            this.resultPoints.set(0);
+            this.cancelResultCount = countUp(600, p => this.resultPoints.set(Math.round(result.pointsEarned * p)), 350);
             if (result.isCorrect) {
                 this.audioService.playCorrect();
             } else {
@@ -867,7 +887,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.gameSignalrService.onGameFinished.pipe(takeUntil(this.destroy$)).subscribe((results) => {
             console.log('[GameRoom] Game finished:', results);
             this.gameResults.set(results);
-            this.audioService.playGameOver();
+            // El podio dramático (GameScoreboardComponent) lleva su propio redoble y fanfarria
             // Partida terminada: ya no hay nada a lo que reconectar
             clearLastGame(this.roomCode());
         });
@@ -1189,32 +1209,41 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 this.spinRuleta(data);
                 break;
             case 'OcultarTexto':
+                this.audioService.playZap();
                 this.textHiddenForId.set(data.targetPlayerId ?? null);
                 this.showToast(`${nombre} oculta el texto de las respuestas de ${this.playerName(data.targetPlayerId)}`, 'info');
                 break;
             case 'CambiarPregunta':
+                this.audioService.playWhoosh();
                 this.showToast(`${nombre} cambia su pregunta`, 'info');
                 break;
             case 'CambiarPreguntaRival':
                 this.announceReroll(data);
                 break;
             case 'Pasar':
+                this.audioService.playWhoosh();
                 this.showToast(`${nombre} pasa la pregunta`, 'info');
                 break;
             case 'CincuentaCincuenta':
+                this.audioService.playZap();
                 this.eliminatedAnswers.update(prev => [...new Set([...prev, ...(data.eliminatedAnswerIndexes ?? [])])]);
                 this.showToast(`${nombre}: ¡50/50! Se eliminan ${data.eliminatedAnswerIndexes?.length ?? 0} respuestas incorrectas`, 'info');
                 break;
             case 'DobleONada':
                 this.doubleOrNothingPlayers.update(ids => [...ids, data.userId]);
+                this.audioService.playDrumroll(700);
+                this.audioService.playImpact(0.9, 0.7);
                 this.showToast(`${nombre}: ¡Doble o nada! (+200 / −100)`, 'info');
                 break;
             case 'Robo':
                 this.stolenById.set(data.userId);
+                this.audioService.playWhoosh();
+                this.audioService.playImpact(0.7, 0.25);
                 this.showToast(`${nombre} roba la pregunta a ${this.playerName(data.stolenFromPlayerId)}`, 'info');
                 break;
             case 'Apuesta':
                 this.bets.update(b => [...b, { userId: data.userId, predictsCorrect: !!data.predictsCorrect }]);
+                this.audioService.playMoney();
                 this.showToast(`${nombre} apuesta a que ${this.playerName(this.turnOwnerId())} ${data.predictsCorrect ? 'acierta' : 'falla'}`, 'info');
                 break;
         }
@@ -1397,6 +1426,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         } else if (result.doubleOrNothing && !result.isCorrect && result.pointsEarned < 0) {
             this.showToast(`${nombre}: Doble o nada fallido (${result.pointsEarned} pts)`, 'error');
         }
+
+        const myBet = (result.bets ?? []).find(b => b.userId === this.myUserId() && !b.refunded);
+        if (myBet) setTimeout(() => myBet.won ? this.audioService.playCoinsWin() : this.audioService.playLose(), 700);
 
         for (const bet of result.bets ?? []) {
             const quien = this.playerName(bet.userId);

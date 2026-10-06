@@ -1,5 +1,8 @@
-import { Component, Input, computed, signal } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { AudioService } from '../../../shared/services/audio.service';
+import { countUp, prefersReducedMotion } from '../../utils/count-up';
+import { confettiPieces } from '../../utils/confetti';
 
 export interface ScoreboardPlayer {
   userId: number;
@@ -11,6 +14,24 @@ export interface ScoreboardPlayer {
   correctPercentage?: number;
 }
 
+/**
+ * Pasos de la revelación dramática, en orden: titular, resto de la clasificación (del último al 4º),
+ * 3º, 2º, redoble y 1º. Cada uno dura lo indicado antes de pasar al siguiente.
+ */
+type RevealKey = 'headline' | `rest:${number}` | 'p3' | 'p2' | 'drum' | 'p1' | 'done';
+
+const PASO_MS: Record<string, number> = {
+  headline: 1300,
+  rest: 550,
+  p3: 1400,
+  p2: 1500,
+  drum: 2100,
+  p1: 2600
+};
+const CONTEO_MS = 900;
+/** Cuánto tarda el nombre del ganador a pantalla completa en dejar paso al podio. */
+const SPLASH_MS = 2300;
+
 @Component({
   selector: 'app-game-scoreboard',
   standalone: true,
@@ -18,7 +39,9 @@ export interface ScoreboardPlayer {
   templateUrl: './game-scoreboard.component.html',
   styleUrl: './game-scoreboard.component.scss'
 })
-export class GameScoreboardComponent {
+export class GameScoreboardComponent implements OnInit, OnDestroy {
+  private audio = inject(AudioService);
+
   private playersSignal = signal<ScoreboardPlayer[]>([]);
   private ownerIdSignal = signal<number | null>(null);
 
@@ -30,6 +53,8 @@ export class GameScoreboardComponent {
   @Input() headline = '¡Partida Terminada!';
   @Input() totalQuestions: number | null = null;
   @Input() durationLabel: string | null = null;
+  /** Revela los puestos poco a poco (último → primero) con sonido. Sin él, todo aparece a la vez (historial). */
+  @Input() dramatic = false;
 
   @Input() set ownerId(value: number | null | undefined) {
     this.ownerIdSignal.set(value ?? null);
@@ -63,6 +88,119 @@ export class GameScoreboardComponent {
     }
     return parts.join(' · ');
   });
+
+  // ---- Revelación dramática ----
+  private sequence: RevealKey[] = [];
+  /** Índice del paso actual dentro de `sequence`; Infinity = todo visible. */
+  private step = signal(Number.POSITIVE_INFINITY);
+  /** Avance 0..1 del conteo de puntos de cada jugador (sin entrada = ya contado). */
+  private scoreProgress = signal<ReadonlyMap<number, number>>(new Map());
+  /** Nombre del ganador a pantalla completa justo al revelarlo. */
+  winnerSplash = signal(false);
+  readonly confettiPieces = confettiPieces(60);
+  private timers: ReturnType<typeof setTimeout>[] = [];
+  private cancels: (() => void)[] = [];
+
+  /** Hay una revelación en curso (para el botón "Saltar"). */
+  revealing = computed(() => this.step() < this.sequence.length - 1);
+  current = computed<RevealKey | null>(() => this.sequence[this.step()] ?? null);
+
+  ngOnInit(): void {
+    if (!this.dramatic || prefersReducedMotion() || this.sortedPlayers().length === 0) return;
+
+    this.sequence = [
+      'headline',
+      ...[...this.restPlayers()].reverse().map(p => `rest:${p.userId}` as RevealKey),
+      ...(this.third() ? ['p3' as const] : []),
+      ...(this.second() ? ['p2' as const] : []),
+      'drum',
+      'p1',
+      'done'
+    ];
+    this.scoreProgress.set(new Map(this.sortedPlayers().map(p => [p.userId, 0])));
+    this.goTo(0);
+  }
+
+  ngOnDestroy(): void {
+    this.clearTimers();
+  }
+
+  shown(key: RevealKey): boolean {
+    const index = this.sequence.indexOf(key);
+    return index < 0 || index <= this.step();
+  }
+
+  shownRest(player: ScoreboardPlayer): boolean {
+    return this.shown(`rest:${player.userId}`);
+  }
+
+  displayScore(player: ScoreboardPlayer): number {
+    const progress = this.scoreProgress().get(player.userId) ?? 1;
+    return Math.round(player.finalScore * progress);
+  }
+
+  skip(): void {
+    this.clearTimers();
+    this.winnerSplash.set(false);
+    this.scoreProgress.set(new Map());
+    this.step.set(Number.POSITIVE_INFINITY);
+  }
+
+  private goTo(index: number): void {
+    this.step.set(index);
+    const key = this.sequence[index];
+    if (!key || key === 'done') return;
+
+    const restIndex = key.startsWith('rest:') ? this.sequence.indexOf(key) - 1 : 0;
+    switch (key) {
+      case 'headline':
+        this.audio.playImpact(0.9);
+        break;
+      case 'p3':
+        this.audio.playImpact(0.6);
+        this.countScore(this.third());
+        break;
+      case 'p2':
+        this.audio.playImpact(0.85);
+        this.countScore(this.second());
+        break;
+      case 'drum':
+        this.audio.playDrumroll(PASO_MS['drum']);
+        break;
+      case 'p1':
+        this.audio.playFanfare();
+        this.winnerSplash.set(true);
+        this.later(() => this.winnerSplash.set(false), SPLASH_MS);
+        this.later(() => this.countScore(this.first()), SPLASH_MS - 400);
+        break;
+      default: {
+        // Resto de la clasificación: tic que sube de tono según se acerca al podio
+        this.audio.playTick(0.8 + restIndex * 0.08);
+        const player = this.restPlayers().find(p => `rest:${p.userId}` === key) ?? null;
+        this.countScore(player);
+      }
+    }
+
+    const wait = PASO_MS[key.startsWith('rest:') ? 'rest' : key] ?? 1000;
+    this.later(() => this.goTo(index + 1), wait);
+  }
+
+  private countScore(player: ScoreboardPlayer | null): void {
+    if (!player) return;
+    this.cancels.push(countUp(CONTEO_MS, p =>
+      this.scoreProgress.update(m => new Map(m).set(player.userId, p))));
+  }
+
+  private later(fn: () => void, ms: number): void {
+    this.timers.push(setTimeout(fn, ms));
+  }
+
+  private clearTimers(): void {
+    this.timers.forEach(clearTimeout);
+    this.timers = [];
+    this.cancels.forEach(cancel => cancel());
+    this.cancels = [];
+  }
 
   percentage(player: ScoreboardPlayer): number {
     if (player.correctPercentage != null) {

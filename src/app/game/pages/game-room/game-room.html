@@ -64,6 +64,7 @@
                     [playerResults]="gameResults()!.playerResults"
                     [quizTitle]="gameResults()!.quizTitle"
                     headline="¡Partida Terminada!"
+                    [dramatic]="true"
                     [totalQuestions]="gameResults()!.totalQuestions"
                     [durationLabel]="formatGameDuration(gameResults()!.gameDuration)"
                 />
@@ -121,7 +122,7 @@
         </div>
     } @else if (currentQuestion()) {
         <!-- Game Playing -->
-        <div class="game-board" [class.calling]="callOn()" [class.has-hand]="canUseComodines() && handCards().length > 0 && !callOn()">
+        <div class="game-board" [class.calling]="callOn()" [class.fx-shake]="showResultOverlay() && showTurnResult() && !lastTurnResult()?.isCorrect && !lastTurnResult()?.passed" [class.has-hand]="canUseComodines() && handCards().length > 0 && !callOn()">
             <app-sound-controls class="sound-toggle" />
 
             @if (callOn()) {
@@ -351,9 +352,7 @@
 
             @if (hostCuriosidad(); as curiosidad) {
                 <aside class="host-curiosidad" aria-live="polite">
-                    <span class="host-curiosidad-label">
-                        💡 {{ hostCuriosidadEsActual() ? 'Curiosidad' : 'Curiosidad de la pregunta anterior' }}
-                    </span>
+                    <span class="host-curiosidad-label">💡 Curiosidad</span>
                     <p>{{ curiosidad }}</p>
                 </aside>
             }
@@ -427,13 +426,31 @@
             </div>
 
             @if (showTurnResult() && showResultOverlay()) {
-                <div class="turn-result-overlay" (click)="isPresencial() && showResultOverlay.set(false)">
+                <div class="turn-result-overlay" [class.is-correct]="lastTurnResult()!.isCorrect" [class.is-wrong]="!lastTurnResult()!.isCorrect"
+                     (click)="isPresencial() && showResultOverlay.set(false)">
+                    <div class="result-halftone" aria-hidden="true"></div>
                     @if (lastTurnResult()!.isCorrect) {
-                        <div class="result-correct">¡Correcto! +{{ lastTurnResult()!.pointsEarned }} puntos</div>
-                    } @else if (lastTurnResult()!.pointsEarned < 0) {
-                        <div class="result-incorrect">Incorrecto {{ lastTurnResult()!.pointsEarned }} puntos</div>
-                    } @else {
-                        <div class="result-incorrect">Incorrecto</div>
+                        <div class="result-rays" aria-hidden="true"></div>
+                    }
+                    <div class="result-flash" aria-hidden="true"></div>
+                    <div class="result-burst" role="status">
+                        @if (lastTurnResult()!.isCorrect) {
+                            <span class="result-word">¡Correcto!</span>
+                            <span class="result-points">+{{ resultPoints() }} puntos</span>
+                        } @else {
+                            <span class="result-word">{{ lastTurnResult()!.passed ? '¡Pasada!' : '¡Fallo!' }}</span>
+                            @if (lastTurnResult()!.pointsEarned < 0) {
+                                <span class="result-points">{{ resultPoints() }} puntos</span>
+                            }
+                        }
+                    </div>
+                    @if (lastTurnResult()!.isCorrect) {
+                        <div class="fx-confetti" aria-hidden="true">
+                            @for (c of confettiPieces; track $index) {
+                                <i [style.left]="c.left" [style.background]="c.color" [style.--delay]="c.delay" [style.--dur]="c.duration"
+                                   [style.--dx]="c.dx" [style.--rot]="c.rot" [class.round]="c.round"></i>
+                            }
+                        </div>
                     }
                 </div>
             }
@@ -502,9 +519,10 @@
 
 @if (turnBanner()) {
     <div class="turn-banner" aria-live="assertive">
+        <div class="turn-banner-strip" aria-hidden="true"></div>
         <div class="turn-banner-text">
             <span class="turn-banner-label">{{ turnBannerLabel() }}</span>
-            <span class="turn-banner-name">{{ turnBanner() }}</span>
+            <span class="turn-banner-name" [class.long]="turnBanner()!.length > 14">{{ turnBanner() }}</span>
         </div>
     </div>
 }
