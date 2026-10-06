@@ -772,6 +772,16 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
     margin-top: 1.5rem;
 }
 
+.results-actions {
+    transition: opacity 0.5s ease;
+
+    // Mientras se revela el podio el botón no estorba; ocupa su sitio para que no salte el diseño
+    &.results-actions-hidden {
+        opacity: 0;
+        visibility: hidden;
+    }
+}
+
 .results-leave-btn {
     border-radius: 1rem;
     padding: 0.75rem 2rem;
