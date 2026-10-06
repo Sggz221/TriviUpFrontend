@@ -287,6 +287,18 @@
     &.long { font-size: clamp(1.4rem, 6vw, 3.5rem); line-height: 1.05; }
 }
 
+// Cambio de pregunta: verde azulado → lima, para distinguirlo de un cambio de turno
+.variant-reroll {
+    .turn-banner-strip { background: linear-gradient(90deg, #0b8f86 0%, #0fb5a6 45%, #b5f23d 100%); }
+    .turn-banner-name { @include fx.display-title(var(--fx-gradient-cool), 0.06em); }
+}
+
+// Pregunta robada: rojo intenso → granate
+.variant-steal {
+    .turn-banner-strip { background: linear-gradient(90deg, #5a0010 0%, #c4123a 50%, #ff2c2c 100%); }
+    .turn-banner-name { @include fx.display-title(linear-gradient(180deg, #ffffff 0%, #ffd1a6 45%, #ff6a3d 100%), 0.06em); }
+}
+
 @keyframes banner-backdrop {
     0% { opacity: 0; }
     10%, 82% { opacity: 1; }

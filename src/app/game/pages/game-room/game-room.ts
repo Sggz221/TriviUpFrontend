@@ -23,6 +23,9 @@ import { clearLastGame, saveLastGame, touchLastGame } from '../../utils/last-gam
 import { countUp } from '../../utils/count-up';
 import { confettiPieces } from '../../utils/confetti';
 
+/** Color del banner central: turno normal, cambio de pregunta o pregunta robada. */
+type TurnBannerVariant = 'turn' | 'reroll' | 'steal';
+
 @Component({
     selector: 'app-game-room',
     standalone: true,
@@ -76,6 +79,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     turnBanner = signal<string | null>(null);
     /** Etiqueta del banner de turno ("Turno de:" o "¡Robo!"). */
     turnBannerLabel = signal<string>('Turno de:');
+    /** Color del banner: turno normal, cambio de pregunta o pregunta robada. */
+    turnBannerVariant = signal<TurnBannerVariant>('turn');
 
     // ---- Comodines (estado de la pregunta en curso) ----
     /** Respuestas eliminadas por la ruleta. */
@@ -113,10 +118,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     private colorQuestionId: number | null = null;
     private static readonly COLOR_RESULT_MS = 6000;
 
-    /** Anuncio del comodín "cambiar la pregunta del rival" (quién la cambia y a quién). */
-    rerollAnnouncement = signal<{ attacker: string; victim: string; toMe: boolean; byMe: boolean } | null>(null);
-    private rerollTimeout: ReturnType<typeof setTimeout> | null = null;
-    private static readonly REROLL_ANNOUNCE_MS = 3200;
+    /**
+     * Banner que debe sustituir al "Turno de:" del próximo TurnStarted: un cambio de pregunta llega primero como
+     * ComodinUsed y justo después como un TurnStarted sin ninguna marca propia.
+     */
+    private pendingBanner: { label: string; variant: TurnBannerVariant } | null = null;
 
     // ---- Pregunta de ocarina: suena una melodía y el primero que la toca responde ----
     ocarinaOpen = signal<boolean>(false);
@@ -228,9 +234,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     canUseRuleta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('Ruleta') && !this.ruletaSpin());
     canUseCincuentaCincuenta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('CincuentaCincuenta')
         && !this.ruletaSpin());
-    /** Pasar: turno propio y sin robo en curso (no se puede pasar una pregunta robada). */
-    canUsePasar = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('Pasar')
-        && !this.isSteal() && !this.ruletaSpin());
     /** El texto de las respuestas está oculto para mí (el anfitrión nunca lo pierde). */
     textoOculto = computed(() => !this.isOwner() && this.textHiddenForId() !== null && this.textHiddenForId() === this.myUserId());
     /** Ocultar texto: ataque fuera de turno, una vez por pregunta y no sobre una pregunta robada. */
@@ -257,7 +260,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         Ruleta: () => this.canUseRuleta(),
         CincuentaCincuenta: () => this.canUseCincuentaCincuenta(),
         CambiarPregunta: () => this.canUseCambiarPregunta(),
-        Pasar: () => this.canUsePasar(),
         DobleONada: () => this.canUseDobleONada(),
         Llamada: () => this.canUseLlamada(),
         Robo: () => this.canRobar(),
@@ -265,7 +267,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         OcultarTexto: () => this.canUseOcultarTexto(),
         Apuesta: () => this.canApostar()
     };
-    private static readonly HAND_TURNO: ComodinTipo[] = ['Ruleta', 'CincuentaCincuenta', 'CambiarPregunta', 'Pasar', 'DobleONada', 'Llamada'];
+    private static readonly HAND_TURNO: ComodinTipo[] = ['Ruleta', 'CincuentaCincuenta', 'CambiarPregunta', 'DobleONada', 'Llamada'];
     private static readonly HAND_ATAQUE: ComodinTipo[] = ['Robo', 'CambiarPreguntaRival', 'OcultarTexto', 'Apuesta'];
 
     /** Cartas de la mano: las de turno en mi turno y las de ataque fuera de él (las que me quedan y están activas). */
@@ -406,7 +408,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
         this.cancelResultCount?.();
         if (this.colorResultTimeout) clearTimeout(this.colorResultTimeout);
-        if (this.rerollTimeout) clearTimeout(this.rerollTimeout);
         if (this.callTimer) clearInterval(this.callTimer);
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
         this.ruletaTimeouts.forEach(t => clearTimeout(t));
@@ -431,11 +432,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         }
     }
 
-    private showTurnBanner(retrasoMs = 0, label = 'Turno de:', texto?: string): void {
+    private showTurnBanner(retrasoMs = 0, label = 'Turno de:', texto?: string, variant: TurnBannerVariant = 'turn'): void {
         if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
         this.turnBanner.set(null);
         this.bannerTimeout = setTimeout(() => {
             this.turnBannerLabel.set(label);
+            this.turnBannerVariant.set(variant);
             this.turnBanner.set(texto ?? this.getCurrentTurnPlayerName());
             // Franja que entra y golpe cuando cae el nombre
             this.audioService.playWhoosh();
@@ -780,8 +782,12 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             // Si cambia el turno con la ruleta aún en pantalla (p. ej. un robo), quitarla ya
             if (this.ruletaSpin()) this.cancelRuleta();
             this.applyTurnState(data);
-            if (data.isSteal) {
-                this.showTurnBanner(0, '¡Robo!', `${this.playerName(data.currentPlayerId)} roba a ${this.playerName(data.turnOwnerId)}`);
+            const pending = this.pendingBanner;
+            this.pendingBanner = null;
+            if (pending) {
+                this.showTurnBanner(0, pending.label, this.playerName(data.currentPlayerId), pending.variant);
+            } else if (data.isSteal) {
+                this.showTurnBanner(0, `¡Pregunta robada a ${this.playerName(data.turnOwnerId)}!`, this.playerName(data.currentPlayerId), 'steal');
             } else if (data.isOcarina && !data.ocarinaOpen) {
                 this.showTurnBanner(0, '¡Melodía tocada!', this.playerName(data.currentPlayerId));
             } else if (data.ocarinaOpen) {
@@ -1175,21 +1181,19 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     /**
-     * Anuncio a pantalla completa de que alguien ha cambiado la pregunta de un rival, con sonido, vibración y
-     * una animación de dados. El afectado lo ve dirigido a él ("te cambia la pregunta").
+     * Cambio de pregunta (propia o de un rival): sonido, vibración para el afectado y el banner "¡Cambiando
+     * pregunta!" en lugar del "Turno de:" que traería el TurnStarted que llega justo después.
      */
     private announceReroll(data: ComodinUsedDto): void {
-        const victimId = data.targetPlayerId ?? null;
-        this.rerollAnnouncement.set({
-            attacker: data.username,
-            victim: this.playerName(victimId),
-            toMe: victimId !== null && victimId === this.myUserId(),
-            byMe: data.userId === this.myUserId()
-        });
+        const victimId = data.tipo === 'CambiarPreguntaRival' ? data.targetPlayerId ?? null : null;
+        const toMe = victimId !== null && victimId === this.myUserId();
+        this.pendingBanner = {
+            label: toMe ? `¡${data.username} te cambia la pregunta!`
+                : victimId !== null ? `¡${data.username} cambia la pregunta!` : '¡Cambiando pregunta!',
+            variant: 'reroll'
+        };
         this.audioService.playReroll();
-        if (victimId === this.myUserId()) navigator.vibrate?.([120, 60, 120]);
-        if (this.rerollTimeout) clearTimeout(this.rerollTimeout);
-        this.rerollTimeout = setTimeout(() => this.rerollAnnouncement.set(null), GameRoomComponent.REROLL_ANNOUNCE_MS);
+        if (toMe) navigator.vibrate?.([120, 60, 120]);
     }
 
     private onComodinUsed(data: ComodinUsedDto): void {
@@ -1214,15 +1218,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 this.showToast(`${nombre} oculta el texto de las respuestas de ${this.playerName(data.targetPlayerId)}`, 'info');
                 break;
             case 'CambiarPregunta':
-                this.audioService.playWhoosh();
-                this.showToast(`${nombre} cambia su pregunta`, 'info');
-                break;
             case 'CambiarPreguntaRival':
                 this.announceReroll(data);
-                break;
-            case 'Pasar':
-                this.audioService.playWhoosh();
-                this.showToast(`${nombre} pasa la pregunta`, 'info');
                 break;
             case 'CincuentaCincuenta':
                 this.audioService.playZap();

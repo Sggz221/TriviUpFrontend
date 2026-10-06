@@ -51,119 +51,6 @@
     &.chip-apuesta.bet-no { background: #b91c1c; }
 }
 
-// Anuncio de "cambiar la pregunta del rival": se nota en toda la sala y más aún para quien la sufre.
-.reroll-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 70;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    pointer-events: none;
-    background: rgb(0 0 0 / 0.45);
-    animation: reroll-fade 3.2s ease-out forwards;
-
-    &.to-me {
-        background: rgb(127 29 29 / 0.6);
-
-        .reroll-card {
-            background: #b91c1c;
-            animation: reroll-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both, reroll-shake 0.5s ease-in-out 0.45s 2;
-        }
-    }
-}
-
-.reroll-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
-    max-width: min(100%, 26rem);
-    padding: 1.5rem 1.75rem;
-    border-radius: 1.5rem;
-    background: #7c3aed;
-    color: #fff;
-    text-align: center;
-    border: 4px solid var(--fx-ink);
-    box-shadow: 8px 8px 0 var(--fx-ink);
-    isolation: isolate;
-    overflow: hidden;
-    animation: reroll-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
-}
-
-.reroll-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    @include fx.halftone(rgba(0, 0, 0, 0.3), 100% 100%, 12px);
-    --dot: 5px;
-    --reach: 90%;
-}
-
-.reroll-card { position: relative; }
-
-.reroll-dice {
-    font-size: 3.5rem;
-    line-height: 1;
-    animation: reroll-spin 0.9s ease-in-out 2;
-}
-
-.reroll-title {
-    margin: 0;
-    @include fx.display-title(var(--fx-gradient), 0.06em);
-    font-size: clamp(1.1rem, 4.5vw, 1.5rem);
-    line-height: 1.2;
-}
-
-.reroll-sub {
-    margin: 0;
-    font-size: 0.9rem;
-    opacity: 0.85;
-}
-
-@keyframes chip-in {
-    from { transform: scale(0.3) rotate(-8deg); opacity: 0; }
-    to { transform: scale(1) rotate(0); opacity: 1; }
-}
-
-@keyframes coin-hop {
-    0% { transform: translateY(0) rotate(0); opacity: 0; }
-    20% { opacity: 1; }
-    60% { transform: translateY(-1.6rem) rotate(200deg); opacity: 1; }
-    100% { transform: translateY(-0.4rem) rotate(360deg); opacity: 0; }
-}
-
-@keyframes reroll-pop {
-    from { transform: scale(0.4) rotate(-6deg); opacity: 0; }
-    to { transform: scale(1) rotate(0); opacity: 1; }
-}
-
-@keyframes reroll-spin {
-    to { transform: rotate(720deg); }
-}
-
-@keyframes reroll-shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-10px); }
-    75% { transform: translateX(10px); }
-}
-
-@keyframes reroll-fade {
-    0%, 80% { opacity: 1; }
-    100% { opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .comodin-chip, .comodin-chip::before, .comodin-chip::after, .comodin-toast,
-    .reroll-card,
-    .reroll-dice,
-    .reroll-overlay.to-me .reroll-card {
-        animation: none;
-    }
-}
-
 // Mano de comodines (bandeja fija abajo): hueco para que la bandeja plegada no tape las respuestas
 .game-board.has-hand {
     padding-bottom: 8rem;
@@ -200,6 +87,16 @@
     position: relative;
     width: min(340px, 82vw);
     aspect-ratio: 1;
+
+    // Sombra de tinta fija detrás de la rueda (si fuera de la rueda giraría con ella)
+    &::before {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border-radius: 50%;
+        background: var(--fx-ink);
+        transform: translate(8px, 10px);
+    }
 
     // Destello al pararse
     &.stopped .ruleta-wheel {
@@ -240,7 +137,8 @@
     height: 100%;
     border-radius: 50%;
     border: 8px solid #f8fafc;
-    box-shadow: 0 0 0 4px var(--fx-ink), 8px 10px 0 4px var(--fx-ink);
+    // Solo el aro (simétrico): la sombra desplazada va en .ruleta-wheel-wrap::before para que no gire
+    box-shadow: 0 0 0 4px var(--fx-ink);
     will-change: transform;
 }
 
@@ -341,11 +239,16 @@
 
 // Llamada (presencial): toda la sala ve el juego como una llamada de teléfono. Arriba, el grupo que llama,
 // el estado y el cronómetro; debajo, la pregunta con sus respuestas. Solo el anfitrión puede colgar.
-.game-board.calling {
-    padding-top: 1rem;
-    border-radius: 1.5rem;
+// Todo el fondo de la sala cambia de color durante la llamada (no solo la caja del tablero).
+.game-room-container.calling-bg {
     background: linear-gradient(180deg, #0b3b3f 0%, #0f2a30 55%, #101820 100%);
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+    transition: background 0.4s ease;
+
+    &::before { display: none; }
+}
+
+// Mantiene el padding normal del tablero: la cabecera de la llamada queda debajo de los botones de arriba.
+.game-board.calling {
     animation: call-screen-in 0.35s ease-out;
 
     // Durante la llamada solo importa la pregunta: fuera avisos de turno (la mano de comodines se oculta sola)

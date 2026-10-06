@@ -1,4 +1,4 @@
-<div class="game-room-container">
+<div class="game-room-container" [class.calling-bg]="callOn() && !!currentQuestion() && !gameResults() && !phaseBreak()">
     @if (showJoinForm()) {
         <!-- Formulario para unirse como anónimo -->
         <div class="join-form-container">
@@ -122,7 +122,7 @@
         </div>
     } @else if (currentQuestion()) {
         <!-- Game Playing -->
-        <div class="game-board" [class.calling]="callOn()" [class.fx-shake]="showResultOverlay() && showTurnResult() && !lastTurnResult()?.isCorrect && !lastTurnResult()?.passed" [class.has-hand]="canUseComodines() && handCards().length > 0 && !callOn()">
+        <div class="game-board" [class.calling]="callOn()" [class.fx-shake]="showResultOverlay() && showTurnResult() && !lastTurnResult()?.isCorrect" [class.has-hand]="canUseComodines() && handCards().length > 0 && !callOn()">
             <app-sound-controls class="sound-toggle" />
 
             @if (callOn()) {
@@ -210,10 +210,8 @@
                 }
                 <h3 class="question-text">{{ currentQuestion()!.text }}</h3>
                 @if (showTurnResult() && lastTurnResult()) {
-                    <div class="turn-result-indicator" [class.correct]="lastTurnResult()!.isCorrect" [class.incorrect]="!lastTurnResult()!.isCorrect && !lastTurnResult()!.passed">
-                        @if (lastTurnResult()!.passed) {
-                            <span class="result-label">Pregunta pasada</span>
-                        } @else if (lastTurnResult()!.isCorrect) {
+                    <div class="turn-result-indicator" [class.correct]="lastTurnResult()!.isCorrect" [class.incorrect]="!lastTurnResult()!.isCorrect">
+                        @if (lastTurnResult()!.isCorrect) {
                             <span class="result-icon"><app-icon name="check" [size]="20" /></span>
                             <span class="result-label">¡Correcta!</span>
                         } @else {
@@ -438,7 +436,7 @@
                             <span class="result-word">¡Correcto!</span>
                             <span class="result-points">+{{ resultPoints() }} puntos</span>
                         } @else {
-                            <span class="result-word">{{ lastTurnResult()!.passed ? '¡Pasada!' : '¡Fallo!' }}</span>
+                            <span class="result-word">¡Fallo!</span>
                             @if (lastTurnResult()!.pointsEarned < 0) {
                                 <span class="result-points">{{ resultPoints() }} puntos</span>
                             }
@@ -518,7 +516,7 @@
 }
 
 @if (turnBanner()) {
-    <div class="turn-banner" aria-live="assertive">
+    <div class="turn-banner" [class]="'variant-' + turnBannerVariant()" aria-live="assertive">
         <div class="turn-banner-strip" aria-hidden="true"></div>
         <div class="turn-banner-text">
             <span class="turn-banner-label">{{ turnBannerLabel() }}</span>
@@ -555,24 +553,6 @@
                 }
             </ol>
             <button class="btn btn-sm btn-ghost" type="button" (click)="closeColorResult()">Cerrar</button>
-        </div>
-    </div>
-}
-
-@if (rerollAnnouncement(); as reroll) {
-    <div class="reroll-overlay" [class.to-me]="reroll.toMe" role="alert" aria-live="assertive">
-        <div class="reroll-card">
-            <div class="reroll-dice" aria-hidden="true">🎲</div>
-            <p class="reroll-title">
-                @if (reroll.toMe) {
-                    ¡{{ reroll.attacker }} te cambia la pregunta!
-                } @else if (reroll.byMe) {
-                    ¡Has cambiado la pregunta de {{ reroll.victim }}!
-                } @else {
-                    ¡{{ reroll.attacker }} cambia la pregunta de {{ reroll.victim }}!
-                }
-            </p>
-            <p class="reroll-sub">{{ reroll.toMe ? 'Nueva pregunta, tiempo completo' : 'Comodín: cambiar pregunta del rival' }}</p>
         </div>
     </div>
 }
