@@ -250,7 +250,12 @@
 
             @if (buzzerOpen() && !showTurnResult()) {
                 <div class="buzzer-zone">
-                    @if (canBuzz()) {
+                    @if (buzzerLocked() && !!me() && !isOwner() && !isSpectator()) {
+                        <button class="buzzer-btn locked" type="button" disabled aria-label="Prepárate: aún no se puede pulsar">
+                            Prepárate...
+                        </button>
+                        <span class="buzzer-hint">Pulsa cuando acabe la cuenta atrás</span>
+                    } @else if (canBuzz()) {
                         <button class="buzzer-btn" type="button" [disabled]="isBuzzing()" (click)="onBuzz()"
                                 aria-label="Pulsar para responder">
                             ¡PULSA!
@@ -512,6 +517,15 @@
                 <span class="phase-banner-nombre">{{ fase.nombre }}</span>
             }
         </div>
+    </div>
+}
+
+@if (buzzerCountdown(); as n) {
+    <div class="buzzer-countdown" [class.go]="n === '¡YA!'" aria-live="assertive">
+        @for (k of [n]; track k) {
+            <div class="countdown-halftone" aria-hidden="true"></div>
+            <span class="countdown-number">{{ n }}</span>
+        }
     </div>
 }
 

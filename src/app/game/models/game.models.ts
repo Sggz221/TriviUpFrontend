@@ -111,6 +111,8 @@ export interface TurnStartedDto {
     ocarinaMelody?: OcarinaNote[] | null;
     /** Lo que le queda a la melodía por sonar, en ms (0 = ya se puede tocar). */
     ocarinaListenRemainingMs?: number;
+    /** Lo que falta para poder pulsar (banner + cuenta atrás 3-2-1), en ms (0 = ya se puede). */
+    buzzerLockedRemainingMs?: number;
 }
 
 /** Figura musical de una nota (se dibuja así y marca su duración al sonar). */

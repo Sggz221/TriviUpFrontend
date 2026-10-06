@@ -19,10 +19,11 @@ export interface StaffNote extends OcarinaNote {
     state?: StaffNoteState;
 }
 
+/** Tinta y colores de la app (ver --fx-ink y la paleta de la partida en styles.css). */
 const COLORS: Record<StaffNoteState, string> = {
-    normal: '#1f2937',
-    active: '#2563eb',
-    error: '#dc2626',
+    normal: '#0b0b12',
+    active: '#8b2cff',
+    error: '#e11d48',
     ok: '#16a34a'
 };
 
@@ -73,7 +74,7 @@ export function renderStaff(
         if (options.showButtons !== false) {
             note.addModifier(
                 new Annotation(BUTTON_GLYPHS[n.pitch])
-                    .setFont('Arial', 13, 'bold')
+                    .setFont('Blinker', 15, 'bold')
                     .setVerticalJustification(Annotation.VerticalJustify.BOTTOM),
                 0
             );

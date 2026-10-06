@@ -4,9 +4,10 @@ import { NoteFigure, OcarinaNote } from '../../models/game.models';
 /** Las cinco notas de la ocarina estilo Zelda, por botón: Re, Fa, La, Si, Re agudo. */
 export const OCARINA_PITCHES = ['D4', 'F4', 'A4', 'B4', 'D5'] as const;
 
-/** Igual que en el servidor (OcarinaMelody): negra a 72 bpm y pausa antes de la primera nota. */
+/** Igual que en el servidor (OcarinaMelody): negra a 72 bpm, pausa antes de la primera nota y silencio entre las dos veces que suena. */
 export const QUARTER_MS = 833;
 export const LEAD_IN_MS = 1500;
+export const REPEAT_GAP_MS = 1200;
 
 export function figureMs(figure: NoteFigure): number {
     switch (figure) {

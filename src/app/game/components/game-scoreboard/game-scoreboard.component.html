@@ -1,4 +1,4 @@
-<div class="scoreboard" [class.dramatic]="dramatic" [class.drumroll]="current() === 'drum'" [class.winner-moment]="current() === 'p1'">
+<div class="scoreboard" [class.dramatic]="dramatic" [class.drumroll]="current() === 'drum'" [class.winner-moment]="current() === 'winner'">
   <header class="scoreboard-header" [class.step-hidden]="!shown('headline')">
     <h2 class="scoreboard-headline">{{ headline }}</h2>
     @if (quizTitle) {
@@ -10,15 +10,27 @@
   </header>
 
   @if (podiumCount() > 0) {
-    <div class="podium" [attr.data-count]="podiumCount()">
+    <!-- Finalistas a la vez (orden alfabético), antes de saber quién queda en qué puesto -->
+    @if (dramatic && shown('finalists') && !shown('podium')) {
+      <div class="finalists" aria-live="polite">
+        <span class="finalists-label">Finalistas</span>
+        <div class="finalists-names">
+          @for (f of finalists(); track f.userId) {
+            <span class="finalist">{{ f.username }}</span>
+          }
+        </div>
+      </div>
+    }
+
+    <div class="podium" [attr.data-count]="podiumCount()" [class.step-hidden]="!shown('mystery')">
       @if (second()) {
-        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: second()!, place: 2, visible: shown('p2') }" />
+        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: second()!, place: 2, placed: shown('podium') }" />
       }
       @if (first()) {
-        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: first()!, place: 1, visible: shown('p1') }" />
+        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: first()!, place: 1, placed: shown('podium') }" />
       }
       @if (third()) {
-        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: third()!, place: 3, visible: shown('p3') }" />
+        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: third()!, place: 3, placed: shown('podium') }" />
       }
     </div>
   }
@@ -52,14 +64,20 @@
   }
 </div>
 
-<ng-template #pedestal let-player let-place="place" let-visible="visible">
-  <article class="pedestal" [class]="'place-' + place" [class.step-hidden]="!visible">
+<ng-template #pedestal let-player let-place="place" let-placed="placed">
+  <!-- Hasta revelar el podio todos son iguales: "?", gris y a la misma altura -->
+  <article class="pedestal" [class]="'place-' + place" [class.is-mystery]="!placed" [class.is-placed]="placed"
+           [style.--rise-delay]="riseDelay(place)">
     @if (place === 1) {
       <div class="crown" aria-hidden="true">👑</div>
     }
     <div class="medal" aria-hidden="true">{{ place }}</div>
     <div class="pedestal-body">
-      <p class="pedestal-name" [title]="player.username">{{ player.username }}</p>
+      @if (!placed) {
+        <p class="pedestal-name mystery-name" aria-label="Puesto sin revelar">?</p>
+      } @else {
+        <p class="pedestal-name" [title]="player.username">{{ player.username }}</p>
+      }
       @if (isOwner(player)) {
         <span class="owner-chip">Anfitrión</span>
       }
@@ -69,11 +87,7 @@
         <span class="pct">{{ percentage(player) }}%</span>
       </p>
     </div>
-    <div class="plinth" aria-hidden="true">
-      @if (place === 1 && !visible) {
-        <span class="plinth-mystery">?</span>
-      }
-    </div>
+    <div class="plinth" aria-hidden="true"></div>
   </article>
 </ng-template>
 
@@ -90,7 +104,7 @@
   </div>
 }
 
-@if (dramatic && shown('p1')) {
+@if (dramatic && shown('winner')) {
   <div class="fx-confetti" aria-hidden="true">
     @for (c of confettiPieces; track $index) {
       <i [style.left]="c.left" [style.background]="c.color" [style.--delay]="c.delay" [style.--dur]="c.duration"

@@ -37,13 +37,17 @@
     &.chip-apuesta::after {
         content: '🪙';
         position: absolute;
-        top: -0.2rem;
+        top: 50%;
+        transform: translateY(-50%);
+        line-height: 1;
         font-size: 0.95rem;
         pointer-events: none;
         animation: coin-hop 0.9s ease-out both;
     }
-    &.chip-apuesta::before { left: 0.6rem; }
-    &.chip-apuesta::after { right: 0.6rem; animation-delay: 0.12s; }
+    &.chip-apuesta::before { left: 0.45rem; }
+    &.chip-apuesta::after { right: 0.45rem; animation-delay: 0.12s; }
+    // Una moneda a cada lado, en su propio hueco: no tapan el texto
+    &.chip-apuesta { padding-inline: 1.9rem; }
 
     &.chip-robo { background: #7c3aed; }
     &.chip-doble { background: #ea580c; }
@@ -123,6 +127,20 @@
     &.kick {
         animation: ruleta-kick 0.12s ease-out;
     }
+}
+
+@keyframes chip-in {
+    from { transform: scale(0.3) rotate(-8deg); opacity: 0; }
+    to { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+// Las monedas saltan al aparecer el chip y se quedan quietas a los lados
+@keyframes coin-hop {
+    0% { transform: translateY(-50%) rotate(0); opacity: 0; }
+    20% { opacity: 1; }
+    55% { transform: translateY(calc(-50% - 1.4rem)) rotate(200deg); }
+    80% { transform: translateY(calc(-50% + 0.1rem)) rotate(360deg); }
+    100% { transform: translateY(-50%) rotate(360deg); opacity: 1; }
 }
 
 @keyframes ruleta-kick {
@@ -404,4 +422,10 @@
 
 .chip-oculto {
     background: rgba(120, 120, 120, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .comodin-chip, .comodin-chip::before, .comodin-chip::after, .comodin-toast {
+        animation: none;
+    }
 }

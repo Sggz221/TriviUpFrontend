@@ -15,22 +15,24 @@ export interface ScoreboardPlayer {
 }
 
 /**
- * Pasos de la revelación dramática, en orden: titular, resto de la clasificación (del último al 4º),
- * 3º, 2º, redoble y 1º. Cada uno dura lo indicado antes de pasar al siguiente.
+ * Pasos de la revelación dramática, en orden: titular, resto de la clasificación (del último al 4º), podio en
+ * incógnita ("?" y sin colores), los finalistas a la vez (sin decir en qué puesto), redoble, cada uno sube a su
+ * puesto (3º, 2º, 1º) y el ganador a pantalla completa. Cada paso dura lo indicado antes del siguiente.
  */
-type RevealKey = 'headline' | `rest:${number}` | 'p3' | 'p2' | 'drum' | 'p1' | 'done';
+type RevealKey = 'headline' | `rest:${number}` | 'mystery' | 'finalists' | 'drum' | 'podium' | 'winner' | 'done';
 
 const PASO_MS: Record<string, number> = {
   headline: 1300,
   rest: 550,
-  p3: 1400,
-  p2: 1500,
-  drum: 2100,
-  p1: 2600
+  mystery: 1300,
+  finalists: 2300,
+  drum: 2600,
+  podium: 2600,
+  winner: 2300
 };
 const CONTEO_MS = 900;
-/** Cuánto tarda el nombre del ganador a pantalla completa en dejar paso al podio. */
-const SPLASH_MS = 2300;
+/** Retraso con el que sube cada puesto al revelar el podio (3º, luego 2º, luego 1º). */
+const SUBIDA_MS: Record<number, number> = { 3: 0, 2: 550, 1: 1100 };
 
 @Component({
   selector: 'app-game-scoreboard',
@@ -95,8 +97,19 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
   private step = signal(Number.POSITIVE_INFINITY);
   /** Avance 0..1 del conteo de puntos de cada jugador (sin entrada = ya contado). */
   private scoreProgress = signal<ReadonlyMap<number, number>>(new Map());
-  /** Nombre del ganador a pantalla completa justo al revelarlo. */
+  /** Nombre del ganador a pantalla completa, tras subir al podio. */
   winnerSplash = signal(false);
+
+  /** Finalistas del podio en orden alfabético: se muestran juntos sin desvelar quién queda en qué puesto. */
+  finalists = computed(() =>
+    [this.first(), this.second(), this.third()]
+      .filter((p): p is ScoreboardPlayer => !!p)
+      .sort((a, b) => a.username.localeCompare(b.username, 'es')));
+
+  /** Retraso (s) con el que sube al podio cada puesto. */
+  riseDelay(place: number): string {
+    return `${(SUBIDA_MS[place] ?? 0) / 1000}s`;
+  }
   readonly confettiPieces = confettiPieces(60);
   private timers: ReturnType<typeof setTimeout>[] = [];
   private cancels: (() => void)[] = [];
@@ -111,10 +124,11 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
     this.sequence = [
       'headline',
       ...[...this.restPlayers()].reverse().map(p => `rest:${p.userId}` as RevealKey),
-      ...(this.third() ? ['p3' as const] : []),
-      ...(this.second() ? ['p2' as const] : []),
+      'mystery',
+      'finalists',
       'drum',
-      'p1',
+      'podium',
+      'winner',
       'done'
     ];
     this.scoreProgress.set(new Map(this.sortedPlayers().map(p => [p.userId, 0])));
@@ -156,22 +170,28 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
       case 'headline':
         this.audio.playImpact(0.9);
         break;
-      case 'p3':
-        this.audio.playImpact(0.6);
-        this.countScore(this.third());
+      case 'mystery':
+        this.audio.playWhoosh();
         break;
-      case 'p2':
-        this.audio.playImpact(0.85);
-        this.countScore(this.second());
+      case 'finalists':
+        this.audio.playImpact(0.8);
         break;
       case 'drum':
         this.audio.playDrumroll(PASO_MS['drum']);
         break;
-      case 'p1':
+      case 'podium':
+        // Cada uno sube a su puesto con su golpe, y su puntuación cuenta hacia arriba al llegar
+        ([[3, this.third()], [2, this.second()], [1, this.first()]] as const).forEach(([place, player]) => {
+          if (!player) return;
+          const at = SUBIDA_MS[place];
+          this.audio.playImpact(place === 1 ? 1 : place === 2 ? 0.8 : 0.6, at / 1000);
+          this.later(() => this.countScore(player), at + 300);
+        });
+        break;
+      case 'winner':
         this.audio.playFanfare();
         this.winnerSplash.set(true);
-        this.later(() => this.winnerSplash.set(false), SPLASH_MS);
-        this.later(() => this.countScore(this.first()), SPLASH_MS - 400);
+        this.later(() => this.winnerSplash.set(false), PASO_MS['winner']);
         break;
       default: {
         // Resto de la clasificación: tic que sube de tono según se acerca al podio

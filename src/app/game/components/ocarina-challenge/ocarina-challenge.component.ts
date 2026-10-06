@@ -5,7 +5,7 @@ import type * as VexNs from 'vexflow';
 import { OcarinaNote } from '../../models/game.models';
 import { GameSignalrService } from '../../services/game-signalr.service';
 import { AudioService } from '../../../shared/services/audio.service';
-import { OcarinaSynth, melodyMs } from './ocarina-audio';
+import { OcarinaSynth, REPEAT_GAP_MS, melodyMs } from './ocarina-audio';
 import { BUTTON_GLYPHS, NOTE_NAMES, StaffNote, loadVexflow, renderStaff } from './ocarina-staff';
 
 type AttemptStatus = 'idle' | 'checking' | 'error' | 'ok';
@@ -40,6 +40,8 @@ export class OcarinaChallengeComponent implements AfterViewInit, OnDestroy {
 
     /** La melodía todavía está sonando: no se puede tocar. */
     listening = signal(true);
+    /** Vez que está sonando la melodía (1 o 2; suena dos veces antes de poder tocarla). */
+    listenPass = signal(1);
     /** Nota de la melodía que está sonando ahora (para resaltarla). */
     activeIndex = signal<number | null>(null);
     entered = signal<number[]>([]);
@@ -81,13 +83,17 @@ export class OcarinaChallengeComponent implements AfterViewInit, OnDestroy {
         const running = await this.synth.unlock();
         this.soundBlocked.set(!running);
 
-        // La melodía suena una sola vez, cuando lo marca el servidor. Si se entra con ella ya empezada, no se repite.
-        const delay = remaining - melodyMs(this.melody());
-        if (delay >= 0) {
-            const starts = this.synth.playMelody(this.melody(), delay);
+        // La melodía suena dos veces, cuando lo marca el servidor. Si se entra con una ya empezada, solo suenan
+        // las que aún no han empezado.
+        const length = melodyMs(this.melody());
+        const firstStart = remaining - (2 * length + REPEAT_GAP_MS);
+        [firstStart, firstStart + length + REPEAT_GAP_MS].forEach((start, pass) => {
+            if (start < 0) return;
+            this.timers.push(setTimeout(() => this.listenPass.set(pass + 1), start));
+            const starts = this.synth.playMelody(this.melody(), start);
             starts.forEach((at, i) => this.timers.push(setTimeout(() => this.activeIndex.set(i), at)));
-            this.timers.push(setTimeout(() => this.activeIndex.set(null), remaining));
-        }
+            this.timers.push(setTimeout(() => this.activeIndex.set(null), start + length));
+        });
         this.draw();
     }
 

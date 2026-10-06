@@ -2,7 +2,7 @@
     <header class="ocarina-header">
         <span class="ocarina-title">🎵 Ocarina</span>
         <span class="ocarina-phase" [class.listening]="listening()">
-            {{ listening() ? 'Escucha la melodía...' : canPlay() ? '¡Tócala! El primero que acierte responde' : 'Los equipos están tocando la melodía' }}
+            {{ listening() ? 'Escucha la melodía (' + listenPass() + '/2)...' : canPlay() ? '¡Tócala! El primero que acierte responde' : 'Los equipos están tocando la melodía' }}
         </span>
     </header>
 

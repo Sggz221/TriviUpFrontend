@@ -289,6 +289,14 @@
     font-variant-numeric: tabular-nums;
 }
 
+// Pulsador aún cerrado durante el banner y la cuenta atrás
+.buzzer-btn.locked {
+    animation: none;
+    filter: grayscale(0.8) brightness(0.7);
+    cursor: not-allowed;
+    font-size: clamp(1.1rem, 5vw, 1.5rem);
+}
+
 @keyframes buzzer-pulse {
     50% { filter: brightness(1.15); }
 }

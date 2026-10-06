@@ -1,3 +1,5 @@
+@use '../../styles/game-fx' as fx;
+
 :host {
     display: block;
     width: 100%;
@@ -11,6 +13,7 @@
     width: 100%;
     margin: 0.5rem 0 1rem;
     color: var(--base-content);
+    font-family: var(--font-game);
 }
 
 .ocarina-header {
@@ -22,13 +25,14 @@
 }
 
 .ocarina-title {
-    font-size: 1.1rem;
-    font-weight: 800;
+    @include fx.display-title(var(--fx-gradient), 0.06em);
+    font-size: clamp(1.3rem, 5vw, 1.75rem);
 }
 
 .ocarina-phase {
-    font-size: 0.95rem;
-    opacity: 0.85;
+    font-size: 1rem;
+    font-weight: 700;
+    opacity: 0.9;
 
     &.listening {
         animation: ocarina-pulse 1.2s ease-in-out infinite;
@@ -42,8 +46,20 @@
     padding: 0.25rem 0.5rem;
     border-radius: 1rem;
     background: #fdfbf4;
-    box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.3);
+    @include fx.ink-box(5px);
     overflow: hidden;
+    isolation: isolate;
+
+    // Trama de puntos muy suave en las esquinas, estilo cómic, sin tapar las figuras
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        @include fx.halftone(rgba(139, 44, 255, 0.16), 100% 100%, 10px);
+        --dot: 3px;
+        --reach: 45%;
+    }
 
     &.loading {
         min-height: 150px;
@@ -84,7 +100,9 @@
     justify-content: space-between;
     gap: 0.5rem;
     width: min(100%, 36rem);
-    font-size: 0.9rem;
+    @include fx.game-label(800);
+    letter-spacing: 0.08em;
+    font-size: 0.85rem;
 }
 
 .lane-actions {
@@ -138,14 +156,14 @@
     justify-content: center;
     gap: 0.1rem;
     aspect-ratio: 1;
-    border: 0;
+    border: 3px solid var(--fx-ink);
     border-radius: 50%;
     color: #1f2937;
     font-weight: 900;
     cursor: pointer;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    box-shadow: 0 0.35rem 0 rgb(0 0 0 / 0.35);
+    box-shadow: 0 0.35rem 0 var(--fx-ink);
     transition: transform 0.06s ease, box-shadow 0.06s ease, filter 0.15s ease;
 
     &.btn-a {

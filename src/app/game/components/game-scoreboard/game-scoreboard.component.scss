@@ -179,15 +179,24 @@
   animation-name: winnerPop;
 }
 
+// Plata de verdad (gris claro), no el gris oscuro del tema
 .place-2 .medal {
-  background-color: var(--base-300);
-  color: var(--base-content);
-  border-color: var(--base-content);
+  background: linear-gradient(180deg, #f8fafc 0%, #cbd5e1 55%, #94a3b8 100%);
+  color: #1f2937;
+}
+
+.place-2 .pedestal-body {
+  border-color: #cbd5e1;
+}
+
+.place-2 .pedestal-score {
+  color: #e2e8f0;
 }
 
 .place-2 .plinth {
   height: 3rem;
-  background-color: var(--base-300);
+  background-color: #cbd5e1;
+  border-color: #cbd5e1;
 }
 
 .place-3 .medal {
@@ -430,7 +439,8 @@
 
   .scoreboard-header.step-hidden,
   .rest-block.step-hidden,
-  .rest-row.step-hidden {
+  .rest-row.step-hidden,
+  .podium.step-hidden {
     visibility: hidden;
   }
 
@@ -438,29 +448,114 @@
     animation: row-rise 0.45s cubic-bezier(0.2, 1.3, 0.4, 1) both;
   }
 
-  // Pedestal aún sin revelar: solo se intuye el hueco
+  .podium:not(.step-hidden) {
+    animation: row-rise 0.5s cubic-bezier(0.2, 1.3, 0.4, 1) both;
+  }
+
   .pedestal {
     animation: none;
+
+    // Altura y color cambian con transición, cada puesto con su retraso: así "sube" a su sitio
+    .plinth {
+      transition: height 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) var(--rise-delay, 0s),
+                  background-color 0.6s ease var(--rise-delay, 0s),
+                  border-color 0.6s ease var(--rise-delay, 0s),
+                  box-shadow 0.6s ease var(--rise-delay, 0s);
+    }
+    .pedestal-body {
+      transition: border-color 0.6s ease var(--rise-delay, 0s), background-color 0.6s ease var(--rise-delay, 0s);
+    }
   }
 
-  .pedestal.step-hidden {
-    .medal, .pedestal-body, .crown { visibility: hidden; }
-    .plinth { transform: scaleY(0.25); transform-origin: bottom; filter: brightness(0.35) saturate(0); }
+  // Incógnita: los tres iguales, grises, a la misma altura y con "?" (sin medalla, puntos ni colores)
+  .pedestal.is-mystery {
+    .medal, .crown, .pedestal-score, .pedestal-stats, .owner-chip { visibility: hidden; }
+
+    .pedestal-body {
+      background-color: var(--base-200);
+      border-color: #6b7280;
+    }
+
+    .plinth {
+      height: 2rem;
+      background-color: #4b5563;
+      border-color: #4b5563;
+      box-shadow: none;
+    }
   }
 
-  .pedestal:not(.step-hidden) {
-    .plinth { animation: plinth-rise 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; transform-origin: bottom; }
-    .medal { animation: impact-slam 0.5s 0.15s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
-    .pedestal-body { animation: body-drop 0.5s 0.1s cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+  .mystery-name {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    line-height: 1.1;
+    color: #fff;
+    -webkit-text-fill-color: #fff;
+    -webkit-text-stroke: 1.5px var(--fx-ink);
+    paint-order: stroke fill;
+    filter: drop-shadow(2px 2px 0 var(--fx-ink));
+    background: none;
   }
 
-  .place-1:not(.step-hidden) {
-    .pedestal-body, .medal, .crown { animation-delay: 2s; }
-    .crown { animation: crown-drop 0.6s 2s cubic-bezier(0.2, 1.4, 0.4, 1) both, crown-bob 2.4s 2.6s ease-in-out infinite; }
+  // Revelado: cada uno sube a su puesto con su retraso, y aparecen nombre, medalla y puntos
+  .pedestal.is-placed {
+    .pedestal-body { animation: body-rise 0.6s cubic-bezier(0.2, 1.3, 0.4, 1) var(--rise-delay, 0s) both; }
+    .medal { animation: impact-slam 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) calc(var(--rise-delay, 0s) + 0.3s) both; }
+  }
+
+  .place-1.is-placed .crown {
+    animation: crown-drop 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) calc(var(--rise-delay, 0s) + 0.5s) both,
+               crown-bob 2.4s calc(var(--rise-delay, 0s) + 1.1s) ease-in-out infinite;
   }
 }
 
-// Redoble: todo se oscurece y el hueco del ganador tiembla con un "?"
+// Finalistas: los tres nombres a la vez, sin puesto
+.finalists {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.finalists-label {
+  @include fx.game-label(900);
+  font-size: 0.95rem;
+  letter-spacing: 0.4em;
+  color: #fff;
+  -webkit-text-stroke: 1px var(--fx-ink);
+  paint-order: stroke fill;
+  text-shadow: 2px 2px 0 var(--fx-ink);
+}
+
+.finalists-names {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.finalist {
+  padding: 0.45rem 1rem;
+  border-radius: 0.6rem;
+  background: #8b2cff;
+  border: 3px solid var(--fx-ink);
+  box-shadow: 4px 4px 0 var(--fx-ink);
+  font-family: var(--font-game);
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: #fff;
+  transform: rotate(-2deg);
+  animation: impact-slam 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+
+  &:nth-child(2) { background: #ff2c8b; transform: rotate(1.5deg); }
+  &:nth-child(3) { background: #1d2bff; transform: rotate(-1deg); }
+
+  .drumroll & { animation: drum-shake 0.12s linear infinite; }
+}
+
+// Redoble: todo se oscurece y los tres pedestales tiemblan
 .drumroll {
   &::before {
     content: '';
@@ -472,26 +567,15 @@
     animation: fade-in 0.4s ease both;
   }
 
-  .place-1 .plinth {
+  .podium {
+    position: relative;
     z-index: 1;
-    transform: scaleY(1) !important;
-    filter: none !important;
-    transition: transform 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+  }
+
+  .pedestal.is-mystery .plinth,
+  .pedestal.is-mystery .pedestal-body {
     animation: drum-shake 0.12s linear infinite;
   }
-}
-
-.plinth-mystery {
-  position: relative;
-  z-index: 1;
-  font-family: var(--font-display);
-  font-size: 2.25rem;
-  color: #fff;
-  -webkit-text-stroke: 2px var(--fx-ink);
-  paint-order: stroke fill;
-  opacity: 0;
-
-  .drumroll & { opacity: 1; animation: count-pop 0.5s ease-in-out infinite; }
 }
 
 .winner-moment {
@@ -577,13 +661,8 @@
   to { opacity: 1; transform: none; }
 }
 
-@keyframes plinth-rise {
-  from { transform: scaleY(0); }
-  to { transform: scaleY(1); }
-}
-
-@keyframes body-drop {
-  from { opacity: 0; transform: translateY(-60px) scale(1.1); }
+@keyframes body-rise {
+  from { opacity: 0; transform: translateY(70px) scale(0.9); }
   to { opacity: 1; transform: none; }
 }
 
@@ -616,7 +695,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pedestal, .crown, .winner-moment, .drumroll .place-1 .plinth,
-  .dramatic .rest-row, .dramatic .pedestal * { animation: none !important; }
+  .pedestal, .crown, .winner-moment, .finalist, .dramatic .podium,
+  .dramatic .rest-row, .dramatic .pedestal * { animation: none !important; transition: none !important; }
   .fx-confetti, .winner-splash { display: none; }
 }

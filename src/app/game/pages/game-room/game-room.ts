@@ -101,6 +101,16 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     isDynamic = signal<boolean>(false);
     /** Pregunta de pulsador: el pulsador sigue abierto y todavía no responde nadie. */
     buzzerOpen = signal<boolean>(false);
+    /** Pulsador aún cerrado: se está mostrando el banner o la cuenta atrás (el servidor rechaza pulsar antes). */
+    buzzerLocked = signal<boolean>(false);
+    /** Número de la cuenta atrás del pulsador en pantalla (3, 2, 1, ¡YA!). */
+    buzzerCountdown = signal<string | null>(null);
+    private buzzerTimers: ReturnType<typeof setTimeout>[] = [];
+    /** Cuándo termina la cuenta atrás (performance.now), para congelarla si se pausa. */
+    private buzzerLockEndsAt: number | null = null;
+    /** Lo que le quedaba a la cuenta atrás al pausar. */
+    private pausedBuzzerLockMs: number | null = null;
+    private static readonly BUZZER_COUNTDOWN_MS = 3000;
     isBuzzing = signal<boolean>(false);
 
     // ---- Pregunta de colores: todos imitan un color y el que más se acerca responde ----
@@ -220,7 +230,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         && (this.isPresencial() || this.selectedAnswer() === null));
     /** Pregunta de pulsador: un jugador (no anfitrión ni espectador) puede pulsar mientras el pulsador esté abierto. */
     canBuzz = computed(() =>
-        this.buzzerOpen() && !!this.me() && !this.isOwner() && !this.isSpectator()
+        this.buzzerOpen() && !this.buzzerLocked() && !!this.me() && !this.isOwner() && !this.isSpectator()
         && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak());
     /** Pregunta de colores: ya he enviado mi color. */
     iSentColor = computed(() => this.colorSubmittedIds().includes(this.myUserId()));
@@ -411,6 +421,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.callTimer) clearInterval(this.callTimer);
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
         this.ruletaTimeouts.forEach(t => clearTimeout(t));
+        this.clearBuzzerLock();
         // DON'T call leaveGame() or disconnect() here
         // When navigating to game-play, we want to KEEP the SignalR connection
         // The user is still in the game, just viewing a different page
@@ -457,6 +468,63 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.audioService.playImpact(1, 0.3);
         this.phaseBannerTimeout = setTimeout(() => this.phaseBanner.set(null), GameRoomComponent.PHASE_BANNER_MS);
         return GameRoomComponent.PHASE_BANNER_MS;
+    }
+
+    /**
+     * Pulsador: espera `lockMs` (banner y cuenta atrás) antes de dejar pulsar. Los últimos 3 s muestran
+     * 3, 2, 1 y "¡YA!" con pitidos; al abrirse empieza a correr el tiempo para pulsar.
+     */
+    private startBuzzerLock(lockMs: number, timeLimit: number): void {
+        this.clearBuzzerLock();
+        this.clearTimerInterval();
+        if (lockMs <= 0) {
+            this.startLocalTimer(timeLimit);
+            return;
+        }
+
+        this.buzzerLocked.set(true);
+        this.buzzerLockEndsAt = performance.now() + lockMs;
+        this.localTimeRemaining.set(timeLimit);
+        const countdown = GameRoomComponent.BUZZER_COUNTDOWN_MS;
+        [3, 2, 1].forEach((n, i) => {
+            const at = lockMs - countdown + i * 1000;
+            if (at < 0) return;
+            this.buzzerTimers.push(setTimeout(() => {
+                this.buzzerCountdown.set(String(n));
+                this.audioService.playCountdownBeep();
+            }, at));
+        });
+        this.buzzerTimers.push(setTimeout(() => {
+            this.buzzerLocked.set(false);
+            this.buzzerLockEndsAt = null;
+            this.buzzerCountdown.set('¡YA!');
+            this.audioService.playGo();
+            this.startLocalTimer(timeLimit);
+        }, lockMs));
+        this.buzzerTimers.push(setTimeout(() => this.buzzerCountdown.set(null), lockMs + 700));
+    }
+
+    private clearBuzzerLock(): void {
+        this.buzzerTimers.forEach(t => clearTimeout(t));
+        this.buzzerTimers = [];
+        this.buzzerLocked.set(false);
+        this.buzzerLockEndsAt = null;
+        this.buzzerCountdown.set(null);
+    }
+
+    /** Vuelve a tocar la melodía de la ocarina (al acertarla alguien). Tone.js solo se carga si hace falta. */
+    private async replayOcarinaMelody(melody: OcarinaNote[]): Promise<void> {
+        if (melody.length === 0) return;
+        try {
+            const { OcarinaSynth, melodyMs } = await import('../../components/ocarina-challenge/ocarina-audio');
+            const synth = new OcarinaSynth();
+            if (!(await synth.unlock())) return;
+            synth.setVolume(this.audioService.muted() ? 0 : this.audioService.sfxVolume());
+            synth.playMelody(melody, 300);
+            setTimeout(() => synth.dispose(), 300 + melodyMs(melody) + 1500);
+        } catch (error) {
+            console.warn('[GameRoom] No se pudo repetir la melodía de la ocarina:', error);
+        }
     }
 
     private startLocalTimer(timeLimit: number): void {
@@ -561,7 +629,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                         this.showTurnResult.set(true);
                         if (pendingResult.correctAnswerIndex >= 0) this.revealedQuestionId.set(question.id);
                     }
-                    if ((this.isMyTurn() || this.buzzerOpen() || this.colorOpen()) && !this.isPaused()) {
+                    if (this.buzzerOpen() && !this.isPaused()) {
+                        this.startBuzzerLock(lastTurn?.buzzerLockedRemainingMs ?? 0, this.gameSignalrService.timeRemaining());
+                    } else if ((this.isMyTurn() || this.colorOpen()) && !this.isPaused()) {
                         this.startLocalTimer(this.gameSignalrService.timeRemaining());
                     }
                 }
@@ -808,8 +878,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             if (isMyTurn) {
                 this.audioService.playTurnStart();
                 this.startLocalTimer(data.timeLimit);
-            } else if (data.buzzerOpen || data.colorOpen) {
-                // Pulsador o prueba de colores abiertos: todos ven correr el tiempo.
+            } else if (data.buzzerOpen) {
+                // Pulsador: todos ven la cuenta atrás y después corre el tiempo para pulsar.
+                this.startBuzzerLock(data.buzzerLockedRemainingMs ?? 0, data.timeLimit);
+            } else if (data.colorOpen) {
+                // Prueba de colores abierta: todos ven correr el tiempo.
                 this.startLocalTimer(data.timeLimit);
             } else {
                 this.clearTimerInterval();
@@ -918,13 +991,32 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             console.log('[GameRoom] Game paused');
             this.isPaused.set(true);
             this.clearTimerInterval();
+            // La cuenta atrás del pulsador se congela (el servidor también la congela)
+            if (this.buzzerLocked() && this.buzzerLockEndsAt !== null) {
+                this.pausedBuzzerLockMs = Math.max(0, this.buzzerLockEndsAt - performance.now());
+                this.clearBuzzerLock();
+                this.buzzerLocked.set(true);
+            }
         });
 
         // Game resumed
         this.gameSignalrService.onGameResumed.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             console.log('[GameRoom] Game resumed with', data.timeRemaining, 'seconds');
             this.isPaused.set(false);
-            this.startLocalTimer(data.timeRemaining);
+            if (this.pausedBuzzerLockMs !== null) {
+                const lockMs = this.pausedBuzzerLockMs;
+                this.pausedBuzzerLockMs = null;
+                this.startBuzzerLock(lockMs, this.turnTimeLimit());
+            } else {
+                this.startLocalTimer(data.timeRemaining);
+            }
+        });
+
+        // Ocarina: quien la toca bien se lleva la pregunta y la melodía vuelve a sonar para todos
+        this.gameSignalrService.onOcarinaWon.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+            if (data.questionId !== this.currentQuestion()?.id) return;
+            // Se copia ya: el TurnStarted que llega a continuación cierra la prueba y borra la melodía
+            void this.replayOcarinaMelody([...this.ocarinaMelody()]);
         });
     }
 
@@ -1090,6 +1182,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
     /** Estado de comodines que trae cada TurnStarted (nuevo turno, robo, vuelta al original o reconexión). */
     private applyTurnState(data: TurnStartedDto): void {
+        // Una cuenta atrás de un pulsador anterior ya no vale (quien llama la vuelve a empezar si toca)
+        this.clearBuzzerLock();
+        this.pausedBuzzerLockMs = null;
         this.turnOwnerId.set(data.turnOwnerId ?? data.currentPlayerId);
         this.isSteal.set(!!data.isSteal);
         this.textHiddenForId.set(data.textHiddenForPlayerId ?? null);

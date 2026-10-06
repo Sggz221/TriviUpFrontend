@@ -294,6 +294,20 @@ export class AudioService {
         this.playNoise(0.03, 3000 * pitch, 0.08, { q: 4 });
     }
 
+    /** Cuenta atrás del pulsador (3, 2, 1): pitido grave de semáforo de carreras. */
+    playCountdownBeep(): void {
+        this.playTone(440, 0.22, 'square', 0.12, { attack: 0.005 });
+        this.playTone(440, 0.22, 'triangle', 0.16, { detune: 6 });
+    }
+
+    /** "¡YA!": pitido una octava más agudo, largo y con brillo. */
+    playGo(): void {
+        this.playTone(880, 0.55, 'square', 0.12);
+        this.playTone(880, 0.55, 'sawtooth', 0.06, { detune: 8 });
+        this.playTone(1760, 0.4, 'triangle', 0.08);
+        this.playNoise(0.3, 7000, 0.08, { type: 'highpass' });
+    }
+
     /** Descarga eléctrica (50/50, ocultar texto). */
     playZap(): void {
         this.playTone(1800, 0.25, 'sawtooth', 0.1, { slideTo: 120 });
