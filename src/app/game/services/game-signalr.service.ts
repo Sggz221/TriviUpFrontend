@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, CallDismissedDto, BuzzerCountdownDto, HostQuestionInfoDto, ColorHsb, ColorSubmittedDto, ColorChallengeResultDto, OcarinaWonDto } from '../models/game.models';
+import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, CallDismissedDto, BuzzerCountdownDto, PenaltyState, HostQuestionInfoDto, ColorHsb, ColorSubmittedDto, ColorChallengeResultDto, OcarinaWonDto } from '../models/game.models';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 import { colorDeFase } from '../../cuestionarios/models/fase-color';
 import { AuthService } from '../../auth/auth.service';
@@ -70,6 +70,7 @@ export class GameSignalrService {
     private answerMarked$ = new Subject<AnswerMarkedDto>();
     private callDismissed$ = new Subject<CallDismissedDto>();
     private buzzerCountdown$ = new Subject<BuzzerCountdownDto>();
+    private penaltyFinished$ = new Subject<PenaltyState>();
     private colorSubmitted$ = new Subject<ColorSubmittedDto>();
     private colorChallengeResult$ = new Subject<ColorChallengeResultDto>();
     private ocarinaWon$ = new Subject<OcarinaWonDto>();
@@ -131,6 +132,8 @@ export class GameSignalrService {
     onAnswerMarked = this.answerMarked$.asObservable();
     onCallDismissed = this.callDismissed$.asObservable();
     onBuzzerCountdown = this.buzzerCountdown$.asObservable();
+    /** Pitido final de la tanda de penaltis, justo antes de GameFinished. */
+    onPenaltyFinished = this.penaltyFinished$.asObservable();
     /** Último TurnStarted recibido (para recuperar robo/comodines si el componente se suscribe tarde). */
     lastTurnStarted = signal<TurnStartedDto | null>(null);
 
@@ -356,6 +359,11 @@ export class GameSignalrService {
             } : t);
             this.comodinUsed$.next(data);
         });
+        this.hubConnection.on('PenaltyShootoutFinished', (data: PenaltyState) => {
+            console.log('[GameSignalr] Event: PenaltyShootoutFinished', data);
+            this.penaltyFinished$.next(data);
+        });
+
         this.hubConnection.on('BuzzerCountdown', (data: BuzzerCountdownDto) => {
             console.log('[GameSignalr] Event: BuzzerCountdown', data);
             this.buzzerCountdown$.next(data);

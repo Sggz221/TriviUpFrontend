@@ -65,6 +65,7 @@
                     [quizTitle]="gameResults()!.quizTitle"
                     headline="¡Partida Terminada!"
                     [dramatic]="true"
+                    [tiebreaks]="gameResults()!.tiebreaks"
                     [totalQuestions]="gameResults()!.totalQuestions"
                     [durationLabel]="formatGameDuration(gameResults()!.gameDuration)"
                 />
@@ -79,14 +80,35 @@
     } @else if (phaseBreak()) {
         <!-- Intermedio entre fases -->
         <div class="game-results">
-            <div class="phase-break" [style.--fase]="colorIntermedio()" [style.--siguiente]="colorSiguiente()">
-                <header class="pb-header">
-                    <p class="pb-etiqueta">Fase completada</p>
-                    <h1 class="pb-numero">Fase {{ phaseBreak()!.faseNumero }}<small> / {{ phaseBreak()!.totalFases }}</small></h1>
-                    @if (phaseBreak()!.faseNombre) {
-                        <h2 class="pb-nombre">{{ phaseBreak()!.faseNombre }}</h2>
-                    }
-                </header>
+            <div class="phase-break" [class.extra-round]="phaseBreak()!.isExtraRound"
+                 [style.--fase]="colorIntermedio()" [style.--siguiente]="colorSiguiente()">
+                @if (phaseBreak()!.isExtraRound) {
+                    <!-- Empate por el 1º: ronda extra de penaltis -->
+                    <header class="pb-header extra-round-header">
+                        <p class="pb-etiqueta">¡Empate por el 1º puesto!</p>
+                        <h1 class="extra-round-title">¡Ronda extra!</h1>
+                        <h2 class="pb-nombre">⚽ Tanda de penaltis</h2>
+                        <div class="extra-round-tied">
+                            @for (id of phaseBreak()!.tiedPlayerIds ?? []; track id) {
+                                <span class="extra-round-player">{{ playerName(id) }}</span>
+                            }
+                        </div>
+                        <ul class="extra-round-rules">
+                            <li>5 penaltis cada uno, por turnos</li>
+                            <li>Acierto = ⚽ gol · Fallo o tiempo agotado = ✖ parada</li>
+                            <li>Si siguen empatados: muerte súbita</li>
+                            <li>Sin comodines · Los goles no suman puntos</li>
+                        </ul>
+                    </header>
+                } @else {
+                    <header class="pb-header">
+                        <p class="pb-etiqueta">Fase completada</p>
+                        <h1 class="pb-numero">Fase {{ phaseBreak()!.faseNumero }}<small> / {{ phaseBreak()!.totalFases }}</small></h1>
+                        @if (phaseBreak()!.faseNombre) {
+                            <h2 class="pb-nombre">{{ phaseBreak()!.faseNombre }}</h2>
+                        }
+                    </header>
+                }
 
                 <app-phase-leaderboard
                     [players]="phaseBreak()!.players"
@@ -112,7 +134,7 @@
                                 [style.border-color]="colorSiguiente()"
                                 [style.color]="textoSobreColor(colorSiguiente())"
                                 [disabled]="isContinuing()" (click)="onContinuePhase()">
-                            {{ isContinuing() ? 'Continuando...' : 'Continuar con la siguiente fase' }}
+                            {{ isContinuing() ? 'Continuando...' : phaseBreak()!.isExtraRound ? '⚽ Empezar tanda de penaltis' : 'Continuar con la siguiente fase' }}
                         </button>
                     } @else {
                         <p class="opacity-70">Esperando a que el anfitrión continúe...</p>
@@ -202,6 +224,10 @@
                     <span class="phase-badge-numero">Fase {{ phase()!.numero }}<small>/{{ phase()!.total }}</small></span>
                     @if (phase()!.nombre) { <span class="phase-badge-nombre">{{ phase()!.nombre }}</span> }
                 </div>
+            }
+
+            @if (penalty(); as pen) {
+                <app-penalty-board [state]="pen" />
             }
 
             <div class="question-card">
@@ -451,6 +477,7 @@
 
             @if (showTurnResult() && showResultOverlay()) {
                 <div class="turn-result-overlay" [class.is-correct]="lastTurnResult()!.isCorrect" [class.is-wrong]="!lastTurnResult()!.isCorrect"
+                     [class.is-penalty]="lastTurnResult()!.isPenalty"
                      (click)="isPresencial() && showResultOverlay.set(false)">
                     <div class="result-halftone" aria-hidden="true"></div>
                     @if (lastTurnResult()!.isCorrect) {
@@ -458,7 +485,10 @@
                     }
                     <div class="result-flash" aria-hidden="true"></div>
                     <div class="result-burst" role="status">
-                        @if (lastTurnResult()!.isCorrect) {
+                        @if (lastTurnResult()!.isPenalty) {
+                            <span class="result-word">{{ lastTurnResult()!.isCorrect ? '¡GOOOL!' : '¡PARADA!' }}</span>
+                            <span class="result-points">{{ lastTurnResult()!.isCorrect ? '⚽ ' : '🧤 ' }}{{ playerName(lastTurnResult()!.playerId) }}</span>
+                        } @else if (lastTurnResult()!.isCorrect) {
                             <span class="result-word">¡Correcto!</span>
                             <span class="result-points">+{{ resultPoints() }} puntos</span>
                         } @else {
@@ -554,6 +584,16 @@
                 <span class="countdown-number">{{ n }}</span>
             }
         }
+    </div>
+}
+
+@if (extraRoundBanner()) {
+    <div class="extra-round-banner" aria-live="assertive">
+        <div class="extra-round-banner-text">
+            <span class="phase-banner-label">Empate</span>
+            <span class="extra-round-banner-title">¡Ronda extra!</span>
+            <span class="extra-round-banner-sub">⚽ Penaltis</span>
+        </div>
     </div>
 }
 

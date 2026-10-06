@@ -9,6 +9,29 @@
     }
   </header>
 
+  @if (currentTiebreak(); as tb) {
+    <!-- Desempate del podio antes de desvelarlo -->
+    <section class="tiebreak-panel" aria-live="polite">
+      @if (tb.kind === 'penaltis') {
+        <p class="tiebreak-title">⚽ Desempate por penaltis</p>
+        <p class="tiebreak-score">{{ penaltyScore(tb) }}</p>
+        @if (penaltyWinner(tb); as w) {
+          <p class="tiebreak-winner">¡{{ w }} gana la tanda!</p>
+        } @else if (tb.outOfQuestions) {
+          <p class="tiebreak-note">Se acabaron las preguntas: se decide por sorteo</p>
+        }
+      } @else {
+        <p class="tiebreak-title">¡Empate por el {{ tb.position }}º puesto!</p>
+        <p class="tiebreak-note">{{ tb.kind === 'moneda' ? 'Se decide a cara o cruz' : 'Lo decide la ruleta' }}</p>
+        @if (tb.kind === 'moneda') {
+          <app-tiebreak-coin [names]="coinFaces(tb)" [winner]="coinWinner(tb)" />
+        } @else {
+          <app-tiebreak-wheel [names]="tb.usernames" [position]="tb.position" [picks]="tb.picks ?? 1" />
+        }
+      }
+    </section>
+  }
+
   @if (podiumCount() > 0) {
     <!-- Finalistas a la vez (orden alfabético), antes de saber quién queda en qué puesto -->
     @if (dramatic && shown('finalists') && !shown('podium')) {

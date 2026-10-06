@@ -39,6 +39,9 @@ export interface TurnResult {
     /** Robo fallido: jugador al que vuelve la pregunta. */
     returnsToPlayerId?: number | null;
     bets?: BetResult[] | null;
+    /** Tiro de la tanda de penaltis (acierto = gol; no suma puntos). */
+    isPenalty?: boolean;
+    penalty?: PenaltyState | null;
 }
 
 export interface GameResult {
@@ -47,6 +50,44 @@ export interface GameResult {
     playerResults: PlayerResult[];
     totalQuestions: number;
     gameDuration: number;
+    /** Desempates del podio, en el orden en que se muestran (penaltis primero, luego sorteos). */
+    tiebreaks?: Tiebreak[] | null;
+}
+
+/** Desempate del podio: tanda de penaltis o sorteo (moneda con 2 empatados, ruleta de nombres con 3+). */
+export interface Tiebreak {
+    kind: 'penaltis' | 'moneda' | 'ruleta';
+    /** Primer puesto en disputa. */
+    position: number;
+    /** Sorteos: orden resultante. Penaltis: orden de tiro. */
+    playerIds: number[];
+    usernames: string[];
+    /** Sorteos: cuántos puestos del podio se deciden. */
+    picks?: number;
+    kicks?: PenaltyKick[] | null;
+    winnerId?: number | null;
+    /** La tanda se cortó por falta de preguntas: el 1º se sorteó entre los que seguían. */
+    outOfQuestions?: boolean;
+}
+
+export interface PenaltyKick {
+    playerId: number;
+    round: number;
+    scored: boolean;
+}
+
+/** Estado de la tanda de penaltis (marcador). */
+export interface PenaltyState {
+    playerIds: number[];
+    usernames: string[];
+    kicks: PenaltyKick[];
+    eliminated: number[];
+    suddenDeath: boolean;
+    round: number;
+    kickerId?: number | null;
+    regulationKicks: number;
+    finished: boolean;
+    winnerId?: number | null;
 }
 
 export interface PlayerResult {
@@ -115,6 +156,8 @@ export interface TurnStartedDto {
     buzzerLockedRemainingMs?: number;
     /** Pulsador esperando a que el anfitrión lance la cuenta atrás de verdad. */
     buzzerWaitingForHost?: boolean;
+    /** Tiro de la tanda de penaltis: estado de la tanda. */
+    penalty?: PenaltyState | null;
 }
 
 /** Figura musical de una nota (se dibuja así y marca su duración al sonar). */
@@ -220,6 +263,9 @@ export interface PhaseCompletedDto {
     faseColor?: string | null;
     siguienteFaseNumero?: number;
     siguienteFaseColor?: string | null;
+    /** Intermedio antes de la tanda de penaltis que desempata el 1º puesto. */
+    isExtraRound?: boolean;
+    tiedPlayerIds?: number[] | null;
 }
 
 export interface GameLobbyState {

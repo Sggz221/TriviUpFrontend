@@ -8,7 +8,8 @@ import { AuthService } from '../../../auth/auth.service';
 import { GameLobbyComponent } from '../../components/game-lobby/game-lobby.component';
 import { GameScoreboardComponent } from '../../components/game-scoreboard/game-scoreboard.component';
 import { PhaseLeaderboardComponent } from '../../components/phase-leaderboard/phase-leaderboard.component';
-import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto, Bet, ComodinTipo, ComodinUsedDto, TurnStartedDto, ColorHsb, ColorChallengeResultDto, OcarinaNote } from '../../models/game.models';
+import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto, Bet, ComodinTipo, ComodinUsedDto, TurnStartedDto, ColorHsb, ColorChallengeResultDto, OcarinaNote, PenaltyState } from '../../models/game.models';
+import { PenaltyBoardComponent } from '../../components/penalty-board/penalty-board.component';
 import { OcarinaChallengeComponent } from '../../components/ocarina-challenge/ocarina-challenge.component';
 import { ComodinHandComponent } from '../../components/comodin-hand/comodin-hand.component';
 import { HandCard } from '../../components/comodin-hand/comodin-cards';
@@ -24,14 +25,14 @@ import { countUp } from '../../utils/count-up';
 import { confettiPieces } from '../../utils/confetti';
 
 /** Color del banner central: turno normal, cambio de pregunta o pregunta robada. */
-type TurnBannerVariant = 'turn' | 'reroll' | 'steal';
+type TurnBannerVariant = 'turn' | 'reroll' | 'steal' | 'penalty';
 
 @Component({
     selector: 'app-game-room',
     standalone: true,
-    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent, SoundControlsComponent, OcarinaChallengeComponent, ComodinHandComponent],
+    imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent, SoundControlsComponent, OcarinaChallengeComponent, ComodinHandComponent, PenaltyBoardComponent],
     templateUrl: './game-room.html',
-    styleUrls: ['./game-room.scss', './game-room-fx.scss', './game-room-comodines.scss', './game-room-presencial.scss']
+    styleUrls: ['./game-room.scss', './game-room-fx.scss', './game-room-penalty.scss', './game-room-comodines.scss', './game-room-presencial.scss']
 })
 export class GameRoomComponent implements OnInit, OnDestroy {
     private route = inject(ActivatedRoute);
@@ -231,7 +232,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Jugador (no anfitrión ni espectador) con una pregunta activa y sin pausa ni resultado en pantalla. */
     canUseComodines = computed(() =>
         !!this.me() && !this.isOwner() && !this.isSpectator() && !!this.currentQuestion()
-        && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak() && !this.isDynamic()
+        && !this.showTurnResult() && !this.isPaused() && !this.phaseBreak() && !this.isDynamic() && !this.penalty()
         // En presencial la marca del anfitrión no bloquea: solo confirmar cierra la pregunta.
         && (this.isPresencial() || this.selectedAnswer() === null));
     /** Pregunta de pulsador: un jugador (no anfitrión ni espectador) puede pulsar mientras el pulsador esté abierto. */
@@ -314,6 +315,17 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     phaseBreakPrevious = signal<Player[] | null>(null);
     /** Fase cuyo banner grande se está mostrando (null = oculto). */
     phaseBanner = signal<PhaseInfo | null>(null);
+
+    // ---- Ronda extra: tanda de penaltis para desempatar el 1º puesto ----
+    /** Estado de la tanda en curso (null fuera de los penaltis). */
+    penalty = signal<PenaltyState | null>(null);
+    /** Banner "¡Ronda extra!" a pantalla completa (con silbato) al entrar en el intermedio de los penaltis. */
+    extraRoundBanner = signal(false);
+    private extraRoundTimeout: ReturnType<typeof setTimeout> | null = null;
+    private resultsTimeout: ReturnType<typeof setTimeout> | null = null;
+    private static readonly EXTRA_ROUND_BANNER_MS = 3200;
+    /** Tras el último penalti se deja ver el gol (o la parada) y el pitido final antes del podio. */
+    private static readonly PENALTY_RESULTS_DELAY_MS = 3500;
     /** Colores del intermedio: el de la fase que acaba y el de la siguiente. */
     colorIntermedio = computed(() => colorDeFase(this.phaseBreak()?.faseNumero, this.phaseBreak()?.faseColor));
     colorSiguiente = computed(() => colorDeFase(this.phaseBreak()?.siguienteFaseNumero, this.phaseBreak()?.siguienteFaseColor));
@@ -428,6 +440,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
         this.ruletaTimeouts.forEach(t => clearTimeout(t));
         this.clearBuzzerLock();
+        if (this.extraRoundTimeout) clearTimeout(this.extraRoundTimeout);
+        if (this.resultsTimeout) clearTimeout(this.resultsTimeout);
         // DON'T call leaveGame() or disconnect() here
         // When navigating to game-play, we want to KEEP the SignalR connection
         // The user is still in the game, just viewing a different page
@@ -896,7 +910,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.phaseBreak.set(null);
             this.isContinuing.set(false);
             this.sawTurn = true;
-            const fase: PhaseInfo | null = data.totalFases && data.totalFases > 1
+            const fase: PhaseInfo | null = data.totalFases && data.totalFases > 1 && !data.penalty
                 ? { numero: data.faseNumero ?? 1, nombre: data.faseNombre ?? null, total: data.totalFases, color: colorDeFase(data.faseNumero, data.faseColor) }
                 : null;
             this.phase.set(fase);
@@ -905,7 +919,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.applyTurnState(data);
             const pending = this.pendingBanner;
             this.pendingBanner = null;
-            if (pending) {
+            if (data.penalty) {
+                this.announcePenaltyKick(data.penalty, data.currentPlayerId);
+            } else if (pending) {
                 this.showTurnBanner(0, pending.label, this.playerName(data.currentPlayerId), pending.variant);
             } else if (data.isSteal) {
                 this.showTurnBanner(0, `¡Pregunta robada a ${this.playerName(data.turnOwnerId)}!`, this.playerName(data.currentPlayerId), 'steal');
@@ -955,6 +971,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.phaseBreak.set(data);
             this.players.set(data.players);
             this.syncOwnershipFromPlayers(data.players);
+            if (data.isExtraRound) this.showExtraRoundBanner();
         });
 
         // Turn result
@@ -972,7 +989,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.cancelResultCount?.();
             this.resultPoints.set(0);
             this.cancelResultCount = countUp(600, p => this.resultPoints.set(Math.round(result.pointsEarned * p)), 350);
-            if (result.isCorrect) {
+            if (result.isPenalty) {
+                this.playPenaltyOutcome(result);
+            } else if (result.isCorrect) {
                 this.audioService.playCorrect();
             } else {
                 this.audioService.playWrong();
@@ -983,6 +1002,14 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         // Turn timeout
         this.gameSignalrService.onTurnTimeout.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             console.log('[GameRoom] Turn timeout for player:', data.playerId);
+            if (data.isPenalty) {
+                // Penalti sin responder a tiempo: parada, con su cartel como un tiro fallado
+                this.lastTurnResult.set(data);
+                this.showTurnResult.set(true);
+                this.showResultOverlay.set(true);
+                this.clearTimerInterval();
+                this.playPenaltyOutcome(data);
+            }
             this.applyTurnOutcome(data, true);
         });
 
@@ -1016,6 +1043,16 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         // Game finished
         this.gameSignalrService.onGameFinished.pipe(takeUntil(this.destroy$)).subscribe((results) => {
             console.log('[GameRoom] Game finished:', results);
+            if (this.penalty()) {
+                // Acaba de terminar la tanda: primero se ve el último tiro y suena el pitido final
+                if (this.resultsTimeout) clearTimeout(this.resultsTimeout);
+                this.resultsTimeout = setTimeout(() => {
+                    this.penalty.set(null);
+                    this.gameResults.set(results);
+                }, GameRoomComponent.PENALTY_RESULTS_DELAY_MS);
+                clearLastGame(this.roomCode());
+                return;
+            }
             this.gameResults.set(results);
             // El podio dramático (GameScoreboardComponent) lleva su propio redoble y fanfarria
             // Partida terminada: ya no hay nada a lo que reconectar
@@ -1245,6 +1282,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         // Una cuenta atrás de un pulsador anterior ya no vale (quien llama la vuelve a empezar si toca)
         this.clearBuzzerLock();
         this.pausedBuzzerLockMs = null;
+        this.penalty.set(data.penalty ?? null);
         this.turnOwnerId.set(data.turnOwnerId ?? data.currentPlayerId);
         this.isSteal.set(!!data.isSteal);
         this.textHiddenForId.set(data.textHiddenForPlayerId ?? null);
@@ -1552,7 +1590,41 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     /** Puntuaciones, apuestas y avisos al resolverse una respuesta (o un timeout). */
+    /** Banner "¡Ronda extra!" con silbato al anunciar la tanda de penaltis. */
+    private showExtraRoundBanner(): void {
+        if (this.extraRoundTimeout) clearTimeout(this.extraRoundTimeout);
+        this.extraRoundBanner.set(true);
+        this.audioService.playWhistle(0.9);
+        this.audioService.playImpact(1, 0.2);
+        this.extraRoundTimeout = setTimeout(() => this.extraRoundBanner.set(false), GameRoomComponent.EXTRA_ROUND_BANNER_MS);
+    }
+
+    /** Banner de cada penalti; el primero y el inicio de la muerte súbita, con silbato. */
+    private announcePenaltyKick(state: PenaltyState, kickerId: number): void {
+        // Primer tiro de la muerte súbita: ya se está en ella y nadie ha tirado más allá de los 5 reglamentarios
+        const suddenDeathStarts = state.suddenDeath && !state.kicks.some(k => k.round > state.regulationKicks);
+        let label = 'Penalti de';
+        if (state.kicks.length === 0) {
+            label = '¡Empiezan los penaltis!';
+            this.audioService.playWhistle(0.7);
+        } else if (suddenDeathStarts) {
+            label = '¡Muerte súbita! Penalti de';
+            this.audioService.playWhistle(0.7);
+        }
+        this.showTurnBanner(0, label, this.playerName(kickerId), 'penalty');
+    }
+
+    /** Gol (ovación) o parada (uuuh); al decidirse la tanda, pitido final. */
+    private playPenaltyOutcome(result: TurnResult): void {
+        if (result.isCorrect) this.audioService.playCrowdCheer();
+        else this.audioService.playCrowdGroan();
+        if (result.penalty?.finished) {
+            this.resultsTimeout = setTimeout(() => this.audioService.playFinalWhistle(), 1400);
+        }
+    }
+
     private applyTurnOutcome(result: TurnResult, timedOut: boolean): void {
+        if (result.penalty) this.penalty.set(result.penalty);
         // Respuesta revelada (un robo fallido no la revela: correctAnswerIndex = -1). Llega antes que el
         // TurnStarted siguiente, así que currentQuestion sigue siendo la pregunta resuelta.
         const resuelta = this.currentQuestion();

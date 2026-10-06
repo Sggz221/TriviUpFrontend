@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { AudioService } from '../../../shared/services/audio.service';
 import { countUp, prefersReducedMotion } from '../../utils/count-up';
 import { confettiPieces } from '../../utils/confetti';
+import { Tiebreak } from '../../models/game.models';
+import { COIN_FLIP_MS, TiebreakCoinComponent } from '../tiebreak-draw/tiebreak-coin.component';
+import { TiebreakWheelComponent, WHEEL_PAUSE_MS, WHEEL_SPIN_MS } from '../tiebreak-draw/tiebreak-wheel.component';
 
 export interface ScoreboardPlayer {
   userId: number;
@@ -19,7 +22,7 @@ export interface ScoreboardPlayer {
  * incógnita ("?" y sin colores), los finalistas a la vez (sin decir en qué puesto), redoble, cada uno sube a su
  * puesto (3º, 2º, 1º) y el ganador a pantalla completa. Cada paso dura lo indicado antes del siguiente.
  */
-type RevealKey = 'headline' | `rest:${number}` | 'mystery' | 'finalists' | 'drum' | 'podium' | 'winner' | 'done';
+type RevealKey = 'headline' | `rest:${number}` | `tie:${number}` | 'mystery' | 'finalists' | 'drum' | 'podium' | 'winner' | 'done';
 
 const PASO_MS: Record<string, number> = {
   headline: 1300,
@@ -37,7 +40,7 @@ const SUBIDA_MS: Record<number, number> = { 3: 0, 2: 550, 1: 1100 };
 @Component({
   selector: 'app-game-scoreboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TiebreakCoinComponent, TiebreakWheelComponent],
   templateUrl: './game-scoreboard.component.html',
   styleUrl: './game-scoreboard.component.scss'
 })
@@ -57,6 +60,8 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
   @Input() durationLabel: string | null = null;
   /** Revela los puestos poco a poco (último → primero) con sonido. Sin él, todo aparece a la vez (historial). */
   @Input() dramatic = false;
+  /** Desempates del podio (penaltis y sorteos), que se muestran antes de desvelar el podio. */
+  @Input() tiebreaks: Tiebreak[] | null | undefined = null;
 
   @Input() set ownerId(value: number | null | undefined) {
     this.ownerIdSignal.set(value ?? null);
@@ -106,6 +111,40 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
       .filter((p): p is ScoreboardPlayer => !!p)
       .sort((a, b) => a.username.localeCompare(b.username, 'es')));
 
+  /** Desempate en pantalla ahora mismo (paso tie:i de la revelación). */
+  currentTiebreak = computed<Tiebreak | null>(() => {
+    const key = this.current();
+    return key?.startsWith('tie:') ? this.tiebreaks?.[Number(key.slice(4))] ?? null : null;
+  });
+
+  /** Lo que dura en pantalla cada desempate: la animación completa más un momento para verlo. */
+  private tiebreakMs(t: Tiebreak): number {
+    if (t.kind === 'moneda') return 300 + COIN_FLIP_MS + 2000;
+    if (t.kind === 'ruleta') return 300 + Math.min(t.picks ?? 1, t.playerIds.length) * (WHEEL_SPIN_MS + WHEEL_PAUSE_MS) + 1300;
+    return 3500;
+  }
+
+  /** Caras de la moneda en orden alfabético (no delata al ganador, que es el primero de playerIds). */
+  coinFaces(t: Tiebreak): string[] {
+    return [...t.usernames].sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  coinWinner(t: Tiebreak): number {
+    return this.coinFaces(t).indexOf(t.usernames[0]);
+  }
+
+  /** "Ana 4 - 3 Luis": goles de cada tirador en la tanda. */
+  penaltyScore(t: Tiebreak): string {
+    return t.playerIds
+      .map((id, i) => `${t.usernames[i]} ${(t.kicks ?? []).filter(k => k.playerId === id && k.scored).length}`)
+      .join(' · ');
+  }
+
+  penaltyWinner(t: Tiebreak): string | null {
+    const i = t.winnerId != null ? t.playerIds.indexOf(t.winnerId) : -1;
+    return i >= 0 ? t.usernames[i] : null;
+  }
+
   /** Retraso (s) con el que sube al podio cada puesto. */
   riseDelay(place: number): string {
     return `${(SUBIDA_MS[place] ?? 0) / 1000}s`;
@@ -124,6 +163,7 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
     this.sequence = [
       'headline',
       ...[...this.restPlayers()].reverse().map(p => `rest:${p.userId}` as RevealKey),
+      ...(this.tiebreaks ?? []).map((_, i) => `tie:${i}` as RevealKey),
       'mystery',
       'finalists',
       'drum',
@@ -194,6 +234,10 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
         this.later(() => this.winnerSplash.set(false), PASO_MS['winner']);
         break;
       default: {
+        if (key.startsWith('tie:')) {
+          this.audio.playImpact(0.8);
+          break;
+        }
         // Resto de la clasificación: tic que sube de tono según se acerca al podio
         this.audio.playTick(0.8 + restIndex * 0.08);
         const player = this.restPlayers().find(p => `rest:${p.userId}` === key) ?? null;
@@ -201,7 +245,9 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
       }
     }
 
-    const wait = PASO_MS[key.startsWith('rest:') ? 'rest' : key] ?? 1000;
+    const wait = key.startsWith('tie:')
+      ? this.tiebreakMs(this.tiebreaks![Number(key.slice(4))])
+      : PASO_MS[key.startsWith('rest:') ? 'rest' : key] ?? 1000;
     this.later(() => this.goTo(index + 1), wait);
   }
 

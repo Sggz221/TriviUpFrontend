@@ -67,7 +67,7 @@ export class AudioService {
      * `at` es el desfase en segundos desde ahora; `slideTo` hace un barrido de frecuencia hasta el final.
      */
     private playTone(frequency: number, duration: number, type: OscillatorType = 'sine', gainValue: number = 0.3,
-                     opts: { at?: number; slideTo?: number; attack?: number; vibrato?: number; detune?: number } = {}): void {
+                     opts: { at?: number; slideTo?: number; attack?: number; vibrato?: number; vibratoRate?: number; detune?: number } = {}): void {
         if (!this.canPlaySfx()) return;
 
         try {
@@ -88,7 +88,7 @@ export class AudioService {
             if (opts.vibrato) {
                 const lfo = ctx.createOscillator();
                 const lfoGain = ctx.createGain();
-                lfo.frequency.value = 6;
+                lfo.frequency.value = opts.vibratoRate ?? 6;
                 lfoGain.gain.value = opts.vibrato;
                 lfo.connect(lfoGain).connect(oscillator.frequency);
                 lfo.start(start);
@@ -362,6 +362,56 @@ export class AudioService {
         }
         // Murmullo del público debajo
         this.playNoise(2, 900, 0.05, { type: 'bandpass', q: 0.6, attack: 0.3 });
+    }
+
+    /** Silbato de árbitro: pitido agudo con el "trino" de la bolita (modulación rápida) y aire. */
+    playWhistle(duration = 0.6, at = 0): void {
+        this.playTone(2800, duration, 'sine', 0.16, { at, attack: 0.02, vibrato: 180, vibratoRate: 32 });
+        this.playTone(2800 * 1.5, duration, 'sine', 0.04, { at, attack: 0.02, vibrato: 260, vibratoRate: 32 });
+        this.playNoise(duration, 3000, 0.06, { at, q: 1.2, attack: 0.02 });
+    }
+
+    /** Pitido final: dos cortos y uno largo. */
+    playFinalWhistle(): void {
+        this.playWhistle(0.25, 0);
+        this.playWhistle(0.25, 0.4);
+        this.playWhistle(1.0, 0.8);
+    }
+
+    /** Ovación del público (gol): rugido que crece y gritos de "¡eh!". */
+    playCrowdCheer(): void {
+        this.playNoise(2.2, 1100, 0.22, { type: 'bandpass', q: 0.5, attack: 0.25 });
+        this.playNoise(1.6, 3000, 0.08, { type: 'highpass', attack: 0.15, at: 0.1 });
+        for (let v = 0; v < 8; v++) {
+            this.playVoiced(220 + Math.random() * 260, 0.25 + Math.random() * 0.2, 0.1 + Math.random() * 0.8, 0.05);
+        }
+    }
+
+    /** "¡Uuuh!" del público (parada): murmullo grave que baja. */
+    playCrowdGroan(): void {
+        for (let v = 0; v < 6; v++) {
+            this.playTone(160 + Math.random() * 120, 1.1, 'sawtooth', 0.025, { at: Math.random() * 0.1, attack: 0.15, slideTo: 90 + Math.random() * 40 });
+        }
+        this.playNoise(1.3, 500, 0.12, { type: 'lowpass', attack: 0.2, sweepTo: 200 });
+    }
+
+    /** Moneda lanzada: "ting" metálico que vibra mientras gira (`durationS`). */
+    playCoinFlip(durationS = 3): void {
+        this.playTone(3200, 0.5, 'sine', 0.14);
+        this.playTone(3200 * 2.4, 0.3, 'sine', 0.05);
+        const spins = Math.floor(durationS / 0.12);
+        for (let i = 0; i < spins; i++) {
+            // Cada vuelta, un destello más lento y más suave (la moneda se frena)
+            const at = 0.1 + i * 0.12 * (1 + i / spins);
+            if (at > durationS) break;
+            this.playTone(5200, 0.03, 'sine', 0.03 * (1 - i / spins), { at });
+        }
+    }
+
+    /** La moneda cae: golpe y tintineo. */
+    playCoinLand(): void {
+        this.playImpact(0.5);
+        [0, 0.12, 0.2, 0.25].forEach((at, i) => this.playTone(2600 - i * 200, 0.12, 'sine', 0.1 / (i + 1), { at }));
     }
 
     /** Descarga eléctrica (50/50, ocultar texto). */
