@@ -1,0 +1,225 @@
+@switch (scene()) {
+    @case ('pulsador') {
+        <div class="tk-scene" style="--o: 12.1s">
+            <div class="tk-phone">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>21:42</span><span>5G ▮</span></div>
+                    <div class="tk-board">
+                        <div class="tk-topline">
+                            <span class="tk-phase" style="--fase: #0ea5e9">Fase 2<small>/3</small> · Rapidez</span>
+                        </div>
+                        <div class="tk-q a up" style="--d: 0.3s">
+                            <span class="tk-q-tag tk-chip" style="--c: #ef4444">🔔 Pulsador</span>
+                            ¿Cuántos lados tiene un hexágono?
+                        </div>
+
+                        <div class="buzzer-zone">
+                            <div class="buzzer-stack">
+                                <span class="buzzer locked a x pop" style="--d: 0.6s; --o: 8.1s; --to: 0.01s">Prepárate…</span>
+                                <span class="buzzer live a" style="--d: 8.1s; --in: tk-buzz-on; --t: 0.35s">
+                                    ¡PULSA!
+                                    <span class="tk-touch" style="left: 50%; top: 50%; --d: 8.35s"></span>
+                                </span>
+                            </div>
+                            <span class="hint-stack">
+                                <span class="tk-wait a x fade" style="--d: 0.8s; --o: 2s">Esperando a que el anfitrión empiece la cuenta atrás</span>
+                                <span class="tk-wait a x fade" style="--d: 2s; --o: 8.1s">¡Atento a la cuenta atrás!</span>
+                                <span class="tk-wait a x fade" style="--d: 8.1s; --o: 8.9s">El primero en pulsar responde</span>
+                                <span class="a fade" style="--d: 11s">
+                                    <span class="tk-yourturn">¡Es tu turno!</span><br />
+                                    <span class="tk-wait">Di tu respuesta en voz alta</span>
+                                </span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="tk-count-bg a x" style="--d: 1.9s; --o: 5.2s"></div>
+                    <div class="tk-count">
+                        <span style="--d: 2s">5</span>
+                        <span style="--d: 2.6s">4</span>
+                        <span style="--d: 3.2s">3</span>
+                    </div>
+                    <div class="troll a x slam" style="--d: 3.8s; --o: 5.1s">
+                        <span class="troll-word">¡Ah, no!</span>
+                        <span class="troll-sub">Es broma 🤡</span>
+                    </div>
+
+                    <div class="tk-count-bg a x" style="--d: 5.5s; --o: 8.7s"></div>
+                    <div class="tk-count">
+                        <span style="--d: 5.6s">5</span>
+                        <span style="--d: 6.1s">4</span>
+                        <span style="--d: 6.6s">3</span>
+                        <span style="--d: 7.1s">2</span>
+                        <span style="--d: 7.6s">1</span>
+                        <span class="go" style="--d: 8.1s">¡YA!</span>
+                    </div>
+
+                    <div class="tk-tban you" style="--d: 8.9s">
+                        <div class="tk-tban-strip"></div>
+                        <div class="tk-tban-text">
+                            <span class="tk-tban-label">Ha pulsado</span>
+                            <span class="tk-tban-name">Lucía</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tk-bubble host a x" style="left: -8px; top: 20px; --d: 1.2s; --o: 2s">
+                <span class="who">Ana · anfitriona</span>¡Atentos!
+            </div>
+            <div class="tk-bubble rival tail-r a x" style="right: -12px; bottom: 150px; --d: 4s; --o: 5.4s">
+                <span class="who">Marcos</span>¡Casi pico! 😅
+            </div>
+            <div class="tk-bubble host a x" style="left: -8px; top: 20px; --d: 5.3s; --o: 6.6s">
+                <span class="who">Ana · anfitriona</span>Ahora sí, de verdad 😇
+            </div>
+        </div>
+    }
+
+    @case ('colores') {
+        <div class="tk-scene" style="--o: 11.6s">
+            <div class="tk-phone">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>21:44</span><span>5G ▮</span></div>
+                    <div class="tk-board colors">
+                        <div class="tk-topline">
+                            <span class="tk-phase" style="--fase: #0ea5e9">Fase 2<small>/3</small> · Rapidez</span>
+                        </div>
+                        <div class="tk-q compact a up" style="--d: 0.3s">
+                            <span class="tk-q-tag tk-chip" style="--c: #d946ef">🎨 Colores</span>
+                            ¿En qué país está la Torre de Pisa?
+                        </div>
+
+                        <div class="timer a fade" style="--d: 0.6s">
+                            <div class="timer-bar"><span></span></div>
+                            <span class="timer-text">60s</span>
+                        </div>
+
+                        <div class="swatches a up" style="--d: 0.7s">
+                            <div class="swatch-block"><div class="swatch target"></div><span>Color a imitar</span></div>
+                            <div class="swatch-block"><div class="swatch mine"></div><span>Tu color</span></div>
+                        </div>
+
+                        <div class="controls-stack">
+                            <div class="sliders a x fade" style="--d: 0.9s; --o: 6s">
+                                <label>
+                                    <span>Tono</span>
+                                    <span class="track hue"><i class="thumb t-hue"><b class="drag-dot"></b></i></span>
+                                </label>
+                                <label>
+                                    <span>Saturación</span>
+                                    <span class="track sat"><i class="thumb t-sat"><b class="drag-dot"></b></i></span>
+                                </label>
+                                <label>
+                                    <span>Brillo</span>
+                                    <span class="track bri"><i class="thumb t-bri"><b class="drag-dot"></b></i></span>
+                                </label>
+                                <span class="send tk-press" style="--d: 5.6s">
+                                    Enviar mi color
+                                    <span class="tk-touch" style="left: 50%; top: 50%; --d: 5.35s"></span>
+                                </span>
+                            </div>
+                            <span class="sent a fade" style="--d: 6s">
+                                Color enviado. Esperando a los demás
+                                <span class="sent-count">(<span class="swap"><b class="a x" style="--in: tk-fade; --t: 0.01s; --d: 6s; --o: 6.6s">2</b><b class="a pop" style="--d: 6.6s">3</b></span>/3)</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="result-dim a fade" style="--d: 8s"></div>
+                    <div class="color-result a up" style="--d: 8s">
+                        <div class="cr-head">
+                            <div class="swatch small target"></div>
+                            <p class="cr-title">¡Lucía se lleva la pregunta!</p>
+                        </div>
+                        <ol class="cr-list">
+                            <li class="winner a from-r" style="--d: 8.3s"><b>1</b><i class="swatch tiny" style="background: hsl(172 66% 47%)"></i>Lucía<span>94%</span></li>
+                            <li class="a from-r" style="--d: 8.5s"><b>2</b><i class="swatch tiny" style="background: hsl(160 55% 52%)"></i>Los Cracks<span>81%</span></li>
+                            <li class="a from-r" style="--d: 8.7s"><b>3</b><i class="swatch tiny" style="background: hsl(200 60% 55%)"></i>Marcos<span>62%</span></li>
+                        </ol>
+                        <span class="cr-hint a fade" style="--d: 9.6s">Ahora dices tu respuesta en voz alta</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @case ('ocarina') {
+        <div class="tk-scene" style="--o: 11.6s">
+            <div class="tk-phone">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>21:46</span><span>5G ▮</span></div>
+                    <div class="tk-board">
+                        <div class="tk-topline">
+                            <span class="tk-phase" style="--fase: #0ea5e9">Fase 2<small>/3</small> · Rapidez</span>
+                            <span class="tk-chip a pop" style="--d: 8.4s; --c: #475569">🚫 Sin comodines</span>
+                        </div>
+                        <div class="tk-q compact a up" style="--d: 0.3s">
+                            <span class="tk-q-tag tk-chip" style="--c: #2563eb">🎵 Ocarina</span>
+                            ¿Qué saga de videojuegos protagoniza Link?
+                        </div>
+
+                        <div class="oc-head a fade" style="--d: 0.5s">
+                            <span class="oc-title">🎵 Ocarina</span>
+                            <span class="oc-phase">
+                                <span class="a x fade listening" style="--d: 0.5s; --o: 3.4s">Escucha la melodía…</span>
+                                <span class="a fade" style="--d: 3.4s">¡Tócala! El primero que acierte responde</span>
+                            </span>
+                        </div>
+
+                        <div class="staff-card a up" style="--d: 0.6s">
+                            <div class="staff">
+                                @for (l of [0, 1, 2, 3, 4]; track l) { <i class="line" [style.top.px]="14 + l * 8"></i> }
+                                @for (p of melody; track $index; let i = $index) {
+                                    <span class="note" [style.left.px]="60 + i * 60" [style.top.px]="noteY(p)" [style.--d]="listenAt[i] + 's'"></span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="lane-head-oc a fade" style="--d: 3.4s">
+                            <span>Tu melodía
+                                <b class="swap">
+                                    @for (n of [0, 1, 2, 3, 4]; track n) {
+                                        <span class="a x" style="--in: tk-fade; --t: 0.01s"
+                                              [style.--d]="(n === 0 ? 3.4 : playAt[n - 1]) + 's'"
+                                              [style.--o]="(n < 4 ? playAt[n] : 99) + 's'">{{ n }}/4</span>
+                                    }
+                                </b>
+                            </span>
+                        </div>
+                        <div class="staff-card lane-staff a up" style="--d: 3.4s">
+                            <div class="staff">
+                                @for (l of [0, 1, 2, 3, 4]; track l) { <i class="line" [style.top.px]="14 + l * 8"></i> }
+                                @for (p of melody; track $index; let i = $index) {
+                                    <span class="note entered" [style.left.px]="60 + i * 60" [style.top.px]="noteY(p)" [style.--d]="playAt[i] + 's'"></span>
+                                }
+                            </div>
+                        </div>
+                        <span class="oc-ok a pop" style="--d: 6.6s">¡Perfecta! Te llevas la pregunta</span>
+
+                        <div class="oc-buttons a up" style="--d: 3.5s">
+                            @for (b of buttons; track $index; let i = $index) {
+                                <span class="oc-btn" [class.btn-a]="b.a">
+                                    <span class="oc-glyph">{{ b.glyph }}</span>
+                                    <span class="oc-name">{{ b.name }}</span>
+                                    @for (t of pressesOf(i); track t) {
+                                        <span class="oc-press" [style.--d]="t + 's'"></span>
+                                        <span class="tk-touch" style="left: 50%; top: 50%" [style.--d]="(t - 0.25) + 's'"></span>
+                                    }
+                                </span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="tk-tban you" style="--d: 7.3s">
+                        <div class="tk-tban-strip"></div>
+                        <div class="tk-tban-text">
+                            <span class="tk-tban-label">La ha tocado</span>
+                            <span class="tk-tban-name">Lucía</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}

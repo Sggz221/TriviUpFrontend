@@ -1,0 +1,154 @@
+@switch (scene()) {
+    @case ('fases') {
+        <div class="tk-scene" style="--o: 9.1s">
+            <div class="tk-phone">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>21:50</span><span>5G ▮</span></div>
+                    <div class="tk-layer pb">
+                        <p class="pb-label a down" style="--d: 0.2s">Fase completada</p>
+                        <h2 class="pb-num a slam" style="--d: 0.4s">Fase 1<small> / 3</small></h2>
+                        <p class="pb-name a up" style="--d: 0.8s">Calentamiento</p>
+
+                        <div class="board-list">
+                            <div class="row r-marcos a from-r" style="--d: 1.1s">
+                                <span class="pos"><b class="swap"><i class="a x" style="--in: tk-fade; --t: 0.01s; --o: 2.9s">1</i><i class="a fade" style="--d: 2.9s">2</i></b></span>
+                                <span class="dot" style="--c: var(--tk-rival)">M</span>Marcos<span class="pts">300</span>
+                            </div>
+                            <div class="row r-you a from-r" style="--d: 1.25s">
+                                <span class="pos"><b class="swap"><i class="a x" style="--in: tk-fade; --t: 0.01s; --o: 2.9s">2</i><i class="a fade" style="--d: 2.9s">1</i></b></span>
+                                <span class="dot" style="--c: var(--tk-you)">L</span>Lucía <small>(tú)</small>
+                                <span class="up-chip a pop" style="--d: 3s">▲ 1</span>
+                                <span class="pts count"></span>
+                            </div>
+                            <div class="row r-cracks a from-r" style="--d: 1.4s">
+                                <span class="pos"><b>3</b></span>
+                                <span class="dot" style="--c: var(--tk-cracks)">LC</span>Los Cracks<span class="pts">150</span>
+                            </div>
+                        </div>
+
+                        <div class="pb-next a pop" style="--d: 4.6s">
+                            <span class="chip-next">Siguiente</span> Fase 2 · Rapidez
+                        </div>
+                        <p class="pb-wait a fade" style="--d: 5.4s">Esperando a que el anfitrión continúe…</p>
+                    </div>
+
+                    <div class="tk-tban phase" style="--d: 7.2s; --fase: #0ea5e9">
+                        <div class="tk-tban-strip"></div>
+                        <div class="tk-tban-text">
+                            <span class="tk-tban-label">Fase</span>
+                            <span class="tk-tban-name">2<small> / 3</small></span>
+                            <span class="tk-tban-label">Rapidez</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @case ('podio') {
+        <div class="tk-scene" style="--o: 14.6s">
+            <div class="tk-phone">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>22:15</span><span>5G ▮</span></div>
+                    <div class="tk-layer podium-layer">
+                        <h2 class="end-title a slam" style="--d: 0.2s">¡Partida terminada!</h2>
+
+                        <div class="podium">
+                            <div class="col c2">
+                                <span class="who">
+                                    <span class="a x pop" style="--d: 2s; --o: 11.2s">❓</span>
+                                    <span class="a pop name" style="--d: 11.2s">Marcos</span>
+                                </span>
+                                <div class="bar" style="--h: 150px; --d: 2s"><b>2</b></div>
+                            </div>
+                            <div class="col c1">
+                                <span class="who">
+                                    <span class="a x pop" style="--d: 2s; --o: 11.2s">❓</span>
+                                    <span class="a slam name win" style="--d: 11.2s">👑 Lucía</span>
+                                </span>
+                                <div class="bar" style="--h: 200px; --d: 2s"><b>1</b></div>
+                            </div>
+                            <div class="col c3">
+                                <span class="who"><span class="a pop name" style="--d: 1.2s">Los Cracks</span></span>
+                                <div class="bar" style="--h: 110px; --d: 1.2s"><b>3</b></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Empate por el 1º: tanda de penaltis -->
+                    <div class="shootout a x fade" style="--d: 3.4s; --o: 11s">
+                        <p class="so-tie a slam" style="--d: 3.4s">¡Empate por el 1º!</p>
+                        <h3 class="so-title a pop" style="--d: 4.2s">¡Ronda extra!<small>⚽ Tanda de penaltis</small></h3>
+                        <div class="so-board a up" style="--d: 5s">
+                            @for (row of [0, 1]; track row) {
+                                <div class="so-row">
+                                    <span class="so-name">{{ row === 0 ? 'Lucía' : 'Marcos' }}</span>
+                                    @for (k of kicksOf($any(row)); track k.slot) {
+                                        <span class="so-slot">
+                                            <span class="so-kick a pop" [class.miss]="!k.scored" [style.--d]="k.at + 's'">{{ k.scored ? '⚽' : '✖' }}</span>
+                                        </span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                        <ul class="so-rules a fade" style="--d: 5.4s">
+                            <li>5 penaltis cada uno, por turnos</li>
+                            <li>Acierto = ⚽ gol · Fallo = ✖ parada</li>
+                            <li>¿Siguen empatados? Muerte súbita</li>
+                        </ul>
+                    </div>
+
+                    <div class="tk-confetti" style="--d: 11.2s">
+                        @for (c of confetti; track $index) {
+                            <i [style.--x]="c.x" [style.--c]="c.c" [style.--pd]="c.pd" [style.--dx]="c.dx" [style.--r]="c.r" [style.--fd]="c.fd"></i>
+                        }
+                    </div>
+
+                    <div class="tiebreak a up" style="--d: 12.4s">
+                        <span class="coin">🪙</span>
+                        <span>Otros empates del podio: <b>cara o cruz</b> o <b>ruleta de nombres</b></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @case ('normas') {
+        <div class="tk-scene" style="--o: 10.1s">
+            <div class="tk-phone">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>21:30</span><span>5G ▮</span></div>
+                    <div class="tk-layer rules">
+                        <h2 class="rules-title a slam" style="--d: 0.1s">Normas rápidas</h2>
+                        @for (r of rules; track r.title; let i = $index) {
+                            <div class="rule a" [class.odd]="i % 2" [style.--d]="r.at + 's'">
+                                <span class="rule-icon">{{ r.icon }}</span>
+                                <span class="rule-body"><b>{{ r.title }}</b>{{ r.text }}</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @case ('outro') {
+        <div class="tk-scene outro">
+            <div class="outro-rays"></div>
+            <span class="outro-logo a slam" style="--d: 0.1s">TriviUp</span>
+            <h2 class="outro-title a slam" style="--d: 0.3s">¡A jugar!</h2>
+            <div class="outro-cast">
+                <span class="tk-avatar a pop" style="--c: var(--tk-rival); --d: 0.6s">M</span>
+                <span class="tk-avatar big a pop" style="--c: var(--tk-you); --d: 0.75s">L</span>
+                <span class="tk-avatar a pop" style="--c: var(--tk-cracks); --d: 0.9s">LC</span>
+                <span class="tk-avatar crown a pop" style="--c: var(--tk-host); --d: 1.05s">A</span>
+            </div>
+            <span class="outro-sticker a pop" style="--d: 1.3s">🎤 Modo presencial</span>
+            <div class="tk-confetti" style="--d: 0.3s">
+                @for (c of confetti; track $index) {
+                    <i [style.--x]="c.x" [style.--c]="c.c" [style.--pd]="c.pd" [style.--dx]="c.dx" [style.--r]="c.r" [style.--fd]="c.fd"></i>
+                }
+            </div>
+        </div>
+    }
+}

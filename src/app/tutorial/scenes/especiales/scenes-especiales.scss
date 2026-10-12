@@ -1,0 +1,470 @@
+@use '../../../game/styles/game-fx' as fx;
+
+:host {
+    position: absolute;
+    inset: 0;
+    display: block;
+}
+
+.tk-q.compact { min-height: 92px; font-size: 18px; }
+
+.swap, .hint-stack, .controls-stack, .oc-phase {
+    display: inline-grid;
+
+    > * { grid-area: 1 / 1; }
+}
+
+// ================= Pulsador =================
+.buzzer-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+}
+
+.buzzer-stack {
+    display: grid;
+
+    > * { grid-area: 1 / 1; }
+}
+
+.buzzer {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 200px;
+    height: 200px;
+    border: 6px solid var(--tk-ink);
+    border-radius: 50%;
+    @include fx.game-label(900);
+    font-size: 22px;
+    letter-spacing: 0.08em;
+
+    &.locked {
+        background: radial-gradient(circle at 40% 35%, #6b7280, #374151);
+        color: rgb(255 255 255 / 0.7);
+        box-shadow: 0 10px 0 #1f2937, 0 14px 0 var(--tk-ink);
+    }
+
+    &.live {
+        background: radial-gradient(circle at 40% 35%, #ff6b6b, #dc2626 55%, #991b1b);
+        color: #fff;
+        font-size: 34px;
+        text-shadow: 0 3px 0 var(--tk-ink);
+        box-shadow: 0 10px 0 #7f1d1d, 0 14px 0 var(--tk-ink), 0 0 60px #ef4444;
+    }
+}
+
+.buzzer.live::after {
+    content: '';
+    position: absolute;
+    inset: -14px;
+    border: 4px solid #ef4444;
+    border-radius: 50%;
+    opacity: 0;
+    animation: buzz-ring 0.7s ease-out 8.2s 3;
+}
+
+@keyframes buzz-ring {
+    from { opacity: 0.9; transform: scale(0.9); }
+    to { opacity: 0; transform: scale(1.3); }
+}
+
+.hint-stack { text-align: center; min-height: 64px; max-width: 300px; }
+
+.troll {
+    position: absolute;
+    inset: 0;
+    z-index: 56;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.troll-word {
+    @include fx.display-title(var(--fx-gradient-hot), 0.06em);
+    font-size: 64px;
+    rotate: -6deg;
+}
+
+.troll-sub {
+    padding: 6px 16px;
+    border: 3px solid var(--tk-ink);
+    border-radius: 999px;
+    background: #fff35c;
+    box-shadow: 4px 4px 0 var(--tk-ink);
+    color: var(--tk-ink);
+    font-size: 22px;
+    font-weight: 900;
+    rotate: 4deg;
+}
+
+// ================= Colores =================
+.colors { gap: 12px; }
+
+.timer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.timer-bar {
+    flex: 1;
+    height: 10px;
+    border-radius: 5px;
+    background: rgb(255 255 255 / 0.1);
+    overflow: hidden;
+
+    span {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #22c55e, #84cc16);
+        transform-origin: left center;
+        animation: drain 11s linear 0.6s both;
+    }
+}
+
+@keyframes drain { to { transform: scaleX(0.8); } }
+
+.timer-text { font-size: 14px; font-weight: 800; color: #fff; }
+
+.swatches {
+    display: flex;
+    justify-content: center;
+    gap: 22px;
+}
+
+.swatch-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.swatch {
+    width: 120px;
+    height: 96px;
+    border: 3px solid var(--tk-ink);
+    border-radius: 16px;
+    box-shadow: 3px 3px 0 var(--tk-ink);
+
+    &.target { background: hsl(174 72% 46%); }
+    &.mine { background: hsl(20 30% 55%); animation: mine-color 3.4s linear 1.4s both; }
+    &.small { width: 54px; height: 54px; border-radius: 12px; flex: none; }
+    &.tiny { display: inline-block; width: 22px; height: 22px; border-width: 2px; border-radius: 6px; box-shadow: none; }
+}
+
+@keyframes mine-color {
+    0% { background: hsl(20 30% 55%); }
+    41% { background: hsl(172 30% 55%); }
+    71% { background: hsl(172 68% 55%); }
+    100% { background: hsl(172 68% 48%); }
+}
+
+.sliders {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 14px;
+        font-weight: 700;
+    }
+}
+
+.track {
+    position: relative;
+    height: 16px;
+    border: 2px solid var(--tk-ink);
+    border-radius: 8px;
+
+    &.hue { background: linear-gradient(90deg, red, yellow, lime, cyan, blue, magenta, red); }
+    &.sat { background: linear-gradient(90deg, hsl(172 0% 50%), hsl(172 100% 45%)); }
+    &.bri { background: linear-gradient(90deg, #000, hsl(172 68% 50%), #fff); }
+}
+
+.thumb {
+    position: absolute;
+    top: 50%;
+    width: 26px;
+    height: 26px;
+    margin: -13px 0 0 -13px;
+    border: 3px solid var(--tk-ink);
+    border-radius: 50%;
+    background: #fff;
+
+    &.t-hue { left: 6%; animation: slide-hue 1.4s cubic-bezier(0.4, 0, 0.3, 1) 1.4s both; }
+    &.t-sat { left: 30%; animation: slide-sat 1s cubic-bezier(0.4, 0, 0.3, 1) 2.8s both; }
+    &.t-bri { left: 55%; animation: slide-bri 1s cubic-bezier(0.4, 0, 0.3, 1) 3.8s both; }
+}
+
+@keyframes slide-hue { to { left: 48%; } }
+@keyframes slide-sat { to { left: 68%; } }
+@keyframes slide-bri { to { left: 49%; } }
+
+// Dedo arrastrando la barra
+.drag-dot {
+    position: absolute;
+    inset: -14px;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.4);
+    opacity: 0;
+
+    .t-hue & { animation: drag 1.6s ease 1.3s both; }
+    .t-sat & { animation: drag 1.2s ease 2.7s both; }
+    .t-bri & { animation: drag 1.2s ease 3.7s both; }
+}
+
+@keyframes drag {
+    0% { opacity: 0; transform: scale(1.5); }
+    12%, 85% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; }
+}
+
+.send {
+    position: relative;
+    margin-top: 4px;
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--primary);
+    color: var(--primary-content);
+    font-size: 18px;
+    font-weight: 800;
+    text-align: center;
+}
+
+.sent {
+    align-self: start;
+    padding-top: 30px;
+    font-size: 17px;
+    font-weight: 700;
+    text-align: center;
+    color: rgb(255 255 255 / 0.75);
+}
+
+.sent-count { white-space: nowrap; }
+
+.result-dim {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    background: rgb(5 5 12 / 0.65);
+}
+
+.color-result {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    top: 210px;
+    z-index: 41;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px;
+    border: 4px solid var(--tk-ink);
+    border-radius: 22px;
+    background: #1c1f33;
+    box-shadow: 6px 6px 0 var(--tk-ink);
+}
+
+.cr-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cr-title { margin: 0; font-size: 20px; font-weight: 900; color: #fff; }
+
+.cr-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 12px;
+        background: rgb(255 255 255 / 0.06);
+        font-size: 17px;
+        font-weight: 800;
+        color: #fff;
+
+        &.winner { background: color-mix(in oklab, #22c55e 30%, transparent); box-shadow: inset 0 0 0 2px #22c55e; }
+        span { margin-left: auto; color: #fff35c; }
+    }
+}
+
+.cr-hint { font-size: 14px; font-weight: 700; text-align: center; opacity: 0.75; }
+
+// ================= Ocarina =================
+.oc-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.oc-title { font-size: 18px; font-weight: 900; color: #fff; }
+
+.oc-phase {
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+
+    .listening { color: #93c5fd; }
+}
+
+.staff-card {
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: #fdfbf4;
+}
+
+.staff {
+    position: relative;
+    height: 62px;
+
+    .line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #6b7280;
+    }
+
+    // Clave de sol
+    &::before {
+        content: '𝄞';
+        position: absolute;
+        left: 2px;
+        top: -6px;
+        font-size: 58px;
+        line-height: 1;
+        color: #1f2937;
+    }
+}
+
+.note {
+    position: absolute;
+    width: 18px;
+    height: 13px;
+    margin-left: -9px;
+    margin-top: -6px;
+    border-radius: 50%;
+    background: #1f2937;
+    rotate: -20deg;
+    animation: note-play 0.45s ease var(--d) both;
+
+    // Plica
+    &::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        bottom: 5px;
+        width: 2px;
+        height: 30px;
+        background: inherit;
+        rotate: 20deg;
+        transform-origin: bottom;
+    }
+
+    &.entered { background: #2563eb; }
+}
+
+@keyframes note-play {
+    0% { background: #1f2937; transform: scale(1); }
+    30% { background: #3b82f6; transform: scale(1.5); box-shadow: 0 0 14px #60a5fa; }
+    100% { background: #1f2937; transform: scale(1); }
+}
+
+.note.entered { animation: tk-pop 0.3s var(--tk-spring) var(--d) both; }
+
+.lane-head-oc { font-size: 14px; font-weight: 700; }
+
+.lane-staff {
+    background: #fdfbf4;
+    animation-fill-mode: both;
+    position: relative;
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 14px;
+        background: rgb(34 197 94 / 0.25);
+        box-shadow: inset 0 0 0 3px #22c55e;
+        opacity: 0;
+        animation: lane-ok 0.4s ease 6.6s forwards;
+    }
+}
+
+@keyframes lane-ok { to { opacity: 1; } }
+
+.oc-ok {
+    align-self: center;
+    margin-top: -6px;
+    font-size: 15px;
+    font-weight: 800;
+    color: #4ade80;
+}
+
+.oc-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: auto;
+    margin-bottom: 8px;
+}
+
+.oc-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 58px;
+    border: 3px solid var(--tk-ink);
+    border-radius: 50%;
+    background: #facc15;
+    box-shadow: 0 4px 0 var(--tk-ink);
+    color: #1f2937;
+
+    &.btn-a { background: #3b82f6; color: #fff; }
+}
+
+.oc-glyph { font-size: 20px; font-weight: 900; line-height: 1; }
+.oc-name { font-size: 10px; font-weight: 800; }
+
+// Hundido del botón al tocar la nota
+.oc-press {
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: #fff;
+    opacity: 0;
+    animation: oc-press 0.35s ease-out var(--d) forwards;
+}
+
+@keyframes oc-press {
+    0% { opacity: 0.85; transform: scale(1.15); }
+    100% { opacity: 0; transform: scale(1); }
+}
+
+.lane-head-oc .swap { margin-left: 4px; }

@@ -1,0 +1,211 @@
+@switch (scene()) {
+    @case ('mano') {
+        <div class="tk-scene" style="--o: 11.6s">
+            <div class="tk-phone">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>21:36</span><span>5G ▮</span></div>
+                    <div class="tk-board">
+                        <div class="tk-topline">
+                            <span class="tk-phase" style="--fase: #7c3aed">Fase 1<small>/3</small> · Calentamiento</span>
+                            <span class="tk-score">Lucía · <b>100</b> pts</span>
+                        </div>
+                        <div class="tk-q">¿Qué instrumento tiene 88 teclas?</div>
+                        <div class="tk-answers">
+                            <div class="tk-ans tri"><svg><use href="#tk-tri" /></svg>Piano</div>
+                            <div class="tk-ans sq"><svg><use href="#tk-sq" /></svg>Órgano</div>
+                            <div class="tk-ans ci"><svg><use href="#tk-ci" /></svg>Acordeón</div>
+                            <div class="tk-ans pe"><svg><use href="#tk-pe" /></svg>Clavicémbalo</div>
+                        </div>
+                        <div class="tk-turninfo above-tray">
+                            <span class="tk-yourturn a x fade" style="--o: 6s">¡Es tu turno!</span>
+                            <span class="tk-wait a fade" style="--d: 6.3s">Esperando a Marcos…</span>
+                        </div>
+                    </div>
+
+                    <span class="turn-toast tk-chip a x down" style="--d: 6.1s; --o: 8.4s; --c: #ff8a3d">🔁 Ahora le toca a Marcos</span>
+
+                    <div class="tk-dim a x fade" style="--d: 1.8s; --o: 5.6s"></div>
+                    <div class="tk-dim a x fade" style="--d: 8.9s; --o: 11.2s"></div>
+
+                    <!-- Mano plegada en tu turno: cartas moradas -->
+                    <div class="tk-tray a x" style="--d: 0.4s; --o: 1.8s">
+                        <div class="tk-fan tk-press" style="--d: 1.6s">
+                            @for (c of turnCards; track c.tipo; let i = $index) {
+                                <span class="tk-card mini" [style]="fan(i, turnCards.length)">
+                                    <span class="us">×{{ c.uses }}</span><span class="ic">{{ info[c.tipo].icon }}</span><span class="nm">{{ info[c.tipo].name }}</span>
+                                </span>
+                            }
+                        </div>
+                        <span class="tk-fan-hint">Comodines</span>
+                        <span class="tk-touch" style="left: 50%; top: 50%; --d: 1.35s"></span>
+                    </div>
+
+                    <!-- Desplegada: carril con todas las cartas -->
+                    <div class="tk-tray lane-tray a x" style="--d: 1.8s; --o: 5.8s; --t: 0.45s">
+                        <div class="lane-head">
+                            <span class="lane-grip"></span>
+                            <span class="lane-title">Tus comodines</span>
+                            <span class="lane-close">✕<span class="tk-touch" style="left: 50%; top: 50%; --d: 5.3s"></span></span>
+                        </div>
+                        <div class="lane scroll">
+                            @for (c of turnCards; track c.tipo; let i = $index) {
+                                <span class="slot a up" [style.--d]="(1.95 + i * 0.06) + 's'">
+                                    <span class="tk-card">
+                                        <span class="us">×{{ c.uses }}</span>
+                                        <span class="ic">{{ info[c.tipo].icon }}</span>
+                                        <span class="nm">{{ info[c.tipo].name }}</span>
+                                        <span class="ds">{{ info[c.tipo].description }}</span>
+                                        <span class="kd">Tu turno</span>
+                                    </span>
+                                </span>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Fuera de tu turno: cartas rojas de ataque -->
+                    <div class="tk-tray a x" style="--d: 6.4s; --o: 8.9s">
+                        <div class="tk-fan tk-press" style="--d: 8.7s">
+                            @for (c of attackCards; track c.tipo; let i = $index) {
+                                <span class="tk-card mini atk" [style]="fan(i, attackCards.length)">
+                                    <span class="us">×{{ c.uses }}</span><span class="ic">{{ info[c.tipo].icon }}</span><span class="nm">{{ info[c.tipo].name }}</span>
+                                </span>
+                            }
+                        </div>
+                        <span class="tk-fan-hint">Comodines</span>
+                        <span class="tk-touch" style="left: 50%; top: 50%; --d: 8.45s"></span>
+                    </div>
+
+                    <div class="tk-tray lane-tray a x" style="--d: 8.9s; --o: 11.2s; --t: 0.45s">
+                        <div class="lane-head">
+                            <span class="lane-grip"></span>
+                            <span class="lane-title">Tus comodines</span>
+                            <span class="lane-close">✕</span>
+                        </div>
+                        <div class="lane">
+                            @for (c of attackCards; track c.tipo; let i = $index) {
+                                <span class="slot a up" [style.--d]="(9.0 + i * 0.06) + 's'">
+                                <span class="tk-card atk" [class.burning]="c.tipo === 'Robo'">
+                                    <span class="us">
+                                        @if (c.tipo === 'Robo') {
+                                            <span class="uses-swap"><b>×1</b><b>×0</b></span>
+                                        } @else { ×{{ c.uses }} }
+                                    </span>
+                                    <span class="ic">{{ info[c.tipo].icon }}</span>
+                                    <span class="nm">{{ info[c.tipo].name }}</span>
+                                    <span class="ds">{{ info[c.tipo].description }}</span>
+                                    <span class="kd">Ataque</span>
+                                    @if (c.tipo === 'Robo') { <span class="burn-glow"></span> }
+                                </span>
+                                @if (c.tipo === 'Robo') {
+                                    @for (e of [1, 2, 3, 4, 5, 6]; track e) { <i class="ember" [class]="'e' + e"></i> }
+                                }
+                                </span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @case ('turno') {
+        <div class="tk-scene" style="--o: 22.6s">
+            <div class="tk-phone call-shake">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>21:37</span><span>5G ▮</span></div>
+                    <div class="tk-board">
+                        <div class="tk-topline">
+                            <span class="tk-phase" style="--fase: #7c3aed">Fase 1<small>/3</small> · Calentamiento</span>
+                            <span class="tk-chip a x slam" style="--d: 14.4s; --o: 17.4s; --c: #a855f7">🎲 Doble o nada</span>
+                        </div>
+                        <div class="q-flip">
+                            <div class="tk-q a x xo-flip" style="--in: tk-fade; --t: 0.01s; --o: 10.2s">¿Qué instrumento tiene 88 teclas?</div>
+                            <div class="tk-q a flip" style="--d: 10.3s">¿Cuál es el río más largo de Europa?</div>
+                        </div>
+                        <div class="tk-answers">
+                            @for (a of answers; track a.s) {
+                                <div class="tk-ans" [class]="a.s">
+                                    <svg><use [attr.href]="'#tk-' + a.s" /></svg>
+                                    <span class="ans-txt">
+                                        <span class="a x" style="--in: tk-fade; --t: 0.01s; --o: 10.2s">{{ a.old }}</span>
+                                        <span class="a fade" style="--d: 10.25s; --t: 0.01s">{{ a.neu }}</span>
+                                    </span>
+                                    @if (a.e1) { <span class="tk-elim a x" [style.--d]="a.e1" style="--o: 4.6s"></span> }
+                                    @if (a.e2) { <span class="tk-elim a x" [style.--d]="a.e2" style="--o: 8.8s"></span> }
+                                    <span class="tk-mys a x flip xo-flip" style="--d: 10.25s" [style.--o]="a.r">?</span>
+                                </div>
+                            }
+                        </div>
+                        <div class="tk-turninfo above-tray">
+                            <span class="tk-yourturn">¡Es tu turno!</span>
+                        </div>
+                    </div>
+
+                    <div class="tk-tray static">
+                        <div class="tk-fan">
+                            @for (c of turnCards; track c.tipo; let i = $index) {
+                                <span class="tk-card mini" [style]="fan(i, turnCards.length)">
+                                    <span class="us">×{{ c.uses }}</span><span class="ic">{{ info[c.tipo].icon }}</span><span class="nm">{{ info[c.tipo].name }}</span>
+                                </span>
+                            }
+                        </div>
+                        <span class="tk-fan-hint">Comodines</span>
+                    </div>
+
+                    <!-- Carta jugada: sale de la mano y se lanza al centro -->
+                    @for (p of played; track p.tipo) {
+                        <div class="play-dim" [style.--d]="p.d"></div>
+                        <div class="tk-card big play-card" [style.--d]="p.d">
+                            <span class="ic">{{ info[p.tipo].icon }}</span>
+                            <span class="nm">{{ info[p.tipo].name }}</span>
+                            <span class="ds">{{ info[p.tipo].description }}</span>
+                            <span class="kd">Tu turno</span>
+                        </div>
+                    }
+
+                    <!-- Ruleta -->
+                    <div class="ruleta a x" style="--d: 1.2s; --o: 3.8s">
+                        <p class="ruleta-title">Ruleta de Lucía</p>
+                        <div class="ruleta-wrap">
+                            <span class="ruleta-pointer"></span>
+                            <div class="ruleta-wheel" [style.background]="ruletaGradient">
+                                @for (l of ruletaLabels; track $index) {
+                                    <span class="ruleta-label" [style.--a]="l.a">{{ l.v }}</span>
+                                }
+                                <span class="ruleta-hub"></span>
+                            </div>
+                        </div>
+                        <p class="ruleta-result a pop" style="--d: 3.25s">¡Elimina 2 respuestas!</p>
+                    </div>
+
+                    <!-- 50/50: tijeretazo -->
+                    <div class="scissors" style="--d: 5.6s"><span>✂️</span></div>
+
+                    <!-- Doble o nada -->
+                    <div class="don a x" style="--d: 14.5s; --o: 16.9s">
+                        <span class="don-dice">🎲</span>
+                        <span class="don-stamp win a from-r" style="--d: 14.7s">Aciertas: <b>+200</b></span>
+                        <span class="don-stamp lose a from-r" style="--d: 15.1s">Fallas: <b>−100</b></span>
+                    </div>
+
+                    <!-- Llamada: la pantalla se convierte en una llamada -->
+                    <div class="call a x fade" style="--d: 18.3s; --o: 21.6s">
+                        <div class="call-avatar">L</div>
+                        <span class="call-name">Lucía</span>
+                        <span class="call-status">
+                            <span class="a x fade" style="--d: 18.3s; --o: 19.9s">📞 Llamando…</span>
+                            <span class="a fade on" style="--d: 19.9s">📞 En llamada</span>
+                        </span>
+                        <span class="call-clock">00:0<b class="call-secs" style="--d: 18.3s"></b></span>
+                        <div class="call-rings"><i></i><i></i><i></i></div>
+                        <span class="call-hint">El anfitrión cuelga cuando acabéis</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tk-bubble host a x" style="left: -8px; top: 70px; --d: 21s; --o: 22.4s">
+                <span class="who">Ana · anfitriona</span>📵 ¡Cuelgo!
+            </div>
+        </div>
+    }
+}

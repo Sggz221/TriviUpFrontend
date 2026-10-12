@@ -1,0 +1,671 @@
+// Kit de piezas del tutorial: el móvil, la pantalla de la partida (pregunta, respuestas, avisos), bocadillos,
+// el dedo que toca y las cartas de comodín. Imita la partida real (game-room) en pequeño.
+//
+// Línea de tiempo: cada pieza animada lleva la clase `a` y su retraso en `--d`; con `x` además desaparece en
+// `--o`. La animación de entrada se elige con una clase (pop, fade, up...) y la de salida con xo-*.
+@use '../../game/styles/game-fx' as fx;
+
+@property --n {
+    syntax: '<integer>';
+    inherits: false;
+    initial-value: 0;
+}
+
+.tut {
+    --tk-ink: #0b0b12;
+    --tk-you: #8ef08a;
+    --tk-rival: #ffa66b;
+    --tk-cracks: #c4a1ff;
+    --tk-host: #fff35c;
+    --tk-spring: cubic-bezier(0.2, 0.9, 0.3, 1.25);
+    --tk-snap: cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+// ---------- Utilidades de animación ----------
+.tut .a {
+    animation: var(--in, tk-pop) var(--t, 0.5s) var(--ease, var(--tk-spring)) var(--d, 0s) both;
+}
+
+.tut .a.x {
+    animation:
+        var(--in, tk-pop) var(--t, 0.5s) var(--ease, var(--tk-spring)) var(--d, 0s) both,
+        var(--out, tk-out) var(--to, 0.35s) ease-in var(--o, 999s) forwards;
+}
+
+.tut .fade { --in: tk-fade; --ease: ease; }
+.tut .up { --in: tk-up; }
+.tut .down { --in: tk-down; }
+.tut .from-r { --in: tk-from-r; --ease: var(--tk-snap); }
+.tut .slam { --in: tk-slam; --t: 0.7s; --ease: cubic-bezier(0.2, 0.9, 0.3, 1); }
+.tut .flip { --in: tk-flip; --t: 0.45s; }
+.tut .xo-up { --out: tk-out-up; }
+.tut .xo-l { --out: tk-out-l; --to: 0.45s; }
+.tut .xo-flip { --out: tk-flip-out; --to: 0.3s; }
+.tut .xo-cut { --out: tk-out-cut; --to: 0.01s; }
+
+@keyframes tk-pop { from { opacity: 0; transform: scale(0.4); } }
+@keyframes tk-fade { from { opacity: 0; } }
+@keyframes tk-up { from { opacity: 0; transform: translateY(40px); } }
+@keyframes tk-down { from { opacity: 0; transform: translateY(-40px); } }
+@keyframes tk-from-r { from { opacity: 0; transform: translateX(110%); } }
+@keyframes tk-flip { from { opacity: 0; transform: perspective(500px) rotateX(-90deg); } }
+@keyframes tk-slam {
+    0% { opacity: 0; transform: scale(2.6) rotate(-6deg); }
+    35% { opacity: 1; transform: scale(0.88) rotate(2deg); }
+    55% { transform: scale(1.08) rotate(-1deg); }
+    75% { transform: scale(0.97); }
+}
+@keyframes tk-out { to { opacity: 0; transform: scale(0.85); } }
+@keyframes tk-out-up { to { opacity: 0; transform: translateY(-40px); } }
+@keyframes tk-out-l { to { opacity: 0; transform: translateX(-110%); } }
+@keyframes tk-out-cut { to { opacity: 0; visibility: hidden; } }
+@keyframes tk-flip-out { to { opacity: 0; transform: perspective(500px) rotateX(90deg); } }
+
+// Escena: entra con un leve zoom y se funde al final (--o = duración − 0,4 s)
+.tut .tk-scene {
+    position: absolute;
+    inset: 0;
+    animation: tk-scene-in 0.45s ease both, tk-out 0.4s ease-in var(--o, 999s) forwards;
+}
+
+@keyframes tk-scene-in { from { opacity: 0; transform: scale(0.96); } }
+
+// ---------- Móvil ----------
+.tut .tk-phone {
+    position: absolute;
+    inset: 0;
+    padding: 11px;
+    border-radius: 54px;
+    background: linear-gradient(145deg, #2a2d3e, #08090f 40%);
+    box-shadow:
+        inset 0 0 0 2px rgb(255 255 255 / 0.12),
+        0 0 0 3px var(--tk-ink),
+        0 40px 80px -20px rgb(0 0 0 / 0.75),
+        0 0 120px -30px color-mix(in oklab, var(--accent) 60%, transparent);
+}
+
+.tut .tk-screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 44px;
+    background: linear-gradient(160deg, var(--base-100) 0%, var(--base-200) 50%, var(--base-300) 100%);
+    color: var(--base-content);
+    font-family: var(--font-game);
+    isolation: isolate;
+}
+
+.tut .tk-status {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 40px;
+    padding: 4px 30px 0;
+    font-size: 14px;
+    font-weight: 800;
+    color: #fff;
+    pointer-events: none;
+
+    &::before {
+        // Isla de la cámara
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 11px;
+        width: 100px;
+        height: 26px;
+        margin-left: -50px;
+        border-radius: 999px;
+        background: #000;
+    }
+}
+
+.tut .tk-layer {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 52px 20px 22px;
+}
+
+.tut .tk-title {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--primary);
+    text-align: center;
+}
+
+// ---------- Tablero de la partida ----------
+.tut .tk-board {
+    position: absolute;
+    inset: 40px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 12px 18px 20px;
+}
+
+.tut .tk-topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 30px;
+}
+
+.tut .tk-phase {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 12px;
+    border: 2px solid var(--tk-ink);
+    border-radius: 999px;
+    background: var(--fase, #7c3aed);
+    color: #fff;
+    box-shadow: 2px 2px 0 var(--tk-ink);
+    @include fx.game-label(900);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+
+    small { opacity: 0.8; font-size: 10px; }
+}
+
+.tut .tk-score {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.08);
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff;
+
+    b { color: var(--tk-you); }
+}
+
+.tut .tk-q {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 136px;
+    padding: 18px 16px;
+    border: 2px solid rgb(255 255 255 / 0.1);
+    border-radius: 22px;
+    background: color-mix(in oklab, var(--base-300) 80%, #000);
+    box-shadow: 0 10px 30px -10px rgb(0 0 0 / 0.6);
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: #fff;
+    text-align: center;
+}
+
+.tut .tk-q-tag {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+}
+
+.tut .tk-answers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.tut .tk-ans {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 96px;
+    padding: 10px 8px;
+    border: 3px solid var(--c);
+    border-radius: 16px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--c) 88%, transparent), color-mix(in srgb, var(--c) 64%, transparent));
+    color: #fff;
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1.1;
+    text-align: center;
+    text-shadow: 0 2px 0 rgb(0 0 0 / 0.25);
+
+    &.tri { --c: #e11d48; }
+    &.sq { --c: #eab308; }
+    &.ci { --c: #0ea5e9; }
+    &.pe { --c: rgb(170, 24, 181); }
+
+    > svg { width: 24px; height: 24px; fill: #fff; filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.25)); }
+}
+
+// Respuesta aún tapada ("?"): se voltea al destaparla
+.tut .tk-mys {
+    position: absolute;
+    inset: -3px;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    border: 3px dashed rgb(255 255 255 / 0.28);
+    border-radius: 16px;
+    background: #23273b;
+    font-family: var(--font-display);
+    font-size: 40px;
+    color: rgb(255 255 255 / 0.5);
+    backface-visibility: hidden;
+}
+
+// Marca del anfitrión: anillo blanco alrededor de la respuesta
+.tut .tk-ring {
+    position: absolute;
+    inset: -8px;
+    z-index: 3;
+    border: 4px solid #fff;
+    border-radius: 21px;
+    box-shadow: 0 0 0 3px var(--tk-ink), 0 0 26px rgb(255 255 255 / 0.65);
+    pointer-events: none;
+    --in: tk-ring-in;
+    --t: 0.35s;
+
+    &.pulse { animation: tk-ring-pulse 0.5s ease-in-out var(--d) infinite alternate both; }
+}
+
+@keyframes tk-ring-in { from { opacity: 0; transform: scale(1.25); } }
+@keyframes tk-ring-pulse {
+    from { transform: scale(1); box-shadow: 0 0 0 3px var(--tk-ink), 0 0 20px rgb(255 255 255 / 0.5); }
+    to { transform: scale(1.05); box-shadow: 0 0 0 3px var(--tk-ink), 0 0 44px #fff; }
+}
+
+// Resultado sobre la respuesta: verde (correcta) o roja (la marcada era incorrecta)
+.tut .tk-fill {
+    position: absolute;
+    inset: -3px;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    border: 3px solid var(--tk-ink);
+    border-radius: 16px;
+    background: linear-gradient(135deg, #34d399, #059669);
+    font-size: 19px;
+    font-weight: 900;
+    color: #fff;
+    --in: tk-fill-in;
+    --t: 0.45s;
+
+    &.bad { background: linear-gradient(135deg, #f87171, #b91c1c); }
+}
+
+@keyframes tk-fill-in {
+    0% { opacity: 0; transform: scale(0.6); }
+    60% { opacity: 1; transform: scale(1.12); }
+}
+
+// Eliminada (ruleta, 50/50): se apaga y se tacha
+.tut .tk-elim {
+    position: absolute;
+    inset: -3px;
+    z-index: 2;
+    border-radius: 16px;
+    background: rgb(16 18 30 / 0.82);
+    --in: tk-fade;
+    --t: 0.3s;
+
+    &::after {
+        content: '';
+        position: absolute;
+        left: 12%;
+        right: 12%;
+        top: 50%;
+        height: 4px;
+        border-radius: 2px;
+        background: #ef4444;
+        transform: rotate(-12deg) scaleX(0);
+        animation: tk-strike 0.35s 0.15s ease-out forwards;
+        animation-delay: calc(var(--d, 0s) + 0.15s);
+    }
+}
+
+@keyframes tk-strike { to { transform: rotate(-12deg) scaleX(1); } }
+
+.tut .tk-turninfo {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 74px;
+    margin-top: auto;
+    text-align: center;
+
+    > * { grid-area: 1 / 1; }
+}
+
+.tut .tk-yourturn {
+    @include fx.display-title(var(--fx-gradient-cool), 0.07em);
+    font-size: 30px;
+}
+
+.tut .tk-wait {
+    font-size: 17px;
+    font-weight: 700;
+    color: rgb(255 255 255 / 0.72);
+    line-height: 1.25;
+}
+
+.tut .tk-chip {
+    display: inline-block;
+    padding: 4px 11px;
+    border: 2px solid var(--tk-ink);
+    border-radius: 999px;
+    background: var(--c, #7c3aed);
+    box-shadow: 2px 2px 0 var(--tk-ink);
+    color: #fff;
+    @include fx.game-label(900);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+
+// ---------- Mundo real: bocadillos y avatares ----------
+.tut .tk-bubble {
+    position: absolute;
+    z-index: 70;
+    max-width: 240px;
+    padding: 9px 15px 11px;
+    border: 3px solid var(--tk-ink);
+    border-radius: 20px;
+    background: #fff;
+    box-shadow: 4px 4px 0 var(--tk-ink);
+    color: var(--tk-ink);
+    font-family: var(--font-game);
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.12;
+    transform-origin: 20% 110%;
+    --in: tk-bubble;
+
+    &::after {
+        content: '';
+        position: absolute;
+        left: 22px;
+        bottom: -12px;
+        width: 18px;
+        height: 18px;
+        border: solid var(--tk-ink);
+        border-width: 0 3px 3px 0;
+        background: inherit;
+        transform: rotate(45deg) skew(12deg, 12deg);
+    }
+
+    &.tail-r { transform-origin: 80% 110%; &::after { left: auto; right: 22px; } }
+    &.tail-up { transform-origin: 20% -10%; &::after { bottom: auto; top: -12px; transform: rotate(225deg) skew(12deg, 12deg); } }
+    &.you { background: var(--tk-you); }
+    &.host { background: var(--tk-host); }
+    &.rival { background: var(--tk-rival); }
+
+    .who {
+        display: block;
+        margin-bottom: 2px;
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        opacity: 0.7;
+    }
+}
+
+@keyframes tk-bubble {
+    0% { opacity: 0; transform: scale(0.2) rotate(-8deg); }
+    60% { opacity: 1; transform: scale(1.08) rotate(2deg); }
+    100% { transform: scale(1) rotate(0); }
+}
+
+.tut .tk-avatar {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    border: 3px solid var(--tk-ink);
+    border-radius: 50%;
+    background: var(--c, var(--tk-you));
+    box-shadow: 3px 3px 0 var(--tk-ink);
+    color: var(--tk-ink);
+    font-size: 26px;
+    font-weight: 900;
+
+    &.crown::before {
+        content: '👑';
+        position: absolute;
+        top: -22px;
+        font-size: 24px;
+        transform: rotate(-12deg);
+    }
+}
+
+// ---------- Dedo: toque con onda ----------
+.tut .tk-touch {
+    position: absolute;
+    z-index: 80;
+    width: 56px;
+    height: 56px;
+    margin: -28px 0 0 -28px;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.5);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.45);
+    pointer-events: none;
+    animation: tk-tap 0.95s ease var(--d, 0s) both;
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        border: 3px solid #fff;
+        border-radius: 50%;
+        animation: tk-ripple 0.95s ease-out var(--d, 0s) both;
+    }
+}
+
+@keyframes tk-tap {
+    0% { opacity: 0; transform: scale(1.6); }
+    25% { opacity: 1; transform: scale(1); }
+    42% { transform: scale(0.75); }
+    58% { transform: scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1); }
+}
+
+@keyframes tk-ripple {
+    0%, 40% { opacity: 0; transform: scale(1); }
+    46% { opacity: 0.9; }
+    100% { opacity: 0; transform: scale(2.5); }
+}
+
+// Botón que recibe el toque: se hunde
+.tut .tk-press { animation: tk-press 0.32s ease var(--d, 0s) both; }
+
+@keyframes tk-press {
+    40% { transform: scale(0.92); filter: brightness(1.25); }
+}
+
+// ---------- Cartas de comodín ----------
+.tut .tk-card {
+    --ca: #6d28d9;
+    --cb: #312e81;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 96px;
+    height: 136px;
+    padding: 10px 7px;
+    border: 2px solid rgb(255 255 255 / 0.85);
+    border-radius: 13px;
+    background: linear-gradient(160deg, var(--ca), var(--cb));
+    box-shadow: 0 6px 14px rgb(0 0 0 / 0.45);
+    color: #fff;
+    text-align: center;
+
+    &.atk { --ca: #dc2626; --cb: #7c2d12; }
+    &.mini { width: 64px; height: 90px; padding: 6px 4px; gap: 2px; }
+    &.big { width: 150px; height: 212px; gap: 10px; border-width: 3px; border-radius: 18px; }
+
+    .ic { font-size: 30px; line-height: 1; }
+    .nm { font-size: 13px; font-weight: 900; line-height: 1.1; }
+    .ds { font-size: 10.5px; font-weight: 600; line-height: 1.15; opacity: 0.88; }
+    .kd {
+        margin-top: auto;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgb(0 0 0 / 0.3);
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+    .us {
+        position: absolute;
+        top: -9px;
+        right: -9px;
+        min-width: 26px;
+        padding: 1px 5px;
+        border: 2px solid #fff;
+        border-radius: 999px;
+        background: #f59e0b;
+        color: #1f2937;
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1.25;
+    }
+
+    &.mini .ic { font-size: 22px; }
+    &.mini .nm { font-size: 10px; }
+    &.big .ic { font-size: 56px; }
+    &.big .nm { font-size: 22px; }
+    &.big .ds { font-size: 14px; }
+    &.big .kd { font-size: 11px; }
+}
+
+// Bandeja de la mano, fija abajo
+.tut .tk-tray {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    height: 118px;
+    border-radius: 26px 26px 0 0;
+    background: linear-gradient(180deg, #1c1b2b 0%, #0d0c16 100%);
+    box-shadow: 0 -12px 30px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.08);
+    --in: tk-tray-in;
+    --t: 0.5s;
+    --out: tk-tray-out;
+}
+
+@keyframes tk-tray-in { from { transform: translateY(110%); } }
+@keyframes tk-tray-out { to { transform: translateY(110%); } }
+
+.tut .tk-fan {
+    position: absolute;
+    inset: 0;
+
+    .tk-card {
+        position: absolute;
+        left: 50%;
+        top: 18px;
+        transform: translateX(-50%) translateX(var(--fx, 0)) translateY(var(--fy, 0)) rotate(var(--fr, 0));
+    }
+}
+
+.tut .tk-fan-hint {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    transform: translateX(-50%);
+    @include fx.game-label(800);
+    font-size: 10px;
+    color: rgb(255 255 255 / 0.55);
+}
+
+.tut .tk-dim {
+    position: absolute;
+    inset: 0;
+    z-index: 35;
+    background: rgb(0 0 0 / 0.42);
+}
+
+// Bandeja desplegada: más alta, con cabecera y carril de cartas
+.tut .lane-tray {
+    height: 268px;
+    z-index: 41;
+}
+
+.tut .lane-head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 6px;
+}
+
+.tut .lane-grip {
+    position: absolute;
+    left: 50%;
+    top: 8px;
+    width: 46px;
+    height: 5px;
+    margin-left: -23px;
+    border-radius: 3px;
+    background: rgb(255 255 255 / 0.3);
+}
+
+.tut .lane-title {
+    @include fx.game-label(800);
+    font-size: 12px;
+    color: rgb(255 255 255 / 0.75);
+}
+
+.tut .lane-close {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 0.1);
+    color: #fff;
+    font-size: 14px;
+}
+
+.tut .lane {
+    display: flex;
+    gap: 12px;
+    padding: 14px 20px;
+
+    &.scroll { animation: tk-lane-scroll 1.4s cubic-bezier(0.5, 0, 0.3, 1) 3.5s both; }
+}
+
+@keyframes tk-lane-scroll {
+    to { transform: translateX(-178px); }
+}
+
+.tut .slot {
+    position: relative;
+    flex: none;
+    display: block;
+}
+
+// Carta que arde (mano de comodines): radio de lo ya quemado
+@property --burn {
+    syntax: '<percentage>';
+    inherits: true;
+    initial-value: 0%;
+}

@@ -1,0 +1,239 @@
+@switch (scene()) {
+    @case ('turnos') {
+        <div class="tk-scene" style="--o: 9.1s">
+            <div class="tk-phone">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>21:32</span><span>5G ▮</span></div>
+                    <div class="tk-board">
+                        <div class="tk-topline">
+                            <span class="tk-phase a pop" style="--d: 2.3s; --fase: #7c3aed">Fase 1<small>/3</small> · Calentamiento</span>
+                        </div>
+                        <div class="tk-q skeleton"><span class="sk-line"></span><span class="sk-line short"></span></div>
+                        <div class="tk-answers skeleton">
+                            <div class="tk-ans tri"></div><div class="tk-ans sq"></div><div class="tk-ans ci"></div><div class="tk-ans pe"></div>
+                        </div>
+                        <div class="tk-turninfo">
+                            <span class="tk-wait a x fade" style="--d: 4.7s; --o: 5.3s">Esperando a Marcos<span class="dots"><i>.</i><i>.</i><i>.</i></span></span>
+                            <span class="tk-yourturn a slam" style="--d: 7.4s">¡Es tu turno!</span>
+                        </div>
+                    </div>
+
+                    <div class="tk-tban phase" style="--d: 0.3s; --fase: #7c3aed">
+                        <div class="tk-tban-strip"></div>
+                        <div class="tk-tban-text">
+                            <span class="tk-tban-label">Fase</span>
+                            <span class="tk-tban-name">1<small> / 3</small></span>
+                            <span class="tk-tban-label">Calentamiento</span>
+                        </div>
+                    </div>
+
+                    <div class="tk-tban" style="--d: 2.7s">
+                        <div class="tk-tban-strip"></div>
+                        <div class="tk-tban-text">
+                            <span class="tk-tban-label">Turno de</span>
+                            <span class="tk-tban-name">Marcos</span>
+                        </div>
+                        <svg class="tk-tban-arrow" viewBox="0 0 120 64"><path d="M6 20 H66 V6 L114 32 L66 58 V44 H6 Z" /></svg>
+                    </div>
+
+                    <div class="tk-tban you" style="--d: 5.3s">
+                        <div class="tk-tban-strip"></div>
+                        <div class="tk-tban-text">
+                            <span class="tk-tban-label">Turno de</span>
+                            <span class="tk-tban-name">Lucía</span>
+                        </div>
+                        <svg class="tk-tban-arrow" viewBox="0 0 120 64"><path d="M6 20 H66 V6 L114 32 L66 58 V44 H6 Z" /></svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orden de turnos, fuera del móvil -->
+            <div class="order a up" style="--d: 2.6s">
+                <span class="order-item" style="--c: var(--tk-rival); --hl: 2.7s; --hl-end: 5.3s">M</span>
+                <span class="order-arrow">›</span>
+                <span class="order-item you" style="--c: var(--tk-you); --hl: 5.3s; --hl-end: 99s">L</span>
+                <span class="order-arrow">›</span>
+                <span class="order-item" style="--c: var(--tk-cracks); --hl: 99s; --hl-end: 99s">LC</span>
+            </div>
+        </div>
+    }
+
+    @case ('pregunta') {
+        <div class="tk-scene" style="--o: 10.1s">
+            <div class="tk-phone">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>21:32</span><span>5G ▮</span></div>
+                    <div class="tk-board">
+                        <div class="tk-topline">
+                            <span class="tk-phase" style="--fase: #7c3aed">Fase 1<small>/3</small> · Calentamiento</span>
+                        </div>
+                        <div class="tk-q a up" style="--d: 0.3s">¿Cuál es el planeta más grande del sistema solar?</div>
+                        <div class="tk-answers">
+                            @for (r of reveals; track $index; let i = $index) {
+                                <div class="tk-ans a pop" [class]="['tri', 'sq', 'ci', 'pe'][i]" [style.--d]="(0.9 + i * 0.15) + 's'">
+                                    <svg><use [attr.href]="'#tk-' + ['tri', 'sq', 'ci', 'pe'][i]" /></svg>
+                                    {{ ['Marte', 'Júpiter', 'Saturno', 'Neptuno'][i] }}
+                                    <span class="reveal-flash" [style.--d]="r"></span>
+                                    <span class="tk-mys a x xo-flip" [style.--d]="(0.9 + i * 0.15) + 's'" [style.--o]="r">?</span>
+                                    <span class="shape-tag a pop" [style.--d]="(7.7 + i * 0.18) + 's'">{{ ['Triángulo', 'Cuadrado', 'Círculo', 'Pentágono'][i] }}</span>
+                                </div>
+                            }
+                        </div>
+                        <div class="tk-turninfo">
+                            <span class="tk-yourturn a x pop" style="--d: 0.5s; --o: 6.6s">¡Es tu turno!</span>
+                            <span class="tk-wait a x fade" style="--d: 1s; --o: 6.6s; margin-top: 64px">Espera a que se vean las respuestas…</span>
+                            <span class="tk-yourturn a slam" style="--d: 6.8s">¡Responde!</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tk-bubble host a x" style="top: -14px; left: 10px; --d: 0.8s; --o: 2.9s">
+                <span class="who">Ana · anfitriona</span>«¿Cuál es el planeta más grande del sistema solar?»
+            </div>
+            <div class="tk-bubble host a x" style="top: -14px; left: 10px; --d: 3.1s; --o: 5.3s">
+                <span class="who">Ana · anfitriona</span>«La A: Marte… la B: Júpiter…»
+            </div>
+            <div class="tk-bubble host a x" style="top: -14px; left: 10px; --d: 5.4s; --o: 7.4s">
+                <span class="who">Ana · anfitriona</span>«La C: Saturno… ¡y la D: Neptuno!»
+            </div>
+        </div>
+    }
+
+    @case ('responder') {
+        <div class="tk-scene" style="--o: 12.1s">
+            <div class="tk-phone">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>21:33</span><span>5G ▮</span></div>
+                    <div class="tk-board">
+                        <div class="tk-topline">
+                            <span class="tk-phase" style="--fase: #7c3aed">Fase 1<small>/3</small> · Calentamiento</span>
+                            <span class="tk-score a pop" style="--d: 10.6s">Lucía · <b class="count" style="--d: 10.7s"></b> pts</span>
+                        </div>
+                        <div class="tk-q">¿Cuál es el planeta más grande del sistema solar?</div>
+                        <div class="tk-answers">
+                            <div class="tk-ans tri"><svg><use href="#tk-tri" /></svg>Marte</div>
+                            <div class="tk-ans sq">
+                                <svg><use href="#tk-sq" /></svg>Júpiter
+                                <span class="a x" style="position: absolute; inset: 0; --in: tk-fade; --d: 2s; --o: 3.6s"><span class="tk-ring a" style="--d: 2s"></span></span>
+                                <span class="a" style="position: absolute; inset: 0; --in: tk-fade; --t: 0.01s; --d: 4.8s"><span class="tk-ring a" style="--d: 4.8s"></span></span>
+                                <span class="a" style="position: absolute; inset: 0; --in: tk-fade; --t: 0.01s; --d: 5.5s"><span class="tk-ring pulse" style="--d: 5.5s"></span></span>
+                                <span class="tk-fill a" style="--d: 8s">✓ Júpiter</span>
+                            </div>
+                            <div class="tk-ans ci">
+                                <svg><use href="#tk-ci" /></svg>Saturno
+                                <span class="a x" style="position: absolute; inset: 0; --in: tk-fade; --t: 0.01s; --d: 3.6s; --o: 4.8s"><span class="tk-ring a" style="--d: 3.6s"></span></span>
+                            </div>
+                            <div class="tk-ans pe"><svg><use href="#tk-pe" /></svg>Neptuno</div>
+                        </div>
+                        <div class="tk-turninfo">
+                            <span class="a x fade" style="--d: 0.2s; --o: 5.4s">
+                                <span class="tk-yourturn">¡Es tu turno!</span><br />
+                                <span class="tk-wait">Di tu respuesta en voz alta: el anfitrión la marcará</span>
+                            </span>
+                            <span class="tk-wait a x fade" style="--d: 5.5s; --o: 8s">Comprobando…</span>
+                        </div>
+                    </div>
+
+                    <div class="tk-vignette a x" style="--d: 5.4s; --o: 8s"></div>
+
+                    <div class="tk-res a x" style="--d: 8s; --o: 10.5s">
+                        <div class="tk-res-halftone"></div>
+                        <div class="tk-res-rays"></div>
+                        <div class="tk-res-flash"></div>
+                        <div class="tk-res-burst">
+                            <span class="tk-res-word a" style="--d: 8s">¡Correcto!</span>
+                            <span class="tk-res-points a up" style="--d: 8.35s">+100 puntos</span>
+                        </div>
+                    </div>
+                    <div class="tk-confetti" style="--d: 8s">
+                        @for (c of confetti; track $index) {
+                            <i [style.--x]="c.x" [style.--c]="c.c" [style.--pd]="c.pd" [style.--dx]="c.dx" [style.--r]="c.r" [style.--fd]="c.fd"></i>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="tk-bubble you tail-r a x" style="right: -12px; bottom: 210px; --d: 1s; --o: 2.8s">
+                <span class="who">Tú</span>¡Júpiter!
+            </div>
+            <div class="tk-bubble you tail-r a x" style="right: -12px; bottom: 210px; --d: 3s; --o: 4.2s">
+                <span class="who">Tú</span>Mmm… ¿o Saturno?
+            </div>
+            <div class="tk-bubble you tail-r a x" style="right: -12px; bottom: 210px; --d: 4.3s; --o: 5.4s">
+                <span class="who">Tú</span>¡No, no! ¡Júpiter!
+            </div>
+            <div class="tk-bubble host a x" style="left: -8px; top: 70px; --d: 5.6s; --o: 7.9s">
+                <span class="who">Ana · anfitriona</span>Confirmo… ¡Júpiter!
+            </div>
+        </div>
+    }
+
+    @case ('fallo') {
+        <div class="tk-scene" style="--o: 7.6s">
+            <div class="tk-phone">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>21:34</span><span>5G ▮</span></div>
+                    <div class="tk-board a x xo-l" style="--in: tk-fade; --d: 0s; --o: 6.6s">
+                        <div class="shake-wrap tk-shake" style="--d: 3.6s">
+                        <div class="tk-topline">
+                            <span class="tk-phase" style="--fase: #7c3aed">Fase 1<small>/3</small> · Calentamiento</span>
+                            <span class="tk-score">Lucía · <b>100</b> pts</span>
+                        </div>
+                        <div class="tk-q">¿En qué año llegó el ser humano a la Luna?</div>
+                        <div class="tk-answers">
+                            <div class="tk-ans tri"><svg><use href="#tk-tri" /></svg>1965</div>
+                            <div class="tk-ans sq"><svg><use href="#tk-sq" /></svg>1969<span class="tk-fill a" style="--d: 4s">✓ 1969</span></div>
+                            <div class="tk-ans ci">
+                                <svg><use href="#tk-ci" /></svg>1972
+                                <span class="a x" style="position: absolute; inset: 0; --in: tk-fade; --d: 2.9s; --o: 3.6s"><span class="tk-ring a" style="--d: 2.9s"></span></span>
+                                <span class="tk-fill bad a" style="--d: 3.6s">✗ 1972</span>
+                            </div>
+                            <div class="tk-ans pe"><svg><use href="#tk-pe" /></svg>1959</div>
+                        </div>
+                        <div class="tk-turninfo">
+                            <span class="tk-wait a fade" style="--d: 2.2s">Turno de <b>Marcos</b></span>
+                        </div>
+                        </div>
+                    </div>
+
+                    <!-- Siguiente pregunta: entra tapada -->
+                    <div class="tk-board a from-r" style="--d: 6.9s">
+                        <div class="tk-topline"><span class="tk-phase" style="--fase: #7c3aed">Fase 1<small>/3</small> · Calentamiento</span></div>
+                        <div class="tk-q">¿Qué gas respiran las plantas para hacer la fotosíntesis?</div>
+                        <div class="tk-answers">
+                            <div class="tk-ans tri"><span class="tk-mys">?</span></div>
+                            <div class="tk-ans sq"><span class="tk-mys">?</span></div>
+                            <div class="tk-ans ci"><span class="tk-mys">?</span></div>
+                            <div class="tk-ans pe"><span class="tk-mys">?</span></div>
+                        </div>
+                    </div>
+
+                    <div class="tk-tban" style="--d: 0.2s">
+                        <div class="tk-tban-strip"></div>
+                        <div class="tk-tban-text">
+                            <span class="tk-tban-label">Turno de</span>
+                            <span class="tk-tban-name">Marcos</span>
+                        </div>
+                        <svg class="tk-tban-arrow" viewBox="0 0 120 64"><path d="M6 20 H66 V6 L114 32 L66 58 V44 H6 Z" /></svg>
+                    </div>
+
+                    <div class="tk-res bad a x" style="--d: 3.6s; --o: 5.6s">
+                        <div class="tk-res-halftone"></div>
+                        <div class="tk-res-flash"></div>
+                        <div class="tk-res-burst">
+                            <span class="tk-res-word a" style="--d: 3.6s">¡Fallo!</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tk-bubble rival tail-r a x" style="right: -12px; bottom: 210px; --d: 2.4s; --o: 3.6s">
+                <span class="who">Marcos</span>¡1972!
+            </div>
+            <div class="tk-bubble host a x" style="left: -8px; top: 70px; --d: 6.1s; --o: 7.5s">
+                <span class="who">Ana · anfitriona</span>¡Siguiente pregunta!
+            </div>
+        </div>
+    }
+}

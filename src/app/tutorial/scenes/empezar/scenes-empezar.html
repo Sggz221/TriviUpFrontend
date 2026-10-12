@@ -1,0 +1,127 @@
+@switch (scene()) {
+    @case ('intro') {
+        <!-- Presentación: el salón con la pantalla del anfitrión y los jugadores; zoom hacia tu móvil -->
+        <div class="tk-scene intro" style="--o: 7.1s">
+            <div class="intro-world">
+                <div class="intro-burst"></div>
+                <h1 class="intro-logo a slam" style="--d: 0.25s">TriviUp</h1>
+                <span class="intro-sticker a pop" style="--d: 0.9s">🎤 Modo presencial</span>
+
+                <div class="intro-tv a up" style="--d: 2.2s">
+                    <div class="intro-tv-screen">
+                        <span class="intro-tv-q">¿Cuál es el planeta más grande?</span>
+                        <div class="intro-tv-grid">
+                            <i class="tri"></i><i class="sq"></i><i class="ci"></i><i class="pe"></i>
+                        </div>
+                    </div>
+                    <span class="intro-tv-foot"></span>
+                </div>
+                <div class="intro-host a pop" style="--d: 2.45s">
+                    <span class="tk-avatar crown" style="--c: var(--tk-host)">A</span>
+                    <span class="intro-tag">Ana · anfitriona</span>
+                </div>
+
+                <div class="intro-player p-marcos a pop" style="--d: 2.9s">
+                    <span class="tk-avatar" style="--c: var(--tk-rival)">M</span>
+                    <span class="intro-mini-phone"></span>
+                    <span class="intro-tag">Marcos</span>
+                </div>
+                <div class="intro-player p-you a pop" style="--d: 3.2s">
+                    <span class="tk-avatar" style="--c: var(--tk-you)">L</span>
+                    <span class="intro-mini-phone glow"></span>
+                    <span class="intro-tag">Lucía</span>
+                </div>
+                <div class="intro-player p-cracks a pop" style="--d: 3.5s">
+                    <span class="tk-avatar" style="--c: var(--tk-cracks)">LC</span>
+                    <span class="intro-mini-phone"></span>
+                    <span class="intro-tag">Los Cracks</span>
+                </div>
+                <div class="intro-table a fade" style="--d: 2.7s"></div>
+
+                <div class="intro-dim a fade" style="--d: 4.4s; --t: 0.6s"></div>
+                <span class="intro-spot"></span>
+                <span class="intro-you-label a pop" style="--d: 4.6s">¡Tú!</span>
+            </div>
+        </div>
+    }
+
+    @case ('unirse') {
+        <div class="tk-scene" style="--o: 11.6s">
+            <div class="tk-phone a up" style="--t: 0.6s">
+                <div class="tk-screen">
+                    <div class="tk-status"><span>21:30</span><span>5G ▮</span></div>
+
+                    <!-- 1. Código de sala -->
+                    <div class="tk-layer join a x fade xo-l" style="--d: 0.3s; --o: 3.2s">
+                        <h2 class="tk-title">Unirse a una sala</h2>
+                        <p class="join-sub">Introduce el código para unirte a la partida</p>
+                        <span class="join-label">Código de sala</span>
+                        <div class="join-input code">
+                            @for (c of code; track $index) {
+                                <span class="a pop" [style.--d]="c.d" style="--t: 0.25s">{{ c.ch }}</span>
+                            }
+                            <i class="caret"></i>
+                        </div>
+                        <button type="button" tabindex="-1" class="join-btn tk-press" style="--d: 2.9s">
+                            Unirse
+                            <span class="tk-touch" style="left: 50%; top: 50%; --d: 2.65s"></span>
+                        </button>
+                        <p class="join-or"><span class="join-qr-icon">▦</span> o escanea el QR de la pantalla del anfitrión</p>
+                    </div>
+
+                    <!-- 2. Nombre -->
+                    <div class="tk-layer join a x from-r xo-l" style="--d: 3.2s; --o: 5.5s">
+                        <h2 class="tk-title">Unirse a la partida</h2>
+                        <p class="join-sub">Código de sala: <b>QZ4K7M</b></p>
+                        <span class="join-label">¿Cómo te llamas?</span>
+                        <div class="join-input name">
+                            @for (c of name; track $index) {
+                                <span class="a pop" [style.--d]="c.d" style="--t: 0.2s">{{ c.ch }}</span>
+                            }
+                            <i class="caret"></i>
+                        </div>
+                        <button type="button" tabindex="-1" class="join-btn tk-press" style="--d: 5.1s">
+                            Unirme
+                            <span class="tk-touch" style="left: 50%; top: 50%; --d: 4.85s"></span>
+                        </button>
+                    </div>
+
+                    <!-- 3. Sala de espera -->
+                    <div class="tk-layer lobby a from-r" style="--d: 5.5s">
+                        <div class="lobby-head">
+                            <span class="lobby-quiz">Noche de trivia</span>
+                            <span class="lobby-code">QZ4K7M</span>
+                        </div>
+                        <span class="lobby-section">Jugadores <small>(4)</small></span>
+                        <ul class="lobby-list">
+                            <li class="a up" style="--d: 5.9s"><span class="dot" style="--c: var(--tk-host)">A</span>Ana<span class="badge host">👑 Anfitrión</span></li>
+                            <li class="a up me" style="--d: 6.3s"><span class="dot" style="--c: var(--tk-you)">L</span>Lucía <small>(tú)</small></li>
+                            <li class="a up" style="--d: 7.0s"><span class="dot" style="--c: var(--tk-rival)">M</span>Marcos</li>
+                            <li class="a up" style="--d: 7.7s"><span class="dot" style="--c: var(--tk-cracks)">LC</span>Los Cracks</li>
+                        </ul>
+                        <p class="lobby-wait a fade" style="--d: 8.2s">Esperando a que el anfitrión empiece<span class="dots"><i>.</i><i>.</i><i>.</i></span></p>
+                    </div>
+
+                    <div class="tk-count-bg a fade" style="--d: 9.3s"></div>
+                    <div class="tk-count">
+                        <span style="--d: 9.4s">3</span>
+                        <span style="--d: 10.1s">2</span>
+                        <span style="--d: 10.8s">1</span>
+                        <span class="go" style="--d: 11.5s">¡YA!</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pantalla del anfitrión con el código y el QR -->
+            <div class="host-card a x pop" style="--d: 0.6s; --o: 3.2s">
+                <span class="host-card-label">Pantalla del anfitrión</span>
+                <div class="host-card-body">
+                    <div class="host-qr">
+                        @for (on of qr; track $index) { <i [class.on]="on"></i> }
+                    </div>
+                    <span class="host-code">QZ4K7M</span>
+                </div>
+            </div>
+        </div>
+    }
+}

@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { GameSignalrService } from '../../services/game-signalr.service';
 import { AuthService } from '../../../auth/auth.service';
 import { getOrCreateAnonymousUserId, saveAnonymousIdentity } from '../../utils/anonymous-identity.utils';
+import { TutorialService } from '../../../tutorial/tutorial.service';
 
 @Component({
     selector: 'app-join-room',
@@ -17,6 +18,7 @@ export class JoinRoomComponent {
     private router = inject(Router);
     gameSignalrService = inject(GameSignalrService);
     private authService = inject(AuthService);
+    protected tutorial = inject(TutorialService);
 
     roomCode = signal<string>('');
     username = signal<string>('');

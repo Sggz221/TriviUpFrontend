@@ -1,0 +1,429 @@
+// Efectos grandes del tutorial (dentro del móvil): carteles de turno/fase/comodín, resultado, confeti,
+// cuenta atrás y viñeta de suspense. Mismo lenguaje que la partida (game-room-fx / game-room-avisos).
+@use '../../game/styles/game-fx' as fx;
+
+// ---------- Cartel "Turno de" / fase: franja inclinada que cruza la pantalla (dura --bd) ----------
+.tut .tk-tban {
+    --bd: 2.1s;
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    pointer-events: none;
+    animation: tk-ban-bg var(--bd) ease var(--d, 0s) both;
+}
+
+.tut .tk-tban-strip {
+    position: absolute;
+    left: -20%;
+    right: -20%;
+    top: 50%;
+    height: 210px;
+    margin-top: -105px;
+    border-block: 6px solid var(--tk-ink);
+    background: linear-gradient(90deg, #1d2bff 0%, #8b2cff 50%, #ff2c8b 100%);
+    box-shadow: 0 10px 0 var(--tk-ink);
+    overflow: hidden;
+    animation: tk-strip var(--bd) var(--tk-snap) var(--d, 0s) both;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        @include fx.halftone(rgba(0, 0, 0, 0.28), 100% 50%, 12px);
+        --dot: 5px;
+        --reach: 80%;
+    }
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(90deg, transparent 0 50px, rgb(255 255 255 / 0.16) 50px 54px, transparent 54px 120px);
+        animation: tk-speed 0.45s linear infinite;
+    }
+
+}
+
+.tut .tk-tban.you .tk-tban-strip { background: linear-gradient(90deg, #0b8f6a 0%, #12b5cb 55%, #3fe0a0 100%); }
+.tut .tk-tban.phase .tk-tban-strip { background: linear-gradient(90deg, color-mix(in oklab, var(--fase) 70%, #000), var(--fase), color-mix(in oklab, var(--fase) 60%, #fff)); }
+
+.tut .tk-tban-text {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transform: rotate(-8deg);
+    text-align: center;
+}
+
+.tut .tk-tban-label {
+    @include fx.game-label(900);
+    font-size: 18px;
+    letter-spacing: 0.35em;
+    color: #fff;
+    -webkit-text-stroke: 1px var(--tk-ink);
+    paint-order: stroke fill;
+    text-shadow: 3px 3px 0 var(--tk-ink);
+    animation: tk-ban-label var(--bd) var(--tk-spring) var(--d, 0s) both;
+}
+
+.tut .tk-tban-name {
+    @include fx.display-title(var(--fx-gradient), 0.06em);
+    font-size: 52px;
+    animation: tk-ban-name var(--bd) cubic-bezier(0.2, 0.9, 0.3, 1) var(--d, 0s) both;
+
+    &.sm { font-size: 34px; }
+    small { font-size: 0.5em; }
+}
+
+.tut .tk-tban-arrow {
+    position: absolute;
+    left: 50%;
+    top: calc(50% + 72px);
+    width: 120px;
+    margin-left: -60px;
+    overflow: visible;
+    filter: drop-shadow(5px 6px 0 var(--tk-ink));
+    animation: tk-arrow var(--bd) cubic-bezier(0.2, 0.9, 0.3, 1) var(--d, 0s) both;
+
+    path { fill: #facc15; stroke: var(--tk-ink); stroke-width: 5; stroke-linejoin: round; }
+}
+
+@keyframes tk-ban-bg {
+    0% { background: transparent; }
+    12%, 85% { background: rgb(5 5 12 / 0.6); }
+    100% { background: transparent; }
+}
+
+@keyframes tk-strip {
+    0% { transform: skewY(-8deg) translateX(-120%); }
+    18%, 82% { transform: skewY(-8deg) translateX(0); }
+    100% { transform: skewY(-8deg) translateX(120%); }
+}
+
+@keyframes tk-ban-label {
+    0%, 10% { opacity: 0; transform: translateX(-60px); }
+    24%, 80% { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(80px); }
+}
+
+@keyframes tk-ban-name {
+    0%, 12% { opacity: 0; transform: scale(2.4) rotate(-6deg); }
+    26% { opacity: 1; transform: scale(0.9); }
+    34% { transform: scale(1.06); }
+    40%, 80% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: translateX(120%) scale(1); }
+}
+
+@keyframes tk-arrow {
+    0%, 14% { opacity: 0; transform: translateX(-340px) rotate(-8deg); }
+    28% { opacity: 1; transform: translateX(14px) rotate(-8deg); }
+    36%, 60% { transform: translateX(0) rotate(-8deg); }
+    68%, 80% { opacity: 1; transform: translateX(12px) rotate(-8deg); }
+    100% { opacity: 0; transform: translateX(360px) rotate(-8deg); }
+}
+
+@keyframes tk-speed { to { background-position: -120px 0; } }
+
+// ---------- Aviso de comodín: franja naranja horizontal con "!!" (dura --bd) ----------
+.tut .tk-cban {
+    --bd: 2.6s;
+    position: absolute;
+    inset: 0;
+    z-index: 52;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+    overflow: hidden;
+    animation: tk-ban-bg var(--bd) ease var(--d, 0s) both;
+}
+
+.tut .tk-cban-strip {
+    position: relative;
+    width: 100%;
+    padding: 26px 16px 30px;
+    border-block: 6px solid var(--tk-ink);
+    background: linear-gradient(90deg, #ff8a00 0%, #ff3d6e 55%, #c4123a 100%);
+    box-shadow: 0 10px 0 var(--tk-ink);
+    text-align: center;
+    animation: tk-cban-strip var(--bd) var(--tk-snap) var(--d, 0s) both;
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(90deg, transparent 0 50px, rgb(255 255 255 / 0.16) 50px 54px, transparent 54px 120px);
+        animation: tk-speed 0.45s linear infinite;
+    }
+}
+
+.tut .tk-cban-name {
+    position: relative;
+    z-index: 1;
+    display: block;
+    @include fx.display-title(var(--fx-gradient), 0.06em);
+    font-size: 46px;
+}
+
+.tut .tk-cban-sub {
+    position: relative;
+    z-index: 1;
+    display: block;
+    margin-top: 6px;
+    @include fx.game-label(900);
+    font-size: 17px;
+    color: #fff;
+    -webkit-text-stroke: 1px var(--tk-ink);
+    paint-order: stroke fill;
+    text-shadow: 3px 3px 0 var(--tk-ink);
+
+    strong { color: #fff35c; }
+}
+
+.tut .tk-cban-bang {
+    position: absolute;
+    right: 18px;
+    bottom: -44px;
+    z-index: 2;
+    width: 54px;
+    overflow: visible;
+    filter: drop-shadow(4px 5px 0 var(--tk-ink));
+    transform-origin: 50% 100%;
+    animation: tk-bang var(--bd) var(--tk-spring) var(--d, 0s) both;
+
+    path { fill: #ef4444; stroke: var(--tk-ink); stroke-width: 4; stroke-linejoin: round; }
+}
+
+@keyframes tk-cban-strip {
+    0% { transform: scaleY(0); opacity: 0; }
+    12% { transform: scaleY(1.12); opacity: 1; }
+    18%, 86% { transform: scaleY(1); opacity: 1; }
+    100% { transform: scaleY(0); opacity: 0; }
+}
+
+@keyframes tk-bang {
+    0%, 16% { opacity: 0; transform: scale(0) rotate(-20deg); }
+    26% { opacity: 1; transform: scale(1.25) rotate(8deg); }
+    34%, 84% { opacity: 1; transform: scale(1) rotate(0); }
+    100% { opacity: 0; transform: scale(0.6); }
+}
+
+// ---------- Resultado: "¡Correcto!" / "¡Fallo!" con trama, rayos y destello ----------
+.tut .tk-res {
+    position: absolute;
+    inset: 0;
+    z-index: 45;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 45%, rgb(5 5 12 / 0.35), rgb(5 5 12 / 0.75));
+    --in: tk-fade;
+    --t: 0.2s;
+}
+
+.tut .tk-res-halftone {
+    position: absolute;
+    inset: 0;
+    @include fx.halftone(color-mix(in oklab, var(--rc, #3fe0a0) 42%, transparent), 50% 45%, 16px);
+    animation: tk-halftone 0.9s ease-out var(--d, 0s) both;
+}
+
+.tut .tk-res-rays {
+    position: absolute;
+    left: 50%;
+    top: 45%;
+    width: 900px;
+    height: 900px;
+    margin: -450px 0 0 -450px;
+    @include fx.speed-rays(rgb(255 255 255 / 0.12), 22);
+    animation: tk-rays 9s linear var(--d, 0s) infinite both;
+}
+
+.tut .tk-res-flash {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    animation: tk-flash 0.45s ease-out var(--d, 0s) both;
+}
+
+.tut .tk-res-burst {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: -40px;
+}
+
+.tut .tk-res-word {
+    @include fx.display-title(var(--fx-gradient-cool), 0.06em);
+    font-size: 40px;
+    white-space: nowrap;
+    --in: tk-slam;
+    --t: 0.75s;
+    --ease: cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.tut .tk-res.bad .tk-res-word { background-image: var(--fx-gradient-hot); }
+
+.tut .tk-res-points {
+    padding: 6px 18px;
+    border: 3px solid var(--tk-ink);
+    border-radius: 999px;
+    background: #fff35c;
+    box-shadow: 4px 4px 0 var(--tk-ink);
+    color: var(--tk-ink);
+    @include fx.game-label(900);
+    font-size: 20px;
+    letter-spacing: 0.08em;
+}
+
+.tut .tk-res.bad { --rc: #ff4f6d; }
+
+.tut .tk-shake { animation: tk-shake 0.5s ease var(--d, 0s) both; }
+
+@keyframes tk-halftone {
+    0% { --dot: 0px; --reach: 0%; }
+    60% { --dot: 6px; }
+    100% { --dot: 7px; --reach: 140%; }
+}
+
+@keyframes tk-rays { to { transform: rotate(360deg); } }
+@keyframes tk-flash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+
+@keyframes tk-shake {
+    15% { transform: translate(-9px, 4px) rotate(-0.8deg); }
+    30% { transform: translate(8px, -5px) rotate(0.6deg); }
+    45% { transform: translate(-6px, -3px); }
+    60% { transform: translate(4px, 3px); }
+    80% { transform: translate(-2px, 1px); }
+}
+
+// ---------- Confeti: cada pieza trae --x, --c, --pd (retraso propio) y --r ----------
+.tut .tk-confetti {
+    position: absolute;
+    inset: 0;
+    z-index: 46;
+    overflow: hidden;
+    pointer-events: none;
+
+    i {
+        position: absolute;
+        top: -24px;
+        left: var(--x);
+        width: 9px;
+        height: 15px;
+        border-radius: 2px;
+        background: var(--c);
+        animation: tk-fall var(--fd, 2.2s) cubic-bezier(0.3, 0.6, 0.6, 1) calc(var(--d, 0s) + var(--pd, 0s)) both;
+
+        &:nth-child(3n) { width: 11px; height: 11px; border-radius: 50%; }
+    }
+}
+
+@keyframes tk-fall {
+    0% { opacity: 1; transform: translate(0, 0) rotate(0); }
+    100% { opacity: 1; transform: translate(var(--dx, 20px), 860px) rotate(var(--r, 540deg)); }
+}
+
+// ---------- Cuenta atrás: cada número cae en su momento (--d) ----------
+.tut .tk-count {
+    position: absolute;
+    inset: 0;
+    z-index: 55;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+
+    > span {
+        grid-area: 1 / 1;
+        @include fx.display-title(var(--fx-gradient), 0.06em);
+        font-size: 170px;
+        opacity: 0;
+        animation: tk-count 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) var(--d) both;
+
+        &.go { font-size: 92px; background-image: var(--fx-gradient-cool); animation-duration: 0.9s; }
+    }
+}
+
+.tut .tk-count-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 54;
+    background: rgb(5 5 12 / 0.55);
+    --in: tk-fade;
+    --t: 0.2s;
+    pointer-events: none;
+}
+
+@keyframes tk-count {
+    0% { opacity: 0; transform: scale(2.3); }
+    22% { opacity: 1; transform: scale(0.88); }
+    36% { transform: scale(1.06); }
+    70% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.75); }
+}
+
+// ---------- Suspense: viñeta que cierra la pantalla ----------
+.tut .tk-vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    pointer-events: none;
+    background: radial-gradient(ellipse at 50% 55%, transparent 25%, rgb(0 0 0 / 0.82) 75%);
+    --in: tk-fade;
+    --t: 0.8s;
+}
+
+// ---------- Carta jugada: sube de la mano, se planta en el centro y se desvanece ----------
+.tut .play-dim {
+    position: absolute;
+    inset: 0;
+    z-index: 42;
+    background: rgb(5 5 12 / 0.6);
+    opacity: 0;
+    pointer-events: none;
+    animation: tk-play-dim 1.3s ease var(--d) both;
+}
+
+@keyframes tk-play-dim {
+    0%, 100% { opacity: 0; }
+    20%, 75% { opacity: 1; }
+}
+
+.tut .play-card {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    z-index: 43;
+    opacity: 0;
+    box-shadow: 0 0 0 4px var(--tk-ink), 0 0 50px color-mix(in oklab, var(--accent) 80%, transparent);
+    animation: tk-play-card 1.3s cubic-bezier(0.2, 0.9, 0.3, 1) var(--d) both;
+}
+
+@keyframes tk-play-card {
+    0% { opacity: 0; transform: translate(-50%, 260px) scale(0.42) rotate(-14deg); }
+    30% { opacity: 1; transform: translate(-50%, -50%) scale(1.06) rotate(3deg); }
+    40% { transform: translate(-50%, -50%) scale(1) rotate(0); }
+    75% { opacity: 1; transform: translate(-50%, -50%) scale(1); filter: brightness(1); }
+    82% { filter: brightness(2.2); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); filter: brightness(3); }
+}
+
+// Pulsador: el botón se enciende
+@keyframes tk-buzz-on {
+    0% { opacity: 0; transform: scale(0.85); }
+    60% { opacity: 1; transform: scale(1.12); }
+    100% { transform: scale(1); }
+}
+
+// Movimiento reducido: sin temblores ni rayos girando (la información se sigue viendo igual)
+@media (prefers-reduced-motion: reduce) {
+    .tut .tk-shake, .tut .tk-res-rays, .tut .tk-tban-strip::after, .tut .tk-cban-strip::after { animation: none; }
+    .tut .tk-confetti { display: none; }
+}

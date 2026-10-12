@@ -438,6 +438,13 @@ export class AudioService {
         this.playNoise(0.2, 6000, 0.12, { sweepTo: 500, q: 3 });
     }
 
+    /** Nota suave de flauta (ocarina del tutorial): seno con un toque de vibrato y soplo. */
+    playNote(frequency: number, duration = 0.42): void {
+        this.playTone(frequency, duration, 'sine', 0.22, { attack: 0.03, vibrato: 5, vibratoRate: 5 });
+        this.playTone(frequency * 2, duration * 0.8, 'triangle', 0.04, { attack: 0.03 });
+        this.playNoise(duration * 0.6, frequency * 3, 0.02, { type: 'bandpass', q: 2 });
+    }
+
     // ============ Música de fondo (canal independiente de los efectos) ============
 
     private static readonly MUSIC_URL = '/audio/music/TriviUp_BG_Music.ogg';

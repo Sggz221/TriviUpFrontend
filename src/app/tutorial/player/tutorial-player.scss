@@ -1,0 +1,402 @@
+// Reproductor del tutorial: pantalla completa con el móvil (lienzo escalado), subtítulos y controles.
+// Sin encapsulación: todo cuelga de .tut.
+@use '../../game/styles/game-fx' as fx;
+
+.tut {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
+    color: #fff;
+    font-family: var(--font-game);
+    overflow: hidden;
+    animation: tut-open 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@keyframes tut-open {
+    from { opacity: 0; transform: scale(1.04); }
+}
+
+.tut-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        radial-gradient(ellipse 70% 60% at 30% 40%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 70%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, color-mix(in oklab, var(--secondary) 16%, transparent), transparent 70%),
+        linear-gradient(160deg, #161a2b 0%, #0c0e19 60%, #07080f 100%);
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(circle, rgb(255 255 255 / 0.06) 1.4px, transparent 1.8px);
+        background-size: 18px 18px;
+        mask-image: radial-gradient(ellipse at 30% 40%, #000, transparent 75%);
+    }
+}
+
+// ---------- Barra superior ----------
+.tut-top {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+}
+
+.tut-top-title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.tut-brand {
+    font-family: 'Odibee Sans', system-ui, sans-serif;
+    font-size: 1.9rem;
+    line-height: 1;
+}
+
+.tut-kicker {
+    @include fx.game-label(700);
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    opacity: 0.75;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    b { color: #fff35c; }
+}
+
+.tut-top-actions {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.tut-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-width: 2.5rem;
+    height: 2.5rem;
+    padding: 0 0.7rem;
+    border: 2px solid rgb(255 255 255 / 0.18);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.06);
+    color: #fff;
+    font: 700 0.95rem var(--font-game);
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:hover { background: rgb(255 255 255 / 0.14); }
+    &:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+}
+
+.tut-close { font-size: 1.1rem; }
+
+.tut-chapters {
+    position: absolute;
+    top: calc(100% - 0.2rem);
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 15rem;
+    padding: 0.5rem;
+    border: 3px solid var(--fx-ink);
+    border-radius: 1rem;
+    background: #1c1f33;
+    box-shadow: 5px 5px 0 var(--fx-ink);
+    animation: tut-pop-menu 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+
+@keyframes tut-pop-menu {
+    from { opacity: 0; transform: translateY(-8px) scale(0.95); }
+}
+
+.tut-chapter-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.75rem;
+    border: 0;
+    border-radius: 0.6rem;
+    background: transparent;
+    color: #fff;
+    font: 700 1rem var(--font-game);
+    text-align: left;
+    cursor: pointer;
+
+    &:hover, &:focus-visible { background: rgb(255 255 255 / 0.1); outline: none; }
+    &.active { background: color-mix(in oklab, var(--primary) 25%, transparent); }
+}
+
+.tut-chapter-icon { font-size: 1.2rem; }
+
+// ---------- Escenario + subtítulos ----------
+.tut-main {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-height: 0;
+
+    @media (min-width: 900px) and (min-aspect-ratio: 1/1) {
+        grid-template-rows: none;
+        grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+        align-items: center;
+        padding: 0 4vw;
+    }
+}
+
+.tut-stage {
+    position: relative;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.tut-canvas {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 400px;
+    height: 800px;
+    transform: translate(-50%, -50%) scale(var(--s, 1));
+}
+
+.tut-paused-badge {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    z-index: 5;
+    padding: 0.6rem 1.2rem;
+    border: 3px solid var(--fx-ink);
+    border-radius: 999px;
+    background: #fff35c;
+    color: var(--fx-ink);
+    box-shadow: 4px 4px 0 var(--fx-ink);
+    @include fx.game-label(900);
+    font-size: 1rem;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: tut-pop-menu 0.2s ease both;
+}
+
+.tut-caption {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.5rem 1.25rem 0.25rem;
+    height: 9.5rem;
+    text-align: center;
+    overflow: hidden;
+
+    @media (min-width: 900px) and (min-aspect-ratio: 1/1) {
+        height: auto;
+        max-width: 30rem;
+        padding: 0 0 0 1rem;
+        text-align: left;
+        gap: 0.75rem;
+    }
+}
+
+.tut-cap-chapter {
+    @include fx.game-label(800);
+    font-size: 0.75rem;
+    color: var(--primary);
+    letter-spacing: 0.2em;
+
+    @media (min-width: 900px) and (min-aspect-ratio: 1/1) { font-size: 0.9rem; }
+}
+
+.tut-cap-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+
+    @media (min-width: 900px) and (min-aspect-ratio: 1/1) { gap: 0.8rem; min-height: 14rem; }
+}
+
+.tut-cap-title {
+    @include fx.display-title(var(--fx-gradient), 0.07em);
+    margin: 0;
+    font-size: clamp(1.15rem, 5.4vw, 1.6rem);
+    animation: tut-cap-title 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+
+    @media (min-width: 900px) and (min-aspect-ratio: 1/1) { font-size: clamp(1.8rem, 3vw, 2.8rem); }
+}
+
+.tut-cap-text {
+    margin: 0;
+    font-size: clamp(0.98rem, 4vw, 1.15rem);
+    font-weight: 600;
+    line-height: 1.35;
+    color: rgb(255 255 255 / 0.88);
+    animation: tut-cap-text 0.5s 0.12s ease both;
+
+    @media (min-width: 900px) and (min-aspect-ratio: 1/1) { font-size: clamp(1.15rem, 1.6vw, 1.45rem); }
+}
+
+@keyframes tut-cap-title {
+    from { opacity: 0; transform: translateY(14px) scale(0.92) rotate(-2deg); }
+}
+
+@keyframes tut-cap-text {
+    from { opacity: 0; transform: translateY(10px); }
+}
+
+.tut-cta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+    animation: tut-cap-text 0.5s 0.6s ease both;
+
+    @media (min-width: 900px) and (min-aspect-ratio: 1/1) { justify-content: flex-start; margin-top: 1rem; }
+
+    .btn { font-family: var(--font-game); font-weight: 800; }
+}
+
+// ---------- Controles ----------
+.tut-controls {
+    position: relative;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem calc(0.6rem + env(safe-area-inset-bottom));
+}
+
+.tut-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.tut-ctrl {
+    display: grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+
+    svg { width: 1.3rem; height: 1.3rem; fill: currentColor; }
+    &:hover { background: rgb(255 255 255 / 0.1); }
+    &:disabled { opacity: 0.3; cursor: default; background: transparent; }
+    &:focus-visible { outline: 3px solid var(--primary); outline-offset: 1px; }
+}
+
+.tut-play {
+    width: 3rem;
+    height: 3rem;
+    background: #fff;
+    color: #0b0b12;
+    box-shadow: 3px 3px 0 var(--fx-ink);
+
+    &:hover { background: #fff35c; }
+    svg { width: 1.5rem; height: 1.5rem; }
+}
+
+.tut-progress {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+}
+
+.tut-seg {
+    position: relative;
+    flex-basis: 0;
+    height: 1.6rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+
+    // Pista visible: fina, centrada en el área táctil
+    &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: 6px;
+        margin-top: -3px;
+        border-radius: 3px;
+        background: rgb(255 255 255 / 0.18);
+        transition: height 0.15s ease, margin 0.15s ease;
+    }
+
+    &.chapter-start { margin-left: 6px; }
+    &:hover::before, &.current::before { height: 9px; margin-top: -4.5px; }
+    &:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+}
+
+.tut-seg-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 6px;
+    margin-top: -3px;
+    border-radius: 3px;
+    background: var(--primary);
+    transform-origin: left center;
+    pointer-events: none;
+
+    .tut-seg:hover &, .tut-seg.current & { height: 9px; margin-top: -4.5px; }
+}
+
+.tut-seg-tip {
+    position: absolute;
+    bottom: calc(100% + 0.25rem);
+    left: 50%;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.4rem;
+    background: #fff;
+    color: #0b0b12;
+    font: 800 0.75rem var(--font-game);
+    white-space: nowrap;
+    transform: translateX(-50%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+
+    .tut-seg:hover &, .tut-seg:focus-visible & { opacity: 1; }
+}
+
+.tut-counter {
+    font: 700 0.85rem var(--font-game);
+    opacity: 0.6;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 520px) {
+    .tut-hide-sm, .tut-counter { display: none; }
+    .tut-brand { font-size: 1.6rem; }
+    .tut-icon-btn { min-width: 2.25rem; height: 2.25rem; padding: 0 0.5rem; }
+    .tut-kicker { font-size: 0.68rem; }
+    .tut-controls { gap: 0.4rem; padding-inline: 0.6rem; }
+}
+
+// Pausa: congela todas las animaciones del escenario a la vez que el reloj
+.tut.paused .tut-canvas *,
+.tut.paused .tut-canvas *::before,
+.tut.paused .tut-canvas *::after {
+    animation-play-state: paused !important;
+}

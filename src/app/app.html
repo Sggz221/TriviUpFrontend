@@ -1,2 +1,9 @@
 <router-outlet />
 <app-rejoin-toast />
+
+<!-- Tutorial animado: se descarga la primera vez que alguien lo abre -->
+@defer (when tutorial.isOpen()) {
+    @if (tutorial.isOpen()) {
+        <app-tutorial-player />
+    }
+}

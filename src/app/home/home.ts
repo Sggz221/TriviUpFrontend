@@ -3,6 +3,7 @@ import { RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../auth/auth.service';
 import { NavbarComponent } from '../shared/components/navbar/navbar.component';
+import { TutorialService } from '../tutorial/tutorial.service';
 
 @Component({
   selector: 'app-home',
@@ -17,6 +18,7 @@ export class Home implements OnInit, OnDestroy {
 
   private authService = inject(AuthService);
   private router = inject(Router);
+  protected tutorial = inject(TutorialService);
 
   isLoggedIn = signal(this.authService.isLoggedIn());
 

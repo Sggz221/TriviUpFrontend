@@ -1,0 +1,182 @@
+<div class="tk-scene" style="--o: 20.6s">
+    <div class="tk-phone">
+        <div class="tk-screen">
+            <div class="tk-status"><span>21:39</span><span>5G ▮</span></div>
+
+            <!-- Pregunta de Marcos: robo fallido y apuesta -->
+            <div class="tk-board a x xo-l" style="--in: tk-fade; --t: 0.01s; --o: 15s">
+                <div class="tk-topline">
+                    <span class="tk-phase" style="--fase: #7c3aed">Fase 1<small>/3</small> · Calentamiento</span>
+                    <span class="tk-score">Lucía · <span class="swap">
+                        <b class="a x" style="--in: tk-fade; --t: 0.01s; --o: 6.4s">100</b>
+                        <b class="a x pop down-red" style="--d: 6.4s; --o: 13.8s">50</b>
+                        <b class="a pop" style="--d: 13.8s">100</b>
+                    </span> pts</span>
+                </div>
+                <div class="tk-q">¿Cuál es el océano más grande del mundo?</div>
+                <div class="status-row">
+                    <span class="tk-chip a x pop" style="--d: 4.9s; --o: 7.4s; --c: #ef4444">🥷 Robada por Lucía</span>
+                    <span class="tk-chip a x pop" style="--d: 7.5s; --o: 9.6s; --c: #64748b">↩ Vuelve a Marcos</span>
+                    <span class="tk-chip a pop" style="--d: 10.9s; --c: #f59e0b">💰 Lucía apuesta: falla</span>
+                </div>
+                <div class="tk-answers">
+                    <div class="tk-ans tri">
+                        <svg><use href="#tk-tri" /></svg>Atlántico
+                        <span class="a x" style="position: absolute; inset: 0; --in: tk-fade; --d: 5.9s; --o: 6.2s"><span class="tk-ring a" style="--d: 5.9s"></span></span>
+                        <span class="tk-fill bad a x" style="--d: 6.2s; --o: 7.6s">✗ Atlántico</span>
+                    </div>
+                    <div class="tk-ans sq">
+                        <svg><use href="#tk-sq" /></svg>Índico
+                        <span class="a x" style="position: absolute; inset: 0; --in: tk-fade; --d: 12.3s; --o: 12.8s"><span class="tk-ring a" style="--d: 12.3s"></span></span>
+                        <span class="tk-fill bad a" style="--d: 12.8s">✗ Índico</span>
+                    </div>
+                    <div class="tk-ans ci"><svg><use href="#tk-ci" /></svg>Pacífico<span class="tk-fill a" style="--d: 13.1s">✓ Pacífico</span></div>
+                    <div class="tk-ans pe"><svg><use href="#tk-pe" /></svg>Ártico</div>
+                </div>
+                <div class="tk-turninfo above-tray">
+                    <span class="tk-wait a x fade" style="--o: 4.8s">Esperando a Marcos…</span>
+                    <span class="a x fade" style="--d: 4.9s; --o: 7.4s">
+                        <span class="tk-yourturn">¡Es tu turno!</span><br />
+                        <span class="tk-wait">Has robado la pregunta: ¡dila tú!</span>
+                    </span>
+                    <span class="tk-wait a fade" style="--d: 7.5s">Esperando a Marcos…</span>
+                </div>
+            </div>
+
+            <!-- Nueva pregunta de Marcos: se la cambias -->
+            <div class="tk-board a from-r" style="--d: 15s">
+                <div class="tk-topline">
+                    <span class="tk-phase" style="--fase: #7c3aed">Fase 1<small>/3</small> · Calentamiento</span>
+                    <span class="tk-score">Lucía · <b>100</b> pts</span>
+                </div>
+                <div class="q-flip">
+                    <div class="tk-q a x xo-flip" style="--in: tk-fade; --t: 0.01s; --o: 15.9s">¿Cuántas patas tiene una araña?</div>
+                    <div class="tk-q a flip" style="--d: 16s">¿En qué siglo se publicó el Quijote?</div>
+                </div>
+                <div class="tk-answers">
+                    @for (a of [['tri', '6', 'XV', '18.2s'], ['sq', '8', 'XVI', '18.6s'], ['ci', '10', 'XVII', '19s'], ['pe', '12', 'XVIII', '19.4s']]; track a[0]) {
+                        <div class="tk-ans" [class]="a[0]">
+                            <svg><use [attr.href]="'#tk-' + a[0]" /></svg>
+                            <span class="ans-txt">
+                                <span class="a x" style="--in: tk-fade; --t: 0.01s; --o: 16s">{{ a[1] }}</span>
+                                <span class="a fade" style="--d: 16s; --t: 0.01s">{{ a[2] }}</span>
+                            </span>
+                            <span class="tk-mys a x flip xo-flip" style="--d: 16s" [style.--o]="a[3]">?</span>
+                        </div>
+                    }
+                </div>
+                <div class="tk-turninfo above-tray">
+                    <span class="tk-wait">Turno de <b>Marcos</b></span>
+                </div>
+            </div>
+
+            <!-- Mano de ataques (plegada) -->
+            <div class="tk-tray static">
+                <div class="tk-fan tk-press" style="--d: 1.6s">
+                    @for (c of fanCards; track c; let i = $index) {
+                        <span class="tk-card mini atk" [style]="fan(i, fanCards.length)" [class.spent]="c === 'Robo'">
+                            <span class="us">×1</span><span class="ic">{{ info[c].icon }}</span><span class="nm">{{ info[c].name }}</span>
+                        </span>
+                    }
+                </div>
+                <span class="tk-fan-hint">Comodines</span>
+                <span class="tk-touch" style="left: 50%; top: 50%; --d: 1.35s"></span>
+                <span class="tk-touch" style="left: 50%; top: 50%; --d: 8.75s"></span>
+                <span class="tk-touch" style="left: 50%; top: 50%; --d: 14.95s"></span>
+            </div>
+
+            <!-- Apuesta: carril con la carta que se gira -->
+            <div class="tk-dim a x fade" style="--d: 9s; --o: 10.8s"></div>
+            <div class="tk-tray lane-tray a x" style="--d: 9s; --o: 10.8s; --t: 0.4s">
+                <div class="lane-head">
+                    <span class="lane-grip"></span>
+                    <span class="lane-title">Tus comodines</span>
+                    <span class="lane-close">✕</span>
+                </div>
+                <div class="lane">
+                    <span class="slot a up" style="--d: 9.1s">
+                        <span class="flip-card">
+                            <span class="tk-card atk face">
+                                <span class="us">×1</span>
+                                <span class="ic">{{ info.Apuesta.icon }}</span>
+                                <span class="nm">{{ info.Apuesta.name }}</span>
+                                <span class="ds">{{ info.Apuesta.description }}</span>
+                                <span class="kd">Ataque</span>
+                            </span>
+                            <span class="tk-card atk back">
+                                <span class="bet-who">Marcos…</span>
+                                <span class="bet-btn yes">Acierta</span>
+                                <span class="bet-btn no">Falla<span class="tk-touch" style="left: 50%; top: 50%; --d: 10.35s"></span></span>
+                            </span>
+                        </span>
+                        <span class="tk-touch" style="left: 50%; top: 50%; --d: 9.55s"></span>
+                    </span>
+                    <span class="slot a up" style="--d: 9.16s">
+                        <span class="tk-card atk">
+                            <span class="us">×1</span>
+                            <span class="ic">{{ info.CambiarPreguntaRival.icon }}</span>
+                            <span class="nm">{{ info.CambiarPreguntaRival.name }}</span>
+                            <span class="ds">{{ info.CambiarPreguntaRival.description }}</span>
+                            <span class="kd">Ataque</span>
+                        </span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Cartas jugadas -->
+            <div class="play-dim" style="--d: 1.6s"></div>
+            <div class="tk-card big atk play-card" style="--d: 1.6s">
+                <span class="ic">{{ info.Robo.icon }}</span><span class="nm">{{ info.Robo.name }}</span>
+                <span class="ds">{{ info.Robo.description }}</span><span class="kd">Ataque</span>
+            </div>
+            <div class="play-dim" style="--d: 15.2s"></div>
+            <div class="tk-card big atk play-card" style="--d: 15.2s">
+                <span class="ic">{{ info.CambiarPreguntaRival.icon }}</span><span class="nm">{{ info.CambiarPreguntaRival.name }}</span>
+                <span class="ds">{{ info.CambiarPreguntaRival.description }}</span><span class="kd">Ataque</span>
+            </div>
+
+            <!-- Aviso para todos -->
+            <div class="tk-cban" style="--d: 2.4s">
+                <div class="tk-cban-strip">
+                    <span class="tk-cban-name">Lucía</span>
+                    <span class="tk-cban-sub">Ha usado <strong>🥷 Robar</strong></span>
+                    <svg class="tk-cban-bang" viewBox="0 0 80 110">
+                        <path d="M10 6 L34 10 L26 70 L10 68 Z" /><path d="M8 78 L24 80 L22 98 L6 96 Z" />
+                        <path d="M46 10 L72 14 L60 74 L44 70 Z" /><path d="M42 80 L58 84 L54 102 L38 98 Z" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Robo fallido -->
+            <div class="tk-res bad a x" style="--d: 6.2s; --o: 7.4s">
+                <div class="tk-res-halftone"></div>
+                <div class="tk-res-flash"></div>
+                <div class="tk-res-burst">
+                    <span class="tk-res-word a" style="--d: 6.2s">¡Fallo!</span>
+                    <span class="tk-res-points a up" style="--d: 6.5s">−50 puntos</span>
+                </div>
+            </div>
+
+            <!-- Marcos falla: apuesta ganada -->
+            <div class="tk-res bad a x" style="--d: 12.8s; --o: 13.5s; --t: 0.1s">
+                <div class="tk-res-flash"></div>
+                <div class="tk-res-burst"><span class="tk-res-word a" style="--d: 12.8s">¡Fallo!</span></div>
+            </div>
+            <div class="bet-win a x pop" style="--d: 13.6s; --o: 14.9s">
+                <span class="bet-coin">💰</span>
+                <span>¡Apuesta ganada!</span>
+                <b>+50</b>
+            </div>
+        </div>
+    </div>
+
+    <div class="tk-bubble you tail-r a x" style="right: -12px; bottom: 210px; --d: 5.5s; --o: 6.6s">
+        <span class="who">Tú</span>¡El Atlántico!
+    </div>
+    <div class="tk-bubble rival tail-r a x" style="right: -12px; bottom: 210px; --d: 11.9s; --o: 12.8s">
+        <span class="who">Marcos</span>¡El Índico!
+    </div>
+    <div class="tk-bubble rival tail-r a x" style="right: -12px; bottom: 210px; --d: 17.1s; --o: 20.4s">
+        <span class="who">Marcos</span>¡¿Qué?! 😱
+    </div>
+</div>

@@ -1,0 +1,109 @@
+<div class="tut-bg" aria-hidden="true"></div>
+
+<!-- Formas de las respuestas (las escenas las usan con <use href="#tk-tri">) -->
+<svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+    <symbol id="tk-tri" viewBox="0 0 24 24"><polygon points="12,2 22,20 2,20" /></symbol>
+    <symbol id="tk-sq" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /></symbol>
+    <symbol id="tk-ci" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></symbol>
+    <symbol id="tk-pe" viewBox="0 0 24 24"><polygon points="12,2 22,9 19,21 5,21 2,9" /></symbol>
+</svg>
+
+<header class="tut-top">
+    <div class="tut-top-title">
+        <span class="tut-brand">TriviUp</span>
+        <span class="tut-kicker">Cómo se juega · <b>Presencial</b></span>
+    </div>
+    <div class="tut-top-actions">
+        <button type="button" class="tut-icon-btn tut-chapters-btn" (click)="chaptersOpen.set(!chaptersOpen())"
+                [attr.aria-expanded]="chaptersOpen()" aria-controls="tut-chapters">
+            <span aria-hidden="true">☰</span><span class="tut-hide-sm">Capítulos</span>
+        </button>
+        <button type="button" class="tut-icon-btn" (click)="toggleMute()"
+                [attr.aria-label]="muted() ? 'Activar sonido' : 'Silenciar'" [attr.aria-pressed]="muted()">
+            <span aria-hidden="true">{{ muted() ? '🔇' : '🔊' }}</span>
+        </button>
+        <button #closeBtn type="button" class="tut-icon-btn tut-close" (click)="close()" aria-label="Cerrar el tutorial">✕</button>
+    </div>
+
+    @if (chaptersOpen()) {
+        <nav id="tut-chapters" class="tut-chapters" aria-label="Capítulos del tutorial">
+            @for (c of chapters; track c.id) {
+                <button type="button" class="tut-chapter-item" [class.active]="isChapterActive(c.id)" (click)="goToChapter(c.id)">
+                    <span class="tut-chapter-icon" aria-hidden="true">{{ c.icon }}</span>{{ c.label }}
+                </button>
+            }
+        </nav>
+    }
+</header>
+
+<main class="tut-main">
+    <div class="tut-stage" #stage (click)="togglePlay()">
+        <div class="tut-canvas" [style.--s]="scale()" aria-hidden="true">
+            @for (k of [run()]; track k) {
+                @switch (scene().chapter) {
+                    @case ('empezar') { <app-tut-scenes-empezar [scene]="scene().id" /> }
+                    @case ('jugar') { <app-tut-scenes-jugar [scene]="scene().id" /> }
+                    @case ('comodines') {
+                        @if (scene().id === 'ataques') { <app-tut-scenes-ataques /> }
+                        @else { <app-tut-scenes-mano [scene]="scene().id" /> }
+                    }
+                    @case ('especiales') { <app-tut-scenes-especiales [scene]="scene().id" /> }
+                    @case ('final') { <app-tut-scenes-final [scene]="scene().id" /> }
+                }
+            }
+        </div>
+        @if (!playing() && !ended()) {
+            <span class="tut-paused-badge" aria-hidden="true">❚❚ Pausa</span>
+        }
+    </div>
+
+    <aside class="tut-caption">
+        <span class="tut-cap-chapter"><span aria-hidden="true">{{ chapter().icon }}</span> {{ chapter().label }}</span>
+        <div class="tut-cap-body" aria-live="polite">
+            @for (c of [caption()]; track c) {
+                <h2 class="tut-cap-title">{{ c.title }}</h2>
+                <p class="tut-cap-text">{{ c.text }}</p>
+            }
+        </div>
+        @if (scene().id === 'outro') {
+            <div class="tut-cta">
+                <button type="button" class="btn btn-primary" (click)="joinRoom()">Unirse a una sala</button>
+                <button type="button" class="btn btn-ghost" (click)="restart()">↺ Ver otra vez</button>
+            </div>
+        }
+    </aside>
+</main>
+
+<footer class="tut-controls">
+    <div class="tut-buttons">
+        <button type="button" class="tut-ctrl" (click)="prev()" aria-label="Escena anterior">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h2v14H6zM20 5v14L9 12z" /></svg>
+        </button>
+        <button type="button" class="tut-ctrl tut-play" (click)="togglePlay()"
+                [attr.aria-label]="ended() ? 'Ver otra vez' : playing() ? 'Pausar' : 'Reproducir'">
+            @if (ended()) {
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" /></svg>
+            } @else if (playing()) {
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>
+            } @else {
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            }
+        </button>
+        <button type="button" class="tut-ctrl" (click)="next()" [disabled]="isLast()" aria-label="Escena siguiente">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5h2v14h-2zM4 5v14l11-7z" /></svg>
+        </button>
+    </div>
+
+    <div class="tut-progress" role="group" aria-label="Escenas">
+        @for (s of scenes; track s.id; let i = $index) {
+            <button type="button" class="tut-seg" [style.flex-grow]="s.duration" [class.current]="i === index()"
+                    [class.chapter-start]="i > 0 && scenes[i - 1].chapter !== s.chapter"
+                    (click)="goTo(i); playing.set(true)" [attr.aria-label]="'Ir a: ' + s.label" [attr.aria-current]="i === index() ? 'step' : null">
+                <span class="tut-seg-fill" [style.transform]="'scaleX(' + segmentFill(i) + ')'"></span>
+                <span class="tut-seg-tip">{{ s.label }}</span>
+            </button>
+        }
+    </div>
+
+    <span class="tut-counter">{{ index() + 1 }}/{{ scenes.length }}</span>
+</footer>

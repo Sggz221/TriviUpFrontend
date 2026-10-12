@@ -9,6 +9,7 @@ import { ComodinTipo, GameMode } from '../../../game/models/game.models';
 import { AuthService } from '../../../auth/auth.service';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { AnswerShapeComponent, ShapeType } from '../../../shared/components/answer-shape/answer-shape';
+import { TutorialService } from '../../../tutorial/tutorial.service';
 
 interface FaseDetalle {
     numero: number;
@@ -35,6 +36,7 @@ export class QuizDetailComponent implements OnInit {
     private cuestionarioService = inject(CuestionarioService);
     private gameSignalrService = inject(GameSignalrService);
     private authService = inject(AuthService);
+    protected tutorial = inject(TutorialService);
 
     cuestionario = signal<Cuestionario | null>(null);
     isLoading = signal(true);
