@@ -257,13 +257,10 @@
                 </div>
             }
 
-            @if (isSteal() || answererDoubleOrNothing() || bets().length > 0 || textHiddenForId() !== null) {
+            @if (isSteal() || answererDoubleOrNothing() || bets().length > 0) {
                 <div class="comodin-status" aria-live="polite">
                     @if (isSteal()) {
                         <span class="comodin-chip chip-robo">Robada por {{ getCurrentTurnPlayerName() }}</span>
-                    }
-                    @if (textHiddenForId() !== null) {
-                        <span class="comodin-chip chip-oculto">Texto oculto para {{ playerName(textHiddenForId()) }}</span>
                     }
                     @if (answererDoubleOrNothing()) {
                         <span class="comodin-chip chip-doble">Doble o nada</span>
@@ -376,7 +373,7 @@
                             <span class="host-correct-badge" aria-hidden="true"><app-icon name="check" [size]="14" /> Correcta</span>
                         }
                         <app-answer-shape [shape]="getShapeType(i)" [selected]="selectedAnswer() === i" />
-                        <span class="answer-text" [attr.aria-label]="textoOculto() ? 'Texto oculto' : null">{{ textoOculto() ? '· · ·' : option }}</span>
+                        <span class="answer-text">{{ option }}</span>
                     </button>
                 }
             </div>

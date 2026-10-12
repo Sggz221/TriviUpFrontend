@@ -16,7 +16,6 @@ export const COMODIN_CARDS: Record<ComodinTipo, ComodinCardInfo> = {
     Llamada: { icon: '📞', name: 'Llamada', description: 'Llamas a un amigo: el anfitrión cuelga cuando acabe', ataque: false },
     Robo: { icon: '🥷', name: 'Robar', description: 'Responde tú. Si fallas: −50 y vuelve al jugador original', ataque: true },
     CambiarPreguntaRival: { icon: '🔀', name: 'Cambiar su pregunta', description: 'Cambias la pregunta de quien responde por otra de la misma fase', ataque: true },
-    OcultarTexto: { icon: '🙈', name: 'Ocultar texto', description: 'Oculta el texto de las respuestas de quien responde', ataque: true },
     Apuesta: { icon: '💰', name: 'Apostar', description: 'Apuesta si acierta o falla. Si aciertas: +50', ataque: true }
 };
 
@@ -32,7 +31,6 @@ export const COMODIN_GIF_PREFIX: Record<ComodinTipo, string> = {
     Llamada: 'LLAMADA',
     Robo: 'ROBO',
     CambiarPreguntaRival: 'CAMBIAR_PREGUNTA',
-    OcultarTexto: 'OCULTAR_TEXTO',
     Apuesta: 'APUESTA'
 };
 

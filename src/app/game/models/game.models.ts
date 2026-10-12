@@ -136,8 +136,6 @@ export interface TurnStartedDto {
     isDynamic?: boolean;
     /** Pregunta de pulsador: el pulsador sigue abierto (currentPlayerId = 0 hasta que alguien pulse). */
     buzzerOpen?: boolean;
-    /** Jugador al que se le oculta el texto de las respuestas en esta pregunta. */
-    textHiddenForPlayerId?: number | null;
     /** Pregunta de colores (isDynamic también es true: no tiene turno). */
     isColor?: boolean;
     /** Prueba de colores abierta: todos imitan colorTarget (currentPlayerId = 0 hasta que haya ganador). */
@@ -278,7 +276,7 @@ export interface GameLobbyState {
     mode?: GameMode;
 }
 
-export type ComodinTipo = 'Ruleta' | 'DobleONada' | 'Robo' | 'Apuesta' | 'Llamada' | 'CincuentaCincuenta' | 'OcultarTexto' | 'CambiarPregunta' | 'CambiarPreguntaRival';
+export type ComodinTipo = 'Ruleta' | 'DobleONada' | 'Robo' | 'Apuesta' | 'Llamada' | 'CincuentaCincuenta' | 'CambiarPregunta' | 'CambiarPreguntaRival';
 
 /** Comodines que se usan en el turno propio; el resto, fuera de él. */
 export const COMODINES_DE_TURNO: readonly ComodinTipo[] = ['Ruleta', 'DobleONada', 'Llamada', 'CincuentaCincuenta', 'CambiarPregunta'];
@@ -312,6 +310,6 @@ export interface ComodinUsedDto {
     ruletaDuracionMs?: number | null;
     /** Usos que le quedan al jugador de cada comodín. */
     remainingUses?: Partial<Record<ComodinTipo, number>> | null;
-    /** Jugador afectado por el comodín (Ocultar texto: quien responde). */
+    /** Jugador afectado por el comodín (Cambiar su pregunta: quien responde). */
     targetPlayerId?: number | null;
 }

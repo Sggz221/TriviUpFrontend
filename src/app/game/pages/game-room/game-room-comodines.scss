@@ -420,10 +420,6 @@
     }
 }
 
-.chip-oculto {
-    background: rgba(120, 120, 120, 0.35);
-}
-
 @media (prefers-reduced-motion: reduce) {
     .comodin-chip, .comodin-chip::before, .comodin-chip::after, .comodin-toast {
         animation: none;

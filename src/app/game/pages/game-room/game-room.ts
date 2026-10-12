@@ -100,8 +100,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Jugador al que le tocaba la pregunta (currentTurnPlayerId es quien responde: el ladrón durante un robo). */
     turnOwnerId = signal<number | null>(null);
     isSteal = signal<boolean>(false);
-    /** Jugador al que se le oculta el texto de las respuestas en la pregunta actual. */
-    textHiddenForId = signal<number | null>(null);
     stolenById = signal<number | null>(null);
     /** Ya se usó algún comodín en la pregunta (bloquea el robo). */
     comodinUsedOnQuestion = signal<boolean>(false);
@@ -260,11 +258,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     canUseRuleta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('Ruleta') && !this.ruletaSpin());
     canUseCincuentaCincuenta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('CincuentaCincuenta')
         && !this.ruletaSpin());
-    /** El texto de las respuestas está oculto para mí (el anfitrión nunca lo pierde). */
-    textoOculto = computed(() => !this.isOwner() && this.textHiddenForId() !== null && this.textHiddenForId() === this.myUserId());
-    /** Ocultar texto: ataque fuera de turno, una vez por pregunta y no sobre una pregunta robada. */
-    canUseOcultarTexto = computed(() => this.canUseComodines() && !this.isMyTurn() && this.hasComodin('OcultarTexto')
-        && this.textHiddenForId() === null && !this.isSteal() && this.turnOwnerId() !== this.myUserId());
     /** Cambiar pregunta (turno propio): no sobre una pregunta robada. */
     canUseCambiarPregunta = computed(() => this.canUseComodines() && this.isMyTurn() && this.hasComodin('CambiarPregunta')
         && !this.isSteal() && !this.ruletaSpin());
@@ -290,11 +283,10 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         Llamada: () => this.canUseLlamada(),
         Robo: () => this.canRobar(),
         CambiarPreguntaRival: () => this.canUseCambiarRival(),
-        OcultarTexto: () => this.canUseOcultarTexto(),
         Apuesta: () => this.canApostar()
     };
     private static readonly HAND_TURNO: ComodinTipo[] = ['Ruleta', 'CincuentaCincuenta', 'CambiarPregunta', 'DobleONada', 'Llamada'];
-    private static readonly HAND_ATAQUE: ComodinTipo[] = ['Robo', 'CambiarPreguntaRival', 'OcultarTexto', 'Apuesta'];
+    private static readonly HAND_ATAQUE: ComodinTipo[] = ['Robo', 'CambiarPreguntaRival', 'Apuesta'];
 
     /** Cartas de la mano: las de turno en mi turno y las de ataque fuera de él (las que me quedan y están activas). */
     handCards = computed<HandCard[]>(() => {
@@ -1298,7 +1290,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.penalty.set(data.penalty ?? null);
         this.turnOwnerId.set(data.turnOwnerId ?? data.currentPlayerId);
         this.isSteal.set(!!data.isSteal);
-        this.textHiddenForId.set(data.textHiddenForPlayerId ?? null);
         this.stolenById.set(data.stolenById ?? null);
         this.eliminatedAnswers.set(data.eliminatedAnswerIndexes ?? []);
         this.doubleOrNothingPlayers.set(data.doubleOrNothingPlayers ?? []);
@@ -1419,7 +1410,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     private comodinDetalle(data: ComodinUsedDto): string | null {
         switch (data.tipo) {
             case 'Robo': return `Le roba la pregunta a ${this.playerName(data.stolenFromPlayerId)}`;
-            case 'OcultarTexto': return `Contra ${this.playerName(data.targetPlayerId)}`;
             case 'CambiarPreguntaRival': return `Contra ${this.playerName(data.targetPlayerId)}`;
             case 'Apuesta': return `Apuesta a que ${this.playerName(this.turnOwnerId())} ${data.predictsCorrect ? 'acierta' : 'falla'}`;
             case 'DobleONada': return 'Acierto +200 · Fallo −100';
@@ -1443,10 +1433,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 break;
             case 'Ruleta':
                 this.spinRuleta(data);
-                break;
-            case 'OcultarTexto':
-                this.audioService.playZap();
-                this.textHiddenForId.set(data.targetPlayerId ?? null);
                 break;
             case 'CambiarPregunta':
             case 'CambiarPreguntaRival':

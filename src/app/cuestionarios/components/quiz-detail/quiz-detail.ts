@@ -230,7 +230,6 @@ export class QuizDetailComponent implements OnInit {
         { tipo: 'DobleONada', etiqueta: 'Doble o nada' },
         { tipo: 'Robo', etiqueta: 'Robo' },
         { tipo: 'Apuesta', etiqueta: 'Apuesta' },
-        { tipo: 'OcultarTexto', etiqueta: 'Ocultar texto', soloOnline: true },
         { tipo: 'Llamada', etiqueta: 'Llamada', soloPresencial: true }
     ];
     /** Tope de usos por comodín (el mismo que valida el servidor, ComodinReglas.MaxUsos). */
@@ -242,7 +241,6 @@ export class QuizDetailComponent implements OnInit {
         Apuesta: { activo: true, usos: 1 },
         Llamada: { activo: true, usos: 1 },
         CincuentaCincuenta: { activo: true, usos: 1 },
-        OcultarTexto: { activo: true, usos: 1 },
         CambiarPregunta: { activo: true, usos: 1 },
         CambiarPreguntaRival: { activo: true, usos: 1 }
     });

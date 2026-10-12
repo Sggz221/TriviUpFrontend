@@ -11,7 +11,6 @@ Al usar un comodín sale un GIF al azar de su categoría. Nombres: `PREFIJO_N.gi
 | Doble o nada         | `DOBLE_O_NADA`           |
 | Llamada              | `LLAMADA`                |
 | Robar                | `ROBO`                   |
-| Ocultar texto        | `OCULTAR_TEXTO`          |
 | Apostar              | `APUESTA`                |
 
 Ejemplo: `ROBO_1.gif`, `ROBO_2.gif`, `APUESTA_1.gif`.

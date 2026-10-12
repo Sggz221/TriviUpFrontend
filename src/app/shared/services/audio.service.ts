@@ -414,7 +414,7 @@ export class AudioService {
         [0, 0.12, 0.2, 0.25].forEach((at, i) => this.playTone(2600 - i * 200, 0.12, 'sine', 0.1 / (i + 1), { at }));
     }
 
-    /** Descarga eléctrica (50/50, ocultar texto). */
+    /** Descarga eléctrica (50/50). */
     playZap(): void {
         this.playTone(1800, 0.25, 'sawtooth', 0.1, { slideTo: 120 });
         this.playNoise(0.2, 6000, 0.12, { sweepTo: 500, q: 3 });
