@@ -1,4 +1,5 @@
-<div class="scoreboard" [class.dramatic]="dramatic" [class.drumroll]="current() === 'drum'" [class.winner-moment]="current() === 'winner'">
+<div class="scoreboard" [class.dramatic]="dramatic" [class.drumroll]="current() === 'drum'" [class.winner-moment]="current() === 'winner'"
+     [class.tie-moment]="tieMode && shown('empate')">
   <header class="scoreboard-header" [class.step-hidden]="!shown('headline')">
     <h2 class="scoreboard-headline">{{ headline }}</h2>
     @if (quizTitle) {
@@ -47,13 +48,13 @@
 
     <div class="podium" [attr.data-count]="podiumCount()" [class.step-hidden]="!shown('mystery')">
       @if (second()) {
-        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: second()!, place: 2, placed: shown('podium') }" />
+        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: second()!, place: 2, placed: shown('podium'), tie: tieIndex(second()!) }" />
       }
       @if (first()) {
-        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: first()!, place: 1, placed: shown('podium') }" />
+        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: first()!, place: 1, placed: shown('podium'), tie: tieIndex(first()!) }" />
       }
       @if (third()) {
-        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: third()!, place: 3, placed: shown('podium') }" />
+        <ng-container *ngTemplateOutlet="pedestal; context: { $implicit: third()!, place: 3, placed: shown('podium'), tie: tieIndex(third()!) }" />
       }
     </div>
   }
@@ -87,14 +88,16 @@
   }
 </div>
 
-<ng-template #pedestal let-player let-place="place" let-placed="placed">
+<ng-template #pedestal let-player let-place="place" let-placed="placed" let-tie="tie">
   <!-- Hasta revelar el podio todos son iguales: "?", gris y a la misma altura -->
+  <!-- Empate por el 1º: los empatados suben juntos a la altura del 1º, con su medalla, y sin corona -->
   <article class="pedestal" [class]="'place-' + place" [class.is-mystery]="!placed" [class.is-placed]="placed"
-           [style.--rise-delay]="riseDelay(place)">
-    @if (place === 1) {
+           [class.is-tied]="tie >= 0" [style.--tie-i]="tie"
+           [style.--rise-delay]="riseDelay(place, tie >= 0)">
+    @if (place === 1 && tie < 0) {
       <div class="crown" aria-hidden="true">👑</div>
     }
-    <div class="medal" aria-hidden="true">{{ place }}</div>
+    <div class="medal" aria-hidden="true">{{ tie >= 0 ? 1 : place }}</div>
     <div class="pedestal-body">
       @if (!placed) {
         <p class="pedestal-name mystery-name" aria-label="Puesto sin revelar">?</p>
@@ -114,6 +117,17 @@
   </article>
 </ng-template>
 
+@if (tieMode && shown('empate')) {
+  <!-- Nadie está por encima: cartel de empate y se pasa a los penaltis -->
+  <div class="tie-splash" role="status" aria-live="assertive">
+    <div class="tie-halftone" aria-hidden="true"></div>
+    <div class="tie-text">
+      <span class="tie-word">¡Empate!</span>
+      <span class="tie-sub">Nadie queda por encima… ⚽ ¡a los penaltis!</span>
+    </div>
+  </div>
+}
+
 @if (winnerSplash() && first()) {
   <div class="winner-splash" role="status" aria-live="assertive">
     <div class="winner-rays" aria-hidden="true"></div>
@@ -127,7 +141,7 @@
   </div>
 }
 
-@if (dramatic && shown('winner')) {
+@if (dramatic && !tieMode && shown('podium') && shown('winner')) {
   <div class="fx-confetti" aria-hidden="true">
     @for (c of confettiPieces; track $index) {
       <i [style.left]="c.left" [style.background]="c.color" [style.--delay]="c.delay" [style.--dur]="c.duration"

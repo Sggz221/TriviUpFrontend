@@ -1,0 +1,98 @@
+// Empate por el 1º antes de los penaltis: los empatados suben a la misma altura (la del 1º, en oro), sin corona,
+// y cuando sale el cartel de "¡Empate!" sus podios suben y bajan alternándose: ninguno queda por encima.
+@use '../../styles/game-fx' as fx;
+
+.pedestal.is-tied.is-placed {
+    .medal {
+        background-color: var(--warning);
+        background-image: none;
+        color: var(--warning-content);
+    }
+
+    .pedestal-body { border-color: var(--warning); }
+    .pedestal-score { color: var(--warning); }
+
+    .plinth {
+        height: 4.5rem;
+        background-color: var(--warning);
+        border-color: var(--warning);
+    }
+}
+
+// Balancín: cada empatado sube y baja a destiempo del otro (con 3, en tres tiempos)
+.tie-moment .pedestal.is-tied {
+    animation: tie-seesaw 1.3s ease-in-out infinite;
+    animation-delay: calc(var(--tie-i, 0) * -0.65s);
+
+    .plinth { transition: none; }
+}
+
+@keyframes tie-seesaw {
+    0%, 100% { transform: translateY(0); }
+    25% { transform: translateY(-1.4rem); }
+    75% { transform: translateY(1rem); }
+}
+
+// Cartel "¡Empate!" abajo, para que se vea el podio balanceándose
+.tie-splash {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 8%;
+    z-index: 80;
+    display: grid;
+    place-items: center;
+    padding: 1.5rem 1rem 1.75rem;
+    pointer-events: none;
+    background: linear-gradient(90deg, #1d2bff 0%, #8b2cff 50%, #ff2c8b 100%);
+    border-block: 6px solid var(--fx-ink);
+    box-shadow: 0 10px 0 var(--fx-ink);
+    overflow: hidden;
+    animation: tie-strip 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.tie-halftone {
+    position: absolute;
+    inset: 0;
+    @include fx.halftone(rgba(0, 0, 0, 0.28), 100% 50%, 12px);
+    --dot: 5px;
+    --reach: 80%;
+}
+
+.tie-text {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+}
+
+.tie-word {
+    @include fx.display-title(var(--fx-gradient), 0.06em);
+    font-size: clamp(2.6rem, 12vw, 5.5rem);
+    animation: impact-slam 0.7s cubic-bezier(0.2, 0.9, 0.3, 1) 0.15s both;
+}
+
+.tie-sub {
+    @include fx.game-label(900);
+    font-size: clamp(0.9rem, 3.6vw, 1.3rem);
+    letter-spacing: 0.12em;
+    color: #fff;
+    -webkit-text-stroke: 1px var(--fx-ink);
+    paint-order: stroke fill;
+    text-shadow: 3px 3px 0 var(--fx-ink);
+    animation: tie-sub-in 0.45s ease 0.6s both;
+}
+
+@keyframes tie-strip {
+    from { transform: scaleY(0); opacity: 0; }
+}
+
+@keyframes tie-sub-in {
+    from { opacity: 0; transform: translateY(10px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tie-moment .pedestal.is-tied, .tie-splash, .tie-word, .tie-sub { animation: none; }
+}

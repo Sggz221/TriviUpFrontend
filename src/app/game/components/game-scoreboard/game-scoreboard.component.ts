@@ -1,4 +1,4 @@
-import { Component, Input, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AudioService } from '../../../shared/services/audio.service';
 import { countUp, prefersReducedMotion } from '../../utils/count-up';
@@ -21,8 +21,12 @@ export interface ScoreboardPlayer {
  * Pasos de la revelación dramática, en orden: titular, resto de la clasificación (del último al 4º), podio en
  * incógnita ("?" y sin colores), los finalistas a la vez (sin decir en qué puesto), redoble, cada uno sube a su
  * puesto (3º, 2º, 1º) y el ganador a pantalla completa. Cada paso dura lo indicado antes del siguiente.
+ *
+ * Con empate por el 1º (`tiedIds`, antes de los penaltis) no hay ganador: los empatados suben a la misma altura y
+ * se balancean ("empate") hasta que se pasa a la tanda. Tras una tanda de penaltis el podio ya no tiene drama:
+ * sube directamente.
  */
-type RevealKey = 'headline' | `rest:${number}` | `tie:${number}` | 'mystery' | 'finalists' | 'drum' | 'podium' | 'winner' | 'done';
+type RevealKey = 'headline' | `rest:${number}` | `tie:${number}` | 'mystery' | 'finalists' | 'drum' | 'podium' | 'empate' | 'winner' | 'done';
 
 const PASO_MS: Record<string, number> = {
   headline: 1300,
@@ -31,8 +35,11 @@ const PASO_MS: Record<string, number> = {
   finalists: 2300,
   drum: 2600,
   podium: 2600,
-  winner: 2300
+  winner: 2300,
+  empate: 4200
 };
+/** Tras una tanda de penaltis: el podio en incógnita solo un instante antes de subir (sin finalistas ni redoble). */
+const SIN_DRAMA_MS: Record<string, number> = { mystery: 500, podium: 2200 };
 const CONTEO_MS = 900;
 /** Retraso con el que sube cada puesto al revelar el podio (3º, luego 2º, luego 1º). */
 const SUBIDA_MS: Record<number, number> = { 3: 0, 2: 550, 1: 1100 };
@@ -42,7 +49,7 @@ const SUBIDA_MS: Record<number, number> = { 3: 0, 2: 550, 1: 1100 };
   standalone: true,
   imports: [CommonModule, TiebreakCoinComponent, TiebreakWheelComponent],
   templateUrl: './game-scoreboard.component.html',
-  styleUrl: './game-scoreboard.component.scss'
+  styleUrls: ['./game-scoreboard.component.scss', './game-scoreboard-empate.scss']
 })
 export class GameScoreboardComponent implements OnInit, OnDestroy {
   private audio = inject(AudioService);
@@ -62,6 +69,13 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
   @Input() dramatic = false;
   /** Desempates del podio (penaltis y sorteos), que se muestran antes de desvelar el podio. */
   @Input() tiebreaks: Tiebreak[] | null | undefined = null;
+  /**
+   * Empate por el 1º antes de la tanda de penaltis: estos jugadores ocupan el podio a la misma altura y la
+   * revelación acaba en "¡Empate!" en vez de en el ganador. Al terminar se emite `finished`.
+   */
+  @Input() tiedIds: number[] | null | undefined = null;
+  /** Fin de la revelación en modo empate (o saltada): se puede pasar a los penaltis. */
+  @Output() finished = new EventEmitter<void>();
 
   @Input() set ownerId(value: number | null | undefined) {
     this.ownerIdSignal.set(value ?? null);
@@ -145,9 +159,24 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
     return i >= 0 ? t.usernames[i] : null;
   }
 
-  /** Retraso (s) con el que sube al podio cada puesto. */
-  riseDelay(place: number): string {
-    return `${(SUBIDA_MS[place] ?? 0) / 1000}s`;
+  /** Retraso (s) con el que sube al podio cada puesto (los empatados suben juntos, como el 1º). */
+  riseDelay(place: number, tied = false): string {
+    return `${(SUBIDA_MS[tied ? 1 : place] ?? 0) / 1000}s`;
+  }
+
+  /** Empate por el 1º antes de los penaltis. */
+  get tieMode(): boolean {
+    return (this.tiedIds?.length ?? 0) > 1;
+  }
+
+  /** La partida se desempató con penaltis: el podio sube sin drama (ya se vio la tanda). */
+  private get afterShootout(): boolean {
+    return !this.tieMode && (this.tiebreaks ?? []).some(t => t.kind === 'penaltis');
+  }
+
+  /** Posición del jugador entre los empatados (0, 1, 2…), o -1 si no está empatado. */
+  tieIndex(player: ScoreboardPlayer): number {
+    return this.tiedIds?.indexOf(player.userId) ?? -1;
   }
   readonly confettiPieces = confettiPieces(60);
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -158,19 +187,23 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
   current = computed<RevealKey | null>(() => this.sequence[this.step()] ?? null);
 
   ngOnInit(): void {
-    if (!this.dramatic || prefersReducedMotion() || this.sortedPlayers().length === 0) return;
+    if (!this.dramatic || prefersReducedMotion() || this.sortedPlayers().length === 0) {
+      // Sin animación, el empate se ve un momento antes de pasar a los penaltis
+      if (this.tieMode) this.later(() => this.finished.emit(), 3000);
+      return;
+    }
 
-    this.sequence = [
-      'headline',
-      ...[...this.restPlayers()].reverse().map(p => `rest:${p.userId}` as RevealKey),
-      ...(this.tiebreaks ?? []).map((_, i) => `tie:${i}` as RevealKey),
-      'mystery',
-      'finalists',
-      'drum',
-      'podium',
-      'winner',
-      'done'
-    ];
+    const rest = [...this.restPlayers()].reverse().map(p => `rest:${p.userId}` as RevealKey);
+    // Tras la tanda no se repite el panel de penaltis (se acaba de ver), pero sí los sorteos de otros puestos
+    const ties = (this.tiebreaks ?? [])
+      .map((t, i) => ({ t, key: `tie:${i}` as RevealKey }))
+      .filter(x => !(this.afterShootout && x.t.kind === 'penaltis'))
+      .map(x => x.key);
+    this.sequence = this.tieMode
+      ? ['headline', ...rest, 'mystery', 'finalists', 'drum', 'podium', 'empate', 'done']
+      : this.afterShootout
+        ? ['headline', ...rest, ...ties, 'mystery', 'podium', 'done']
+        : ['headline', ...rest, ...ties, 'mystery', 'finalists', 'drum', 'podium', 'winner', 'done'];
     this.scoreProgress.set(new Map(this.sortedPlayers().map(p => [p.userId, 0])));
     this.goTo(0);
   }
@@ -198,12 +231,16 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
     this.winnerSplash.set(false);
     this.scoreProgress.set(new Map());
     this.step.set(Number.POSITIVE_INFINITY);
+    if (this.tieMode) this.finished.emit();
   }
 
   private goTo(index: number): void {
     this.step.set(index);
     const key = this.sequence[index];
-    if (!key || key === 'done') return;
+    if (!key || key === 'done') {
+      if (this.tieMode) this.finished.emit();
+      return;
+    }
 
     const restIndex = key.startsWith('rest:') ? this.sequence.indexOf(key) - 1 : 0;
     switch (key) {
@@ -223,10 +260,15 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
         // Cada uno sube a su puesto con su golpe, y su puntuación cuenta hacia arriba al llegar
         ([[3, this.third()], [2, this.second()], [1, this.first()]] as const).forEach(([place, player]) => {
           if (!player) return;
-          const at = SUBIDA_MS[place];
+          const at = SUBIDA_MS[this.tieIndex(player) >= 0 ? 1 : place];
           this.audio.playImpact(place === 1 ? 1 : place === 2 ? 0.8 : 0.6, at / 1000);
           this.later(() => this.countScore(player), at + 300);
         });
+        break;
+      case 'empate':
+        // Nadie queda por encima: golpe, "ooooh" del público y el podio de los empatados sube y baja
+        this.audio.playImpact(1);
+        this.audio.playCrowdGroan();
         break;
       case 'winner':
         this.audio.playFanfare();
@@ -247,7 +289,7 @@ export class GameScoreboardComponent implements OnInit, OnDestroy {
 
     const wait = key.startsWith('tie:')
       ? this.tiebreakMs(this.tiebreaks![Number(key.slice(4))])
-      : PASO_MS[key.startsWith('rest:') ? 'rest' : key] ?? 1000;
+      : (this.afterShootout ? SIN_DRAMA_MS[key] : undefined) ?? PASO_MS[key.startsWith('rest:') ? 'rest' : key] ?? 1000;
     this.later(() => this.goTo(index + 1), wait);
   }
 

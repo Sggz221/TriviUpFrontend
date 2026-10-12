@@ -61,7 +61,7 @@ export interface Cuestionario {
     tieneBorrador?: boolean;
     gameCode: string;
     preguntas: Pregunta[];
-    /** Fases con pool: sus preguntas se sortean del banco del autor en cada partida. */
+    /** Fases con pool: sus preguntas salen, al jugarse, del banco de quien crea la sala. */
     pools?: FasePool[];
     creatorId: number;
     fechaCreacion: string;
@@ -97,7 +97,7 @@ export interface FasePoolPregunta {
 }
 
 /**
- * Fase sin preguntas fijas: en cada partida se sortean `cantidad` preguntas del banco del autor.
+ * Fase sin preguntas fijas: en cada partida se juegan `cantidad` preguntas del banco de quien crea la sala.
  * Ocupa su número de fase igual que las fases de preguntas.
  */
 export interface FasePool {

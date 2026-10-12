@@ -6,7 +6,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { GameSignalrService } from '../../services/game-signalr.service';
 import { AuthService } from '../../../auth/auth.service';
 import { GameLobbyComponent } from '../../components/game-lobby/game-lobby.component';
-import { GameScoreboardComponent } from '../../components/game-scoreboard/game-scoreboard.component';
+import { GameScoreboardComponent, ScoreboardPlayer } from '../../components/game-scoreboard/game-scoreboard.component';
 import { PhaseLeaderboardComponent } from '../../components/phase-leaderboard/phase-leaderboard.component';
 import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto, Bet, ComodinTipo, ComodinUsedDto, TurnStartedDto, ColorHsb, ColorChallengeResultDto, OcarinaNote, PenaltyState } from '../../models/game.models';
 import { PenaltyBoardComponent } from '../../components/penalty-board/penalty-board.component';
@@ -350,6 +350,25 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     penalty = signal<PenaltyState | null>(null);
     /** Banner "¡Ronda extra!" a pantalla completa (con silbato) al entrar en el intermedio de los penaltis. */
     extraRoundBanner = signal(false);
+    /**
+     * Empate por el 1º: antes del intermedio de los penaltis se ve el podio con su revelación, acabando en
+     * "¡Empate!". true cuando ya terminó (o se saltó) y toca el intermedio.
+     */
+    tiePodiumDone = signal(false);
+    /** Clasificación para el podio del empate: los empatados primero (por nombre) y el resto por puntos. */
+    tiePodiumPlayers = computed<ScoreboardPlayer[]>(() => {
+        const pb = this.phaseBreak();
+        if (!pb?.isExtraRound) return [];
+        const tied = pb.tiedPlayerIds ?? [];
+        return pb.players
+            .filter(p => !p.isOwner && !p.isSpectator)
+            .sort((a, b) => Number(tied.includes(b.userId)) - Number(tied.includes(a.userId))
+                || b.score - a.score || a.username.localeCompare(b.username, 'es'))
+            .map((p, i) => ({
+                userId: p.userId, username: p.username, rank: i + 1, finalScore: p.score,
+                correctAnswers: p.correctAnswers, wrongAnswers: p.wrongAnswers
+            }));
+    });
     private extraRoundTimeout: ReturnType<typeof setTimeout> | null = null;
     private resultsTimeout: ReturnType<typeof setTimeout> | null = null;
     private static readonly EXTRA_ROUND_BANNER_MS = 3200;
@@ -1029,10 +1048,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 ?? (this.sawTurn ? data.players.map(j => ({ ...j, score: 0, correctAnswers: 0, wrongAnswers: 0 })) : null);
             this.phaseBreakPrevious.set(alcanzado);
             this.lastPhaseBreakPlayers = data.players;
+            // Empate por el 1º: primero el podio (que acaba en "¡Empate!") y luego el intermedio de la tanda
+            if (data.isExtraRound) this.tiePodiumDone.set(false);
             this.phaseBreak.set(data);
             this.players.set(data.players);
             this.syncOwnershipFromPlayers(data.players);
-            if (data.isExtraRound) this.showExtraRoundBanner();
         });
 
         // Turn result
@@ -1744,6 +1764,13 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     /** Puntuaciones, apuestas y avisos al resolverse una respuesta (o un timeout). */
+    /** El podio del empate ha terminado: se pasa al intermedio de los penaltis con su banner. */
+    onTiePodiumDone(): void {
+        if (this.tiePodiumDone()) return;
+        this.tiePodiumDone.set(true);
+        this.showExtraRoundBanner();
+    }
+
     /** Banner "¡Ronda extra!" con silbato al anunciar la tanda de penaltis. */
     private showExtraRoundBanner(): void {
         if (this.extraRoundTimeout) clearTimeout(this.extraRoundTimeout);

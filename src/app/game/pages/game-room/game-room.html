@@ -77,6 +77,21 @@
                 </div>
             </div>
         </div>
+    } @else if (phaseBreak()?.isExtraRound && !tiePodiumDone()) {
+        <!-- Empate por el 1º: el podio se revela con drama y acaba en "¡Empate!"; después, el intermedio de los penaltis -->
+        <div class="game-results">
+            <app-sound-controls class="sound-toggle results-sound-toggle" />
+            <div class="results-panel">
+                <app-game-scoreboard
+                    [playerResults]="tiePodiumPlayers()"
+                    [quizTitle]="quizTitle()"
+                    headline="¡Partida Terminada!"
+                    [dramatic]="true"
+                    [tiedIds]="phaseBreak()!.tiedPlayerIds"
+                    (finished)="onTiePodiumDone()"
+                />
+            </div>
+        </div>
     } @else if (phaseBreak()) {
         <!-- Intermedio entre fases -->
         <div class="game-results">

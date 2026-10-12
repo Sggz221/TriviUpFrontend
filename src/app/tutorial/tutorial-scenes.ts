@@ -130,7 +130,7 @@ export const TUTORIAL_SCENES: TutorialScene[] = [
             { at: 0, title: 'Dilo en voz alta', text: 'En presencial no tocas las respuestas: dices la tuya y el anfitrión la marca.' },
             { at: 3, title: '¿Dudas?', text: 'Puedes cambiar de idea hasta que el anfitrión confirme.' },
             { at: 5.4, title: 'Sin reloj', text: 'Aquí no hay cuenta atrás. El anfitrión confirma… ¡y llega el momento de la verdad!' },
-            { at: 8, title: '+100 puntos', text: 'Cada acierto suma 100 puntos.' }
+            { at: 8, title: '+100 puntos', text: 'Cada acierto suma según su dificultad: fácil 100, media 200 y difícil 300 puntos.' }
         ],
         cues: [
             { at: 1.0, sfx: 'tick', arg: 1.3 }, { at: 2.0, sfx: 'tick', arg: 0.9 }, { at: 3.0, sfx: 'tick', arg: 1.3 },
