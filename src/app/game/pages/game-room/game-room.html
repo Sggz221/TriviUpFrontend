@@ -231,6 +231,11 @@
             }
 
             <div class="question-card">
+                @switch (questionKind()) {
+                    @case ('pulsador') { <span class="question-kind kind-pulsador">🔔 Pulsador</span> }
+                    @case ('colores') { <span class="question-kind kind-colores">🎨 Colores</span> }
+                    @case ('ocarina') { <span class="question-kind kind-ocarina">🎵 Ocarina</span> }
+                }
                 @if (currentQuestion()!.imageUrl) {
                     <img [src]="getImageUrl(currentQuestion()!.imageUrl)" alt="Question image" class="question-image" />
                 }
@@ -328,7 +333,7 @@
                                        (input)="setMyColor('brightness', $any($event.target).value)" />
                             </label>
                         </div>
-                        <button class="btn btn-primary btn-lg" type="button" [disabled]="isSendingColor()" (click)="onSendColor()">
+                        <button class="btn btn-primary btn-lg color-send" type="button" [disabled]="isSendingColor()" (click)="onSendColor()">
                             {{ isSendingColor() ? 'Enviando...' : 'Enviar mi color' }}
                         </button>
                     } @else {
@@ -354,11 +359,14 @@
                 }
             }
 
+            <!-- En colores y ocarina la pantalla es para la prueba: las respuestas salen cuando hay ganador -->
+            @if (!colorOpen() && !ocarinaOpen()) {
             <div class="answer-options">
                 @for (option of currentQuestion()!.options; track option; let i = $index) {
                     <button
                         class="btn answer-btn"
                         [class]="getShapeClass(i)"
+                        [style.--i]="i"
                         [class.btn-success]="showTurnResult() && lastTurnResult()!.correctAnswerIndex === i"
                         [class.btn-error]="showTurnResult() && selectedAnswer() === i && lastTurnResult()!.correctAnswerIndex !== i"
                         [class.selected]="selectedAnswer() === i"
@@ -366,12 +374,12 @@
                         [class.answer-hidden-host]="isAnswerHidden(i) && isOwner()"
                         [class.answer-shown]="justShownAnswers().includes(i)"
                         [class.suspense-pick]="revealSuspense() === i"
-                        [class.eliminated]="isEliminated(i)"
+                        [class.eliminated]="eliminatedAnswers().includes(i)"
                         [class.host-correct]="hostCorrectIndex() === i && !showTurnResult()"
                         [class.my-turn-active]="(isPresencial() ? isHostMarking() : isMyTurn()) && !showTurnResult() && !isPaused() && !isEliminated(i)"
                         [disabled]="(isPresencial() ? !isHostMarking() : !isMyTurn()) || showTurnResult() || revealSuspense() !== null || isPaused() || isEliminated(i) || isAnswerHidden(i)"
                         [attr.aria-pressed]="isHostMarking() ? selectedAnswer() === i : null"
-                        [attr.aria-label]="isEliminated(i) ? option + ' (eliminada por la ruleta)' : hostCorrectIndex() === i ? option + ' (respuesta correcta)' : null"
+                        [attr.aria-label]="isEliminated(i) ? option + ' (eliminada)' : hostCorrectIndex() === i ? option + ' (respuesta correcta)' : null"
                         (click)="onAnswerClick(i)">
                         @if (hostCorrectIndex() === i && !showTurnResult()) {
                             <span class="host-correct-badge" aria-hidden="true"><app-icon name="check" [size]="14" /> Correcta</span>
@@ -385,9 +393,26 @@
                             <app-answer-shape [shape]="getShapeType(i)" [selected]="selectedAnswer() === i" />
                             <span class="answer-text">{{ option }}</span>
                         }
+                        @if (selectedAnswer() === i && !showTurnResult()) {
+                            <span class="answer-ring" aria-hidden="true"></span>
+                        }
+                        @if (showTurnResult() && lastTurnResult()!.correctAnswerIndex === i) {
+                            <span class="answer-mark" aria-hidden="true">✓</span>
+                        } @else if (showTurnResult() && selectedAnswer() === i) {
+                            <span class="answer-mark wrong" aria-hidden="true">✗</span>
+                        }
+                        @if (justShownAnswers().includes(i)) {
+                            <span class="reveal-flash" aria-hidden="true"></span>
+                        }
                     </button>
                 }
+                @if (scissorsCut(); as cut) {
+                    @for (k of [cut.id]; track k) {
+                        <div class="scissors-cut" [style.top]="cut.top" aria-hidden="true"><span>✂️</span></div>
+                    }
+                }
             </div>
+            }
 
             @if (hostCuriosidad(); as curiosidad) {
                 <aside class="host-curiosidad" aria-live="polite">

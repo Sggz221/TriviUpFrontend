@@ -1,0 +1,231 @@
+// ============ Respuestas ============
+// Rejilla 2×2 de fichas con su color y su forma siempre a la vista (en presencial se dice "¡la azul!"),
+// anillo blanco cuando el anfitrión marca, verde/roja al resolver, tachadas al eliminarse y "?" mientras están
+// tapadas. Mismo diseño que el tutorial (piezas en game/styles/_game-pieces.scss).
+@use '../../styles/game-fx' as fx;
+@use '../../styles/game-pieces' as pc;
+
+@include pc.answer-elim-keyframes;
+@include pc.reveal-keyframes;
+@include pc.scissors-keyframes;
+
+.answer-options {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    width: 100%;
+
+    @media (min-width: 640px) { gap: 1rem; }
+
+    .answer-btn {
+        position: relative;
+        display: flex !important; // DaisyUI pone inline-flex en .btn
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        height: auto;
+        min-height: 96px;
+        padding: 0.75rem 0.6rem;
+        border-radius: 16px;
+        font-size: 1.05rem;
+        line-height: 1.15;
+        text-align: center;
+        cursor: default;
+        overflow: visible;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        animation: answer-enter 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.25) calc(var(--i, 0) * 70ms) both;
+
+        @media (min-width: 640px) { min-height: 110px; font-size: 1.2rem; }
+
+        @each $shape, $c in pc.$answer-colors {
+            &.shape-#{$shape} { @include pc.answer-tile($c); }
+        }
+
+        // Forma sin su caja de color: la ficha ya es del color de la forma
+        ::ng-deep .answer-shape {
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            box-shadow: none;
+            filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.25));
+        }
+
+        .answer-text {
+            font-weight: 800;
+            color: #fff;
+            overflow-wrap: anywhere;
+        }
+
+        // DaisyUI apaga los botones deshabilitados: aquí la ficha conserva su color
+        &:disabled {
+            opacity: 1;
+            color: #fff;
+        }
+
+        // Se puede pulsar (tu turno online o el anfitrión marcando): brillo y salto al pasar
+        &.my-turn-active {
+            cursor: pointer;
+
+            &:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgb(0 0 0 / 0.3); filter: brightness(1.08); }
+            &:active { transform: scale(0.96); transition-duration: 0.08s; }
+        }
+
+        // Marcada (por el anfitrión o por ti)
+        &.selected { transform: scale(1.03); }
+
+        .answer-ring {
+            @include pc.host-ring;
+            animation: ring-in 0.3s ease-out both;
+        }
+
+        // Resuelta: verde la correcta, roja la marcada si falló
+        &.btn-success {
+            @include pc.result-fill(true);
+            animation: answer-reveal 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+            isolation: isolate;
+
+            &::after {
+                content: '';
+                position: absolute;
+                inset: 0;
+                border-radius: inherit;
+                z-index: -1;
+                pointer-events: none;
+                @include fx.halftone(rgba(255, 255, 255, 0.35), 100% 50%, 10px);
+                --dot: 3.5px;
+                --reach: 120%;
+            }
+        }
+
+        &.btn-error {
+            @include pc.result-fill(false);
+            animation: wobble 0.5s ease both;
+        }
+
+        .answer-mark {
+            position: absolute;
+            top: -0.7rem;
+            left: -0.5rem;
+            z-index: 4;
+            display: grid;
+            place-items: center;
+            width: 1.9rem;
+            height: 1.9rem;
+            border: 3px solid var(--fx-ink);
+            border-radius: 50%;
+            background: #fff;
+            color: #059669;
+            font-size: 1rem;
+            font-weight: 900;
+            text-shadow: none;
+            box-shadow: 2px 2px 0 var(--fx-ink);
+            animation: mark-pop 0.4s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+
+            &.wrong { color: #b91c1c; }
+        }
+
+        // Eliminada por la ruleta o el 50/50: velo y tachón
+        &.eliminated {
+            @include pc.answer-elim;
+            transform: none;
+        }
+
+        // Aún sin mostrar por el anfitrión
+        &.answer-hidden {
+            @include pc.mystery-tile;
+            opacity: 1;
+        }
+
+        &.answer-hidden-host {
+            app-answer-shape, .answer-text { opacity: 0.45; }
+        }
+
+        // Recién destapada: se voltea y destella
+        &.answer-shown > :not(.reveal-flash) { @include pc.reveal-flip; }
+
+        .reveal-flash { @include pc.reveal-flash; }
+
+        // Presencial: solo el anfitrión ve cuál es la correcta
+        &.host-correct {
+            outline: 3px dashed var(--success);
+            outline-offset: 3px;
+        }
+    }
+
+    // Un solo hueco libre en la última fila (3 respuestas): la última ocupa las dos columnas
+    .answer-btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+.host-correct-badge {
+    position: absolute;
+    top: -0.7rem;
+    right: 0.75rem;
+    z-index: 4;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.1rem 0.5rem;
+    border: 2px solid var(--fx-ink);
+    border-radius: 999px;
+    background: var(--success);
+    color: var(--fx-ink);
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-shadow: none;
+    pointer-events: none;
+}
+
+.answer-mystery {
+    font-family: var(--font-display);
+    font-size: 2.4rem;
+    line-height: 1;
+    color: rgb(255 255 255 / 0.5);
+    animation: mystery-bob 1.6s ease-in-out infinite;
+}
+
+.answer-hidden-badge {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+// 50/50: las tijeras cruzan la rejilla a la altura de lo que se elimina
+.scissors-cut { @include pc.scissors-cut; }
+
+@keyframes answer-enter {
+    from { opacity: 0; transform: translateY(18px) scale(0.92); }
+}
+
+@keyframes answer-reveal {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.08) rotate(-1deg); }
+    100% { transform: scale(1.03); }
+}
+
+@keyframes ring-in { from { opacity: 0; transform: scale(1.25); } }
+
+@keyframes mark-pop { from { opacity: 0; transform: scale(0.3) rotate(-20deg); } }
+
+@keyframes mystery-bob {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50% { transform: translateY(-3px) rotate(4deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .answer-options .answer-btn,
+    .answer-options .answer-btn.answer-shown > *,
+    .answer-options .answer-btn .answer-ring,
+    .answer-options .answer-btn .answer-mark,
+    .answer-mystery { animation: none; }
+
+    .scissors-cut { display: none; }
+}

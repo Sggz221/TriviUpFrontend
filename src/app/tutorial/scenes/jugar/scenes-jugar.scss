@@ -1,4 +1,7 @@
 @use '../../../game/styles/game-fx' as fx;
+@use '../../../game/styles/game-pieces' as pc;
+
+@include pc.reveal-keyframes;
 
 :host {
     position: absolute;
@@ -78,22 +81,8 @@
     color: var(--tk-ink);
 }
 
-// Destello al destapar una respuesta
-.reveal-flash {
-    position: absolute;
-    inset: -3px;
-    z-index: 3;
-    border-radius: 16px;
-    background: #fff;
-    opacity: 0;
-    pointer-events: none;
-    animation: reveal-flash 0.5s ease-out var(--d) forwards;
-}
-
-@keyframes reveal-flash {
-    0% { opacity: 0.9; transform: scale(1.06); }
-    100% { opacity: 0; transform: scale(1); }
-}
+// Destello al destapar una respuesta (como en la partida)
+.reveal-flash { @include pc.reveal-flash; }
 
 .shape-tag {
     position: absolute;

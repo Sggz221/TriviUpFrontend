@@ -1,4 +1,7 @@
 // Mano de comodines: bandeja oscura fija abajo, abanico plegado y carril desplegado.
+@use '../../styles/game-pieces' as pc;
+
+@include pc.burn-keyframes;
 
 :host {
     --tray-collapsed: 104px;
@@ -329,38 +332,24 @@
 
 .burn-slot {
     position: relative;
-    animation: burn-lift 1.3s ease-out both;
 }
 
 .burn-card {
     cursor: default;
+    @include pc.burn-card;
 }
 
 .ember {
-    position: absolute;
-    bottom: 20%;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: radial-gradient(circle, #fff7c2 0%, #ff9a1f 45%, rgb(255 80 0 / 0) 70%);
-    opacity: 0;
-    animation: ember-rise 1.2s ease-out both;
+    @include pc.ember;
 }
 
 @for $i from 1 through 8 {
     .ember-#{$i} {
         left: #{8 + ($i - 1) * 12}%;
-        animation-delay: #{($i % 4) * 0.12 + 0.15}s;
+        animation-delay: #{0.5 + ($i % 4) * 0.15}s;
         // Las pares derivan a la derecha y las impares a la izquierda
-        --drift: #{(($i % 2) * -2 + 1) * (6 + $i * 3)}px;
+        --ex: #{(($i % 2) * -2 + 1) * (6 + $i * 3)}px;
     }
-}
-
-.burn-defs {
-    position: absolute;
-    width: 0;
-    height: 0;
-    overflow: hidden;
 }
 
 // ---------- Animaciones ----------
@@ -374,17 +363,7 @@
     to { transform: rotateY(0); }
 }
 
-@keyframes burn-lift {
-    from { transform: translateY(20px) scale(0.9); }
-    20% { transform: translateY(0) scale(1.05); }
-    to { transform: translateY(-14px) scale(1.05); }
-}
-
-@keyframes ember-rise {
-    0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
-    15% { opacity: 1; }
-    100% { opacity: 0; transform: translate(var(--drift), -120px) scale(1.2); }
-}
+@keyframes burn-fade { to { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
     .hand-tray,
@@ -394,10 +373,15 @@
     }
 
     .card-slot,
-    .bet-back,
-    .burn-slot,
-    .ember {
+    .bet-back {
         animation: none;
+    }
+
+    // Sin levantarse ni brasas: la carta solo se desvanece
+    .burn-card {
+        mask-image: none;
+        -webkit-mask-image: none;
+        animation: burn-fade 0.4s ease forwards;
     }
 
     .ember {

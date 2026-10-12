@@ -1,4 +1,9 @@
 @use '../../../game/styles/game-fx' as fx;
+@use '../../../game/styles/game-pieces' as pc;
+
+// Pulsador, muestras y botones de la ocarina: los mismos que en la partida (game/styles/_game-pieces.scss)
+@include pc.buzzer-keyframes;
+@include pc.press-flash-keyframes;
 
 :host {
     position: absolute;
@@ -31,45 +36,14 @@
 }
 
 .buzzer {
-    position: relative;
     display: grid;
     place-items: center;
     width: 200px;
     height: 200px;
-    border: 6px solid var(--tk-ink);
-    border-radius: 50%;
-    @include fx.game-label(900);
     font-size: 22px;
-    letter-spacing: 0.08em;
 
-    &.locked {
-        background: radial-gradient(circle at 40% 35%, #6b7280, #374151);
-        color: rgb(255 255 255 / 0.7);
-        box-shadow: 0 10px 0 #1f2937, 0 14px 0 var(--tk-ink);
-    }
-
-    &.live {
-        background: radial-gradient(circle at 40% 35%, #ff6b6b, #dc2626 55%, #991b1b);
-        color: #fff;
-        font-size: 34px;
-        text-shadow: 0 3px 0 var(--tk-ink);
-        box-shadow: 0 10px 0 #7f1d1d, 0 14px 0 var(--tk-ink), 0 0 60px #ef4444;
-    }
-}
-
-.buzzer.live::after {
-    content: '';
-    position: absolute;
-    inset: -14px;
-    border: 4px solid #ef4444;
-    border-radius: 50%;
-    opacity: 0;
-    animation: buzz-ring 0.7s ease-out 8.2s 3;
-}
-
-@keyframes buzz-ring {
-    from { opacity: 0.9; transform: scale(0.9); }
-    to { opacity: 0; transform: scale(1.3); }
+    &.locked { @include pc.buzzer; @include pc.buzzer-locked; }
+    &.live { @include pc.buzzer; font-size: 34px; }
 }
 
 .hint-stack { text-align: center; min-height: 64px; max-width: 300px; }
@@ -151,9 +125,7 @@
 .swatch {
     width: 120px;
     height: 96px;
-    border: 3px solid var(--tk-ink);
-    border-radius: 16px;
-    box-shadow: 3px 3px 0 var(--tk-ink);
+    @include pc.ink-swatch;
 
     &.target { background: hsl(174 72% 46%); }
     &.mine { background: hsl(20 30% 55%); animation: mine-color 3.4s linear 1.4s both; }
@@ -272,10 +244,8 @@
     flex-direction: column;
     gap: 12px;
     padding: 18px;
-    border: 4px solid var(--tk-ink);
-    border-radius: 22px;
+    @include pc.ink-card;
     background: #1c1f33;
-    box-shadow: 6px 6px 0 var(--tk-ink);
 }
 
 .cr-head {
@@ -440,11 +410,7 @@
     justify-content: center;
     width: 58px;
     height: 58px;
-    border: 3px solid var(--tk-ink);
-    border-radius: 50%;
-    background: #facc15;
-    box-shadow: 0 4px 0 var(--tk-ink);
-    color: #1f2937;
+    @include pc.ocarina-btn;
 
     &.btn-a { background: #3b82f6; color: #fff; }
 }
@@ -452,19 +418,7 @@
 .oc-glyph { font-size: 20px; font-weight: 900; line-height: 1; }
 .oc-name { font-size: 10px; font-weight: 800; }
 
-// Hundido del botón al tocar la nota
-.oc-press {
-    position: absolute;
-    inset: -3px;
-    border-radius: 50%;
-    background: #fff;
-    opacity: 0;
-    animation: oc-press 0.35s ease-out var(--d) forwards;
-}
-
-@keyframes oc-press {
-    0% { opacity: 0.85; transform: scale(1.15); }
-    100% { opacity: 0; transform: scale(1); }
-}
+// Destello del botón al tocar la nota
+.oc-press { @include pc.press-flash; }
 
 .lane-head-oc .swap { margin-left: 4px; }

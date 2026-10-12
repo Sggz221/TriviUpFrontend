@@ -1,4 +1,7 @@
 @use '../../styles/game-fx' as fx;
+@use '../../styles/game-pieces' as pc;
+
+@include pc.press-flash-keyframes;
 
 :host {
     display: block;
@@ -9,9 +12,9 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.85rem;
+    gap: 0.7rem;
     width: 100%;
-    margin: 0.5rem 0 1rem;
+    margin: 0.25rem 0 0.75rem;
     color: var(--base-content);
     font-family: var(--font-game);
 }
@@ -25,8 +28,9 @@
 }
 
 .ocarina-title {
-    @include fx.display-title(var(--fx-gradient), 0.06em);
-    font-size: clamp(1.3rem, 5vw, 1.75rem);
+    font-size: clamp(1.1rem, 4.5vw, 1.35rem);
+    font-weight: 900;
+    color: #fff;
 }
 
 .ocarina-phase {
@@ -35,8 +39,11 @@
     opacity: 0.9;
 
     &.listening {
+        color: #93c5fd;
         animation: ocarina-pulse 1.2s ease-in-out infinite;
     }
+
+    &.play { color: #fff35c; }
 }
 
 // Partitura sobre "papel" claro: las figuras se leen bien en el tema oscuro del juego.
@@ -62,17 +69,22 @@
     }
 
     &.loading {
-        min-height: 150px;
+        min-height: 126px;
     }
 }
 
 .staff {
     width: 100%;
-    min-height: 150px;
+    min-height: 126px;
 
-    :deep(svg) {
+    ::ng-deep svg {
         display: block;
         margin: 0 auto;
+    }
+
+    // Nota que está sonando: crece un poco y brilla
+    ::ng-deep .is-active {
+        filter: drop-shadow(0 0 6px #a855f7) drop-shadow(0 0 2px #8b2cff);
     }
 }
 
@@ -120,8 +132,11 @@
 
     &.ok {
         background: #dcfce7;
+        box-shadow: inset 0 0 0 3px #22c55e, 5px 5px 0 var(--fx-ink);
     }
 }
+
+.lane-count { color: #fff35c; }
 
 .lane-feedback {
     font-size: 0.9rem;
@@ -150,20 +165,17 @@
 }
 
 .ocarina-btn {
+    @include pc.ocarina-btn;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 0.1rem;
     aspect-ratio: 1;
-    border: 3px solid var(--fx-ink);
-    border-radius: 50%;
-    color: #1f2937;
     font-weight: 900;
     cursor: pointer;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    box-shadow: 0 0.35rem 0 var(--fx-ink);
     transition: transform 0.06s ease, box-shadow 0.06s ease, filter 0.15s ease;
 
     &.btn-a {
@@ -185,6 +197,8 @@
         cursor: not-allowed;
     }
 }
+
+.ocarina-flash { @include pc.press-flash; }
 
 .ocarina-glyph {
     font-size: 1.35rem;
@@ -210,7 +224,8 @@
 
 @media (prefers-reduced-motion: reduce) {
     .lane-card.error,
-    .ocarina-phase.listening {
+    .ocarina-phase.listening,
+    .ocarina-flash {
         animation: none;
     }
 }

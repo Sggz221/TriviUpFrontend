@@ -115,6 +115,13 @@ body {
     initial-value: 60%;
 }
 
+/* Carta de comodín que arde: radio de lo ya quemado (mixin burn-card de src/app/game/styles/_game-pieces.scss) */
+@property --burn {
+    syntax: '<percentage>';
+    inherits: true;
+    initial-value: 0%;
+}
+
 /* Confeti de la partida: cada pieza trae sus variables inline (src/app/game/utils/confetti.ts) */
 .fx-confetti {
     position: fixed;

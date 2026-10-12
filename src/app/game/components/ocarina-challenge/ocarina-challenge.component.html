@@ -1,7 +1,7 @@
 <section class="ocarina" aria-label="Prueba de la ocarina">
     <header class="ocarina-header">
         <span class="ocarina-title">🎵 Ocarina</span>
-        <span class="ocarina-phase" [class.listening]="listening()">
+        <span class="ocarina-phase" [class.listening]="listening()" [class.play]="!listening() && canPlay()">
             {{ listening() ? 'Escucha la melodía (' + listenPass() + '/2)...' : canPlay() ? '¡Tócala! El primero que acierte responde' : 'Los equipos están tocando la melodía' }}
         </span>
     </header>
@@ -20,7 +20,7 @@
     @if (canPlay()) {
         <div class="lane">
             <div class="lane-head">
-                <span>Tu melodía <b>{{ entered().length }}/{{ melody().length }}</b></span>
+                <span>Tu melodía <b class="lane-count">{{ entered().length }}/{{ melody().length }}</b></span>
                 <div class="lane-actions">
                     <button class="btn btn-xs btn-ghost" type="button" (click)="removeLast()"
                             [disabled]="entered().length === 0 || status() !== 'idle'" aria-label="Borrar la última nota">⌫ Borrar</button>
@@ -48,6 +48,11 @@
                         [disabled]="!canPress()" (click)="press(b.pitch)" [attr.aria-label]="'Nota ' + b.name + ' (' + b.glyph + ')'">
                     <span class="ocarina-glyph">{{ b.glyph }}</span>
                     <span class="ocarina-note-name">{{ b.name }}</span>
+                    @if (flash(); as f) {
+                        @if (f.pitch === b.pitch) {
+                            @for (k of [f.n]; track k) { <span class="ocarina-flash" aria-hidden="true"></span> }
+                        }
+                    }
                 </button>
             }
         </div>

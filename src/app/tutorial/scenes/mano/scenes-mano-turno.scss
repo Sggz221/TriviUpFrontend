@@ -1,5 +1,8 @@
 // Escena "turno": carta jugada, ruleta, 50/50, cambiar pregunta, doble o nada y llamada.
 @use '../../../game/styles/game-fx' as fx;
+@use '../../../game/styles/game-pieces' as pc;
+
+@include pc.scissors-keyframes;
 
 // La pregunta antigua y la nueva ocupan el mismo sitio
 .q-flip {
@@ -113,45 +116,8 @@
     font-weight: 900;
 }
 
-// ---------- 50/50: unas tijeras cruzan las respuestas ----------
-.scissors {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 400px;
-    z-index: 30;
-    height: 4px;
-    pointer-events: none;
-
-    &::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: 0;
-        border-top: 4px dashed #fff;
-        transform-origin: left center;
-        animation: cut-line 0.6s ease var(--d) both, fade-away 0.3s ease calc(var(--d) + 0.8s) forwards;
-    }
-
-    span {
-        position: absolute;
-        left: -30px;
-        top: -22px;
-        font-size: 40px;
-        animation: cut 0.6s ease var(--d) both, fade-away 0.3s ease calc(var(--d) + 0.8s) forwards;
-    }
-}
-
-@keyframes cut-line { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-
-@keyframes cut {
-    0% { opacity: 0; transform: translateX(0) rotate(-90deg); }
-    10% { opacity: 1; }
-    100% { opacity: 1; transform: translateX(400px) rotate(-90deg); }
-}
-
-@keyframes fade-away { to { opacity: 0; } }
+// ---------- 50/50: las mismas tijeras que en la partida ----------
+.scissors { @include pc.scissors-cut(400px); }
 
 // ---------- Doble o nada ----------
 .don {

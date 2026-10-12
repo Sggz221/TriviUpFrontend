@@ -33,7 +33,7 @@ type TurnBannerVariant = 'turn' | 'reroll' | 'steal' | 'penalty';
     standalone: true,
     imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent, SoundControlsComponent, OcarinaChallengeComponent, ComodinHandComponent, PenaltyBoardComponent],
     templateUrl: './game-room.html',
-    styleUrls: ['./game-room.scss', './game-room-fx.scss', './game-room-penalty.scss', './game-room-comodines.scss', './game-room-avisos.scss', './game-room-presencial.scss']
+    styleUrls: ['./game-room.scss', './game-room-answers.scss', './game-room-fx.scss', './game-room-penalty.scss', './game-room-comodines.scss', './game-room-avisos.scss', './game-room-presencial.scss', './game-room-especiales.scss']
 })
 export class GameRoomComponent implements OnInit, OnDestroy {
     private route = inject(ActivatedRoute);
@@ -100,8 +100,16 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     private static readonly COMODIN_BANNER_MS = 2800;
 
     // ---- Comodines (estado de la pregunta en curso) ----
-    /** Respuestas eliminadas por la ruleta. */
+    /** Respuestas eliminadas por la ruleta o el 50/50 (ya tachadas). */
     eliminatedAnswers = signal<number[]>([]);
+    /** 50/50 recibido y aún sin tachar (esperando a que acabe el aviso y pasen las tijeras): ya no se pueden marcar. */
+    private pendingElim = signal<number[]>([]);
+    /** Tijeras del 50/50 cruzando la rejilla (`top`: altura del corte). */
+    scissorsCut = signal<{ id: number; top: string } | null>(null);
+    private scissorsSeq = 0;
+    private scissorsTimers: ReturnType<typeof setTimeout>[] = [];
+    /** Tipo de pregunta especial en curso (etiqueta sobre la pregunta). */
+    questionKind = signal<'pulsador' | 'colores' | 'ocarina' | null>(null);
     doubleOrNothingPlayers = signal<number[]>([]);
     bets = signal<Bet[]>([]);
     /** Jugador al que le tocaba la pregunta (currentTurnPlayerId es quien responde: el ladrón durante un robo). */
@@ -462,6 +470,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.colorResultTimeout) clearTimeout(this.colorResultTimeout);
         this.cancelSuspense();
         if (this.justShownTimeout) clearTimeout(this.justShownTimeout);
+        this.scissorsTimers.forEach(t => clearTimeout(t));
         if (this.callTimer) clearInterval(this.callTimer);
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
         this.ruletaTimeouts.forEach(t => clearTimeout(t));
@@ -1342,7 +1351,38 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     }
 
     isEliminated(index: number): boolean {
-        return this.eliminatedAnswers().includes(index);
+        return this.eliminatedAnswers().includes(index) || this.pendingElim().includes(index);
+    }
+
+    /** 50/50: al acabar el aviso del comodín, unas tijeras cruzan las respuestas y se tachan las eliminadas. */
+    private cutAnswers(indexes: number[]): void {
+        this.pendingElim.update(prev => [...new Set([...prev, ...indexes])]);
+        const questionId = this.currentQuestion()?.id;
+        const wait = Math.max(0, this.comodinBannerEndsAt - performance.now());
+        this.scissorsTimers.push(setTimeout(() => {
+            if (this.currentQuestion()?.id !== questionId) return;
+            this.scissorsCut.set({ id: ++this.scissorsSeq, top: this.cutLine(indexes) });
+            this.audioService.playZap();
+            this.scissorsTimers.push(setTimeout(() => {
+                this.eliminatedAnswers.update(prev => [...new Set([...prev, ...indexes])]);
+                this.pendingElim.update(prev => prev.filter(i => !indexes.includes(i)));
+            }, 400));
+            this.scissorsTimers.push(setTimeout(() => this.scissorsCut.set(null), 1200));
+        }, wait));
+    }
+
+    /** Altura del corte: por la fila de lo eliminado si está todo en una, si no por el medio de la rejilla. */
+    private cutLine(indexes: number[]): string {
+        const rows = Math.ceil((this.currentQuestion()?.options.length ?? 4) / 2);
+        const cut = [...new Set(indexes.map(i => Math.floor(i / 2)))];
+        return cut.length === 1 ? `${((cut[0] + 0.5) / rows) * 100}%` : '50%';
+    }
+
+    private clearScissors(): void {
+        this.scissorsTimers.forEach(t => clearTimeout(t));
+        this.scissorsTimers = [];
+        this.pendingElim.set([]);
+        this.scissorsCut.set(null);
     }
 
     useComodin(tipo: ComodinTipo, predictsCorrect: boolean | null = null): void {
@@ -1384,12 +1424,14 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.turnOwnerId.set(data.turnOwnerId ?? data.currentPlayerId);
         this.isSteal.set(!!data.isSteal);
         this.stolenById.set(data.stolenById ?? null);
+        this.clearScissors();
         this.eliminatedAnswers.set(data.eliminatedAnswerIndexes ?? []);
         this.doubleOrNothingPlayers.set(data.doubleOrNothingPlayers ?? []);
         this.bets.set(data.bets ?? []);
         this.comodinUsedOnQuestion.set(!!data.comodinUsed);
         this.callActive.set(!!data.callActive);
         this.isDynamic.set(!!data.isDynamic);
+        this.questionKind.set(data.isOcarina ? 'ocarina' : data.isColor ? 'colores' : data.isDynamic ? 'pulsador' : null);
         this.buzzerOpen.set(!!data.buzzerOpen);
         this.isBuzzing.set(false);
         this.colorOpen.set(!!data.colorOpen);
@@ -1532,8 +1574,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                 this.announceReroll(data);
                 break;
             case 'CincuentaCincuenta':
-                this.audioService.playZap();
-                this.eliminatedAnswers.update(prev => [...new Set([...prev, ...(data.eliminatedAnswerIndexes ?? [])])]);
+                this.cutAnswers(data.eliminatedAnswerIndexes ?? []);
                 break;
             case 'DobleONada':
                 this.doubleOrNothingPlayers.update(ids => [...ids, data.userId]);

@@ -1,16 +1,6 @@
 @use '../../styles/game-fx' as fx;
 
 // ============ Comodines ============
-.answer-options .answer-btn.eliminated {
-    opacity: 0.25 !important;
-    filter: grayscale(1);
-    transform: none;
-
-    .answer-text {
-        text-decoration: line-through;
-    }
-}
-
 .comodin-status {
     display: flex;
     flex-wrap: wrap;

@@ -3,7 +3,12 @@
 //
 // Línea de tiempo: cada pieza animada lleva la clase `a` y su retraso en `--d`; con `x` además desaparece en
 // `--o`. La animación de entrada se elige con una clase (pop, fade, up...) y la de salida con xo-*.
+@use 'sass:map';
 @use '../../game/styles/game-fx' as fx;
+@use '../../game/styles/game-pieces' as pc;
+
+// Piezas compartidas con la partida (mismos colores, tachón, anillo...): game/styles/_game-pieces.scss
+@include pc.answer-elim-keyframes;
 
 @property --n {
     syntax: '<integer>';
@@ -162,16 +167,9 @@
 }
 
 .tut .tk-phase {
-    display: inline-flex;
-    align-items: baseline;
+    @include pc.comic-chip(var(--fase, #7c3aed));
     gap: 6px;
     padding: 4px 12px;
-    border: 2px solid var(--tk-ink);
-    border-radius: 999px;
-    background: var(--fase, #7c3aed);
-    color: #fff;
-    box-shadow: 2px 2px 0 var(--tk-ink);
-    @include fx.game-label(900);
     font-size: 12px;
     letter-spacing: 0.1em;
 
@@ -229,20 +227,17 @@
     gap: 6px;
     min-height: 96px;
     padding: 10px 8px;
-    border: 3px solid var(--c);
     border-radius: 16px;
-    background: linear-gradient(135deg, color-mix(in srgb, var(--c) 88%, transparent), color-mix(in srgb, var(--c) 64%, transparent));
-    color: #fff;
+    @include pc.answer-tile(var(--c));
     font-size: 19px;
     font-weight: 800;
     line-height: 1.1;
     text-align: center;
-    text-shadow: 0 2px 0 rgb(0 0 0 / 0.25);
 
-    &.tri { --c: #e11d48; }
-    &.sq { --c: #eab308; }
-    &.ci { --c: #0ea5e9; }
-    &.pe { --c: rgb(170, 24, 181); }
+    &.tri { --c: #{map.get(pc.$answer-colors, triangle)}; }
+    &.sq { --c: #{map.get(pc.$answer-colors, square)}; }
+    &.ci { --c: #{map.get(pc.$answer-colors, circle)}; }
+    &.pe { --c: #{map.get(pc.$answer-colors, pentagon)}; }
 
     > svg { width: 24px; height: 24px; fill: #fff; filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.25)); }
 }
@@ -254,24 +249,16 @@
     z-index: 2;
     display: grid;
     place-items: center;
-    border: 3px dashed rgb(255 255 255 / 0.28);
-    border-radius: 16px;
-    background: #23273b;
+    @include pc.mystery-tile;
     font-family: var(--font-display);
     font-size: 40px;
-    color: rgb(255 255 255 / 0.5);
     backface-visibility: hidden;
 }
 
 // Marca del anfitrión: anillo blanco alrededor de la respuesta
 .tut .tk-ring {
-    position: absolute;
-    inset: -8px;
+    @include pc.host-ring;
     z-index: 3;
-    border: 4px solid #fff;
-    border-radius: 21px;
-    box-shadow: 0 0 0 3px var(--tk-ink), 0 0 26px rgb(255 255 255 / 0.65);
-    pointer-events: none;
     --in: tk-ring-in;
     --t: 0.35s;
 
@@ -291,16 +278,15 @@
     z-index: 2;
     display: grid;
     place-items: center;
-    border: 3px solid var(--tk-ink);
+    border: 3px solid;
     border-radius: 16px;
-    background: linear-gradient(135deg, #34d399, #059669);
+    @include pc.result-fill(true);
     font-size: 19px;
     font-weight: 900;
-    color: #fff;
     --in: tk-fill-in;
     --t: 0.45s;
 
-    &.bad { background: linear-gradient(135deg, #f87171, #b91c1c); }
+    &.bad { @include pc.result-fill(false); }
 }
 
 @keyframes tk-fill-in {
@@ -311,29 +297,14 @@
 // Eliminada (ruleta, 50/50): se apaga y se tacha
 .tut .tk-elim {
     position: absolute;
-    inset: -3px;
+    inset: 0;
     z-index: 2;
     border-radius: 16px;
-    background: rgb(16 18 30 / 0.82);
+    pointer-events: none;
     --in: tk-fade;
-    --t: 0.3s;
-
-    &::after {
-        content: '';
-        position: absolute;
-        left: 12%;
-        right: 12%;
-        top: 50%;
-        height: 4px;
-        border-radius: 2px;
-        background: #ef4444;
-        transform: rotate(-12deg) scaleX(0);
-        animation: tk-strike 0.35s 0.15s ease-out forwards;
-        animation-delay: calc(var(--d, 0s) + 0.15s);
-    }
+    --t: 0.01s;
+    @include pc.answer-elim;
 }
-
-@keyframes tk-strike { to { transform: rotate(-12deg) scaleX(1); } }
 
 .tut .tk-turninfo {
     position: relative;
@@ -359,17 +330,9 @@
 }
 
 .tut .tk-chip {
-    display: inline-block;
+    @include pc.comic-chip(var(--c, #7c3aed));
     padding: 4px 11px;
-    border: 2px solid var(--tk-ink);
-    border-radius: 999px;
-    background: var(--c, #7c3aed);
-    box-shadow: 2px 2px 0 var(--tk-ink);
-    color: #fff;
-    @include fx.game-label(900);
     font-size: 12px;
-    letter-spacing: 0.08em;
-    white-space: nowrap;
 }
 
 // ---------- Mundo real: bocadillos y avatares ----------
@@ -661,11 +624,4 @@
     position: relative;
     flex: none;
     display: block;
-}
-
-// Carta que arde (mano de comodines): radio de lo ya quemado
-@property --burn {
-    syntax: '<percentage>';
-    inherits: true;
-    initial-value: 0%;
 }

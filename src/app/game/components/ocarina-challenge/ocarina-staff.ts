@@ -52,18 +52,19 @@ export function renderStaff(
     vf: typeof VexNs,
     container: HTMLElement,
     notes: StaffNote[],
-    options: { width: number; onNoteClick?: (index: number) => void; showButtons?: boolean }
+    options: { width: number; height?: number; onNoteClick?: (index: number) => void; showButtons?: boolean }
 ): void {
     container.innerHTML = '';
     const { Renderer, Stave, StaveNote, Voice, Formatter, Beam, Annotation } = vf;
-    const height = 150;
+    const height = options.height ?? 150;
     const renderer = new Renderer(container as HTMLDivElement, Renderer.Backends.SVG);
     renderer.resize(options.width, height);
     const ctx = renderer.getContext();
     ctx.setFillStyle(COLORS.normal);
     ctx.setStrokeStyle(COLORS.normal);
 
-    const stave = new Stave(4, 18, options.width - 8);
+    // Pentagrama compacto: se sube para que quepan debajo los botones de cada nota
+    const stave = new Stave(4, height < 140 ? 0 : 18, options.width - 8);
     stave.addClef('treble').setContext(ctx).draw();
     if (notes.length === 0) return;
 
@@ -88,6 +89,11 @@ export function renderStaff(
     voice.draw(ctx, stave);
     beams.forEach(b => b.setContext(ctx).draw());
 
+    // La nota que suena brilla (el brillo lo pone el CSS del componente con .is-active)
+    staveNotes.forEach((note, i) => {
+        if (notes[i].state === 'active') note.getSVGElement()?.classList.add('is-active');
+    });
+
     if (options.onNoteClick) {
         // VexFlow crea el SVG con pointer-events="none": hay que reactivarlos para poder pulsar las notas.
         container.querySelector('svg')?.setAttribute('pointer-events', 'auto');
@@ -102,6 +108,7 @@ export function renderStaff(
             hit.setAttribute('width', String(box.getW() + 12));
             hit.setAttribute('height', String(box.getH() + 12));
             hit.setAttribute('fill', 'transparent');
+            hit.setAttribute('stroke', 'none');
             hit.setAttribute('pointer-events', 'all');
             el.appendChild(hit);
             el.style.cursor = 'pointer';

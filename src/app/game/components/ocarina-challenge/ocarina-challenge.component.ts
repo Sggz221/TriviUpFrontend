@@ -10,6 +10,9 @@ import { BUTTON_GLYPHS, NOTE_NAMES, StaffNote, loadVexflow, renderStaff } from '
 
 type AttemptStatus = 'idle' | 'checking' | 'error' | 'ok';
 
+/** Alto de los pentagramas (compactos, como en el tutorial). */
+const STAFF_HEIGHT = 126;
+
 /**
  * Pregunta especial Ocarina: suena una melodía (lenta, una sola vez) dibujada en un pentagrama; después los
  * jugadores la reproducen con los cinco botones. Las notas van a un carril (se pueden quitar pulsándolas o con
@@ -47,6 +50,9 @@ export class OcarinaChallengeComponent implements AfterViewInit, OnDestroy {
     entered = signal<number[]>([]);
     status = signal<AttemptStatus>('idle');
     loading = signal(true);
+    /** Último botón pulsado (destello): `n` cambia en cada pulsación para repetir la animación. */
+    flash = signal<{ pitch: number; n: number } | null>(null);
+    private flashSeq = 0;
     /** El navegador no ha dejado sonar el audio (falta un toque en la página). */
     soundBlocked = signal(false);
 
@@ -113,6 +119,7 @@ export class OcarinaChallengeComponent implements AfterViewInit, OnDestroy {
         this.applyVolume();
         const position = this.entered().length;
         this.synth.playPitch(pitch, this.melody()[position]?.figure ?? 'Corchea');
+        this.flash.set({ pitch, n: ++this.flashSeq });
         this.entered.update(notes => [...notes, pitch]);
         if (this.entered().length === this.melody().length) {
             void this.submit();
@@ -183,7 +190,7 @@ export class OcarinaChallengeComponent implements AfterViewInit, OnDestroy {
         const melody = this.melody();
         if (this.melodyStaff) {
             const notes: StaffNote[] = melody.map((n, i) => ({ ...n, state: this.activeIndex() === i ? 'active' : 'normal' }));
-            renderStaff(this.vf, this.melodyStaff.nativeElement, notes, { width: this.widthOf(this.melodyStaff) });
+            renderStaff(this.vf, this.melodyStaff.nativeElement, notes, { width: this.widthOf(this.melodyStaff), height: STAFF_HEIGHT });
         }
         if (this.laneStaff) {
             const state = this.status() === 'error' ? 'error' : this.status() === 'ok' ? 'ok' : 'normal';
@@ -191,6 +198,7 @@ export class OcarinaChallengeComponent implements AfterViewInit, OnDestroy {
             const notes: StaffNote[] = this.entered().map((pitch, i) => ({ pitch, figure: melody[i]?.figure ?? 'Negra', state }));
             renderStaff(this.vf, this.laneStaff.nativeElement, notes, {
                 width: this.widthOf(this.laneStaff),
+                height: STAFF_HEIGHT,
                 onNoteClick: this.status() === 'idle' ? i => this.removeAt(i) : undefined
             });
         }

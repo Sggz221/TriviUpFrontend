@@ -3,19 +3,20 @@ import { ComodinTipo } from '../../models/game.models';
 import { AudioService } from '../../../shared/services/audio.service';
 import { COMODIN_CARDS, HandCard, PlayedCard } from './comodin-cards';
 
-/** Carta quemándose: su filtro SVG se anima moviendo el umbral de la máscara de ruido. */
+/** Carta quemándose (animación CSS: mixin burn-card de game/styles/_game-pieces.scss). */
 interface BurningCard {
     key: number;
     tipo: ComodinTipo;
-    seed: number;
-    /** Umbral de la máscara: de 1 (carta entera) a −1 (carta consumida). */
-    threshold: number;
 }
+
+/** Lo que dura la quema (igual que la animación pc-burn). */
+const BURN_MS = 1700;
 
 /**
  * Mano de comodines como cartas: una bandeja oscura fija abajo con las cartas en abanico; al tocarla se
  * despliega un carril horizontal con todas las cartas a tamaño completo. Cada carta muestra sus usos arriba a
- * la derecha y, al gastar el último, se quema (filtro SVG de ruido con borde incandescente, sin WebGL).
+ * la derecha y, al gastar el último, se quema: se levanta y el fuego se la come desde una esquina con un borde
+ * incandescente y brasas (como en el tutorial).
  *
  * El componente queda montado durante toda la partida (aunque la mano se oculte) para poder quemar la carta
  * aunque jugarla cambie el turno o cierre la pregunta.
@@ -51,7 +52,7 @@ export class ComodinHandComponent implements OnDestroy {
     /** Última carta jugada: si con eso se queda sin usos, se quema. */
     private lastPlayed: { tipo: ComodinTipo; before: number; at: number } | null = null;
     private burnSeq = 0;
-    private frames = new Map<number, number>();
+    private burnTimers = new Set<ReturnType<typeof setTimeout>>();
 
     constructor() {
         effect(() => {
@@ -70,7 +71,7 @@ export class ComodinHandComponent implements OnDestroy {
     }
 
     ngOnDestroy(): void {
-        this.frames.forEach(id => cancelAnimationFrame(id));
+        this.burnTimers.forEach(t => clearTimeout(t));
     }
 
     toggle(): void {
@@ -111,16 +112,6 @@ export class ComodinHandComponent implements OnDestroy {
         return `translate(calc(-50% + ${x}px), ${y}px) rotate(${angle}deg)`;
     }
 
-    /**
-     * Parámetros del filtro de quemado. El ruido (0-1) se convierte en máscara con alfa = 12·(ruido − corte):
-     * lo que queda por debajo del corte se ha quemado. `edge` adelanta el corte para dibujar el borde
-     * incandescente justo delante de lo quemado.
-     */
-    burnIntercept(b: BurningCard, edge = false): number {
-        const cutoff = (1 - b.threshold) / 2 * 1.2 - 0.1 - (edge ? 0.09 : 0);
-        return -12 * cutoff;
-    }
-
     stackDepth(uses: number): number {
         return Math.min(2, Math.max(0, uses - 1));
     }
@@ -149,24 +140,14 @@ export class ComodinHandComponent implements OnDestroy {
 
     private burn(tipo: ComodinTipo): void {
         const key = ++this.burnSeq;
-        this.burning.update(list => [...list, { key, tipo, seed: Math.floor(Math.random() * 1000), threshold: 1 }]);
+        this.burning.update(list => [...list, { key, tipo }]);
         this.audio.playBurn();
 
         const reduced = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-        const duration = reduced ? 400 : 1300;
-        const start = performance.now();
-        const step = (t: number) => {
-            const p = Math.min(1, (t - start) / duration);
-            // Empieza despacio (prende) y acelera (se consume)
-            const eased = p * p;
-            this.burning.update(list => list.map(b => b.key === key ? { ...b, threshold: 1 - eased * 2.2 } : b));
-            if (p < 1) {
-                this.frames.set(key, requestAnimationFrame(step));
-            } else {
-                this.frames.delete(key);
-                this.burning.update(list => list.filter(b => b.key !== key));
-            }
-        };
-        this.frames.set(key, requestAnimationFrame(step));
+        const timer = setTimeout(() => {
+            this.burnTimers.delete(timer);
+            this.burning.update(list => list.filter(b => b.key !== key));
+        }, reduced ? 400 : BURN_MS);
+        this.burnTimers.add(timer);
     }
 }
