@@ -7,11 +7,10 @@ Al usar un comodín sale un GIF al azar de su categoría. Nombres: `PREFIJO_N.gi
 |----------------------|--------------------------|
 | Ruleta               | `RULETA`                 |
 | 50/50                | `CINCUENTA_CINCUENTA`    |
-| Cambiar pregunta     | `CAMBIAR_PREGUNTA`       |
+| Cambiar pregunta (y la del rival) | `CAMBIAR_PREGUNTA` |
 | Doble o nada         | `DOBLE_O_NADA`           |
 | Llamada              | `LLAMADA`                |
 | Robar                | `ROBO`                   |
-| Cambiar su pregunta  | `CAMBIAR_PREGUNTA_RIVAL` |
 | Ocultar texto        | `OCULTAR_TEXTO`          |
 | Apostar              | `APUESTA`                |
 

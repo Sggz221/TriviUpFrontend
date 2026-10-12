@@ -31,7 +31,7 @@ export const COMODIN_GIF_PREFIX: Record<ComodinTipo, string> = {
     DobleONada: 'DOBLE_O_NADA',
     Llamada: 'LLAMADA',
     Robo: 'ROBO',
-    CambiarPreguntaRival: 'CAMBIAR_PREGUNTA_RIVAL',
+    CambiarPreguntaRival: 'CAMBIAR_PREGUNTA',
     OcultarTexto: 'OCULTAR_TEXTO',
     Apuesta: 'APUESTA'
 };
