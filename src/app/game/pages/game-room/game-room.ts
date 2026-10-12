@@ -1580,7 +1580,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
         if (data.tipo !== 'Robo') this.comodinUsedOnQuestion.set(true);
 
-        this.showComodinBanner(data);
+        // La apuesta es discreta: un toast, sin el aviso a pantalla completa
+        if (data.tipo === 'Apuesta') this.showToast(`💰 ${data.username}: ${this.comodinDetalle(data)}`, 'info');
+        else this.showComodinBanner(data);
         switch (data.tipo) {
             case 'Llamada':
                 this.callActive.set(true);
