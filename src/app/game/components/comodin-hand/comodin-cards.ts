@@ -20,6 +20,22 @@ export const COMODIN_CARDS: Record<ComodinTipo, ComodinCardInfo> = {
     Apuesta: { icon: '💰', name: 'Apostar', description: 'Apuesta si acierta o falla. Si aciertas: +50', ataque: true }
 };
 
+/**
+ * Prefijo de los GIFs de cada comodín en public/gifs/comodines: PREFIJO_1.gif, PREFIJO_2.gif…
+ * (consecutivos desde 1; se descubren solos, ver ComodinGifService).
+ */
+export const COMODIN_GIF_PREFIX: Record<ComodinTipo, string> = {
+    Ruleta: 'RULETA',
+    CincuentaCincuenta: 'CINCUENTA_CINCUENTA',
+    CambiarPregunta: 'CAMBIAR_PREGUNTA',
+    DobleONada: 'DOBLE_O_NADA',
+    Llamada: 'LLAMADA',
+    Robo: 'ROBO',
+    CambiarPreguntaRival: 'CAMBIAR_PREGUNTA_RIVAL',
+    OcultarTexto: 'OCULTAR_TEXTO',
+    Apuesta: 'APUESTA'
+};
+
 /** Carta en la mano: cuántos usos le quedan y si se puede jugar ahora mismo. */
 export interface HandCard {
     tipo: ComodinTipo;

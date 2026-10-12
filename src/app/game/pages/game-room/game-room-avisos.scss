@@ -1,0 +1,205 @@
+// Avisos de la partida: flecha del cambio de turno y aviso de comodín con su GIF.
+@use '../../styles/game-fx' as fx;
+
+// Flecha amarilla de cómic del "Turno de:": cruza la franja por debajo del nombre
+.turn-banner-arrow {
+    position: absolute;
+    --arrow-w: clamp(6.5rem, 26vw, 12rem);
+    // Centrada sobre el borde inferior de la franja (alto de la franja: clamp(9rem, 34vw, 17rem))
+    top: calc(50% + clamp(4.5rem, 17vw, 8.5rem) - var(--arrow-w) * 0.27);
+    left: 50%;
+    width: var(--arrow-w);
+    margin-left: calc(var(--arrow-w) / -2);
+    overflow: visible;
+    filter: drop-shadow(5px 6px 0 var(--fx-ink));
+    animation: arrow-dash 2s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+
+    path {
+        fill: #facc15;
+        stroke: var(--fx-ink);
+        stroke-width: 5;
+        stroke-linejoin: round;
+    }
+}
+
+@keyframes arrow-dash {
+    0%, 12% { transform: translateX(-70vw) rotate(-6deg); opacity: 0; }
+    26% { transform: translateX(1.5rem) rotate(-6deg); opacity: 1; }
+    32% { transform: translateX(-0.5rem) rotate(-6deg); }
+    38%, 50% { transform: translateX(0) rotate(-6deg); }
+    58% { transform: translateX(1.25rem) rotate(-6deg); }
+    66%, 80% { transform: translateX(0) rotate(-6deg); opacity: 1; }
+    100% { transform: translateX(70vw) rotate(-6deg); opacity: 0; }
+}
+
+// Aviso de comodín: franja horizontal con el jugador, "HA USADO …", "!!" rojas y el GIF debajo
+.comodin-banner {
+    position: fixed;
+    inset: 0;
+    z-index: 61;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1.25rem, 4vw, 2rem);
+    overflow: hidden;
+    pointer-events: none;
+    font-family: var(--font-game);
+    background: color-mix(in oklab, #05050c 60%, transparent);
+    animation: comodin-backdrop 2.8s ease both;
+}
+
+.comodin-banner-text {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: clamp(1.25rem, 5vw, 2.25rem) clamp(1rem, 9vw, 9rem);
+    text-align: center;
+}
+
+.comodin-banner-strip {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(90deg, #ff8a00 0%, #ff3d6e 55%, #c4123a 100%);
+    border-block: 6px solid var(--fx-ink);
+    box-shadow: 0 10px 0 var(--fx-ink);
+    overflow: hidden;
+    animation: comodin-strip 2.8s cubic-bezier(0.7, 0, 0.2, 1) both;
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        @include fx.halftone(rgba(0, 0, 0, 0.3), 100% 50%, 14px);
+        --dot: 6px;
+        --reach: 75%;
+    }
+
+    // Líneas de velocidad
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(90deg, transparent 0 60px, rgba(255, 255, 255, 0.16) 60px 64px, transparent 64px 140px);
+        animation: speed-lines 0.5s linear infinite;
+    }
+}
+
+.comodin-banner-name {
+    @include fx.display-title(var(--fx-gradient), 0.06em);
+    font-size: clamp(1.9rem, 9.5vw, 6rem);
+    word-break: break-word;
+    animation: comodin-name 2.8s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+
+    &.long { font-size: clamp(1.4rem, 6.5vw, 3.5rem); line-height: 1.05; }
+}
+
+.comodin-banner-sub {
+    @include fx.game-label(900);
+    font-size: clamp(1rem, 3.8vw, 1.75rem);
+    letter-spacing: 0.2em;
+    color: #fff;
+    -webkit-text-stroke: 1px var(--fx-ink);
+    paint-order: stroke fill;
+    text-shadow: 3px 3px 0 var(--fx-ink);
+    animation: comodin-sub 2.8s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+
+    strong { color: #fff35c; font-weight: 900; }
+}
+
+.comodin-banner-detail {
+    @include fx.game-label(800);
+    font-size: clamp(0.8rem, 2.8vw, 1.1rem);
+    letter-spacing: 0.12em;
+    color: #fff;
+    text-shadow: 2px 2px 0 var(--fx-ink);
+    animation: comodin-sub 2.8s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+// "!!" rojas que se salen del borde inferior de la franja, como en una viñeta
+.comodin-banner-bang {
+    position: absolute;
+    right: clamp(0.5rem, 9vw, 9rem);
+    bottom: clamp(-4rem, -8vw, -2rem);
+    width: clamp(3.5rem, 13vw, 7rem);
+    overflow: visible;
+    filter: drop-shadow(4px 5px 0 var(--fx-ink));
+    transform-origin: 50% 100%;
+    animation: bang-pop 2.8s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+
+    path {
+        fill: #ef4444;
+        stroke: var(--fx-ink);
+        stroke-width: 4;
+        stroke-linejoin: round;
+    }
+}
+
+.comodin-banner-gif {
+    position: relative;
+    width: min(70vw, 18rem);
+    max-height: 32vh;
+    object-fit: cover;
+    border-radius: 1.5rem;
+    @include fx.ink-box(8px);
+    border-width: 5px;
+    background: #05050c;
+    animation: comodin-gif 2.8s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@keyframes comodin-backdrop {
+    0% { opacity: 0; }
+    8%, 86% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes comodin-strip {
+    0% { transform: scaleY(0); }
+    10%, 86% { transform: scaleY(1); }
+    100% { transform: scaleY(0); }
+}
+
+@keyframes comodin-name {
+    0%, 6% { transform: scale(2.8) rotate(-4deg); opacity: 0; }
+    16% { transform: scale(0.9) rotate(1deg); opacity: 1; }
+    21% { transform: scale(1.06); }
+    26%, 84% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.6); opacity: 0; }
+}
+
+@keyframes comodin-sub {
+    0%, 14% { transform: translateY(0.75rem); opacity: 0; }
+    24%, 84% { transform: translateY(0); opacity: 1; }
+    100% { opacity: 0; }
+}
+
+@keyframes bang-pop {
+    0%, 18% { transform: scale(0) rotate(-30deg); opacity: 0; }
+    26% { transform: scale(1.35) rotate(14deg); opacity: 1; }
+    32% { transform: scale(0.9) rotate(4deg); }
+    36%, 52% { transform: scale(1) rotate(10deg); }
+    56% { transform: scale(1.1) rotate(4deg); }
+    60%, 84% { transform: scale(1) rotate(10deg); opacity: 1; }
+    100% { transform: scale(0.4) rotate(10deg); opacity: 0; }
+}
+
+@keyframes comodin-gif {
+    0%, 20% { transform: scale(2.4) rotate(-6deg); opacity: 0; }
+    30% { transform: scale(0.9) rotate(2deg); opacity: 1; }
+    36% { transform: scale(1.05) rotate(-1deg); }
+    42%, 84% { transform: scale(1) rotate(0); opacity: 1; }
+    100% { transform: translateY(40vh) rotate(8deg); opacity: 0; }
+}
+
+@keyframes speed-lines {
+    to { background-position: -140px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .turn-banner-arrow, .comodin-banner-strip, .comodin-banner-strip::after, .comodin-banner-name,
+    .comodin-banner-sub, .comodin-banner-detail, .comodin-banner-bang, .comodin-banner-gif { animation: none; }
+}

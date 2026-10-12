@@ -12,7 +12,8 @@ import { Player, Question, TurnResult, GameResult, PhaseInfo, PhaseCompletedDto,
 import { PenaltyBoardComponent } from '../../components/penalty-board/penalty-board.component';
 import { OcarinaChallengeComponent } from '../../components/ocarina-challenge/ocarina-challenge.component';
 import { ComodinHandComponent } from '../../components/comodin-hand/comodin-hand.component';
-import { HandCard } from '../../components/comodin-hand/comodin-cards';
+import { COMODIN_CARDS, HandCard } from '../../components/comodin-hand/comodin-cards';
+import { ComodinGifService } from '../../services/comodin-gif.service';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { colorDeFase, textoSobreColor } from '../../../cuestionarios/models/fase-color';
 import { AudioService } from '../../../shared/services/audio.service';
@@ -32,7 +33,7 @@ type TurnBannerVariant = 'turn' | 'reroll' | 'steal' | 'penalty';
     standalone: true,
     imports: [CommonModule, FormsModule, GameLobbyComponent, GameScoreboardComponent, PhaseLeaderboardComponent, AnswerShapeComponent, IconComponent, SoundControlsComponent, OcarinaChallengeComponent, ComodinHandComponent, PenaltyBoardComponent],
     templateUrl: './game-room.html',
-    styleUrls: ['./game-room.scss', './game-room-fx.scss', './game-room-penalty.scss', './game-room-comodines.scss', './game-room-presencial.scss']
+    styleUrls: ['./game-room.scss', './game-room-fx.scss', './game-room-penalty.scss', './game-room-comodines.scss', './game-room-avisos.scss', './game-room-presencial.scss']
 })
 export class GameRoomComponent implements OnInit, OnDestroy {
     private route = inject(ActivatedRoute);
@@ -40,6 +41,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     gameSignalrService = inject(GameSignalrService);
     private authService = inject(AuthService);
     private audioService = inject(AudioService);
+    private comodinGifService = inject(ComodinGifService);
 
     roomCode = signal<string>('');
     players = signal<Player[]>([]);
@@ -82,6 +84,13 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     turnBannerLabel = signal<string>('Turno de:');
     /** Color del banner: turno normal, cambio de pregunta o pregunta robada. */
     turnBannerVariant = signal<TurnBannerVariant>('turn');
+    /** Aviso "Jugador HA USADO comodín" con su GIF (null = oculto). */
+    comodinBanner = signal<{ id: number; nombre: string; comodin: string; icon: string; detalle: string | null; gif: string | null } | null>(null);
+    private comodinBannerTimeout: ReturnType<typeof setTimeout> | null = null;
+    /** Cuándo se quita el aviso de comodín (performance.now): el banner de turno espera a que acabe. */
+    private comodinBannerEndsAt = 0;
+    private comodinBannerSeq = 0;
+    private static readonly COMODIN_BANNER_MS = 2800;
 
     // ---- Comodines (estado de la pregunta en curso) ----
     /** Respuestas eliminadas por la ruleta. */
@@ -418,6 +427,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         console.log('[GameRoom] ★★★ Final component isOwner:', this.isOwner());
 
         this.initializeConnection();
+        this.comodinGifService.preloadAll();
 
         // Mantener viva la identidad anónima mientras el jugador está en la sala
         this.activityTimer = setInterval(() => {
@@ -432,6 +442,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.destroy$.complete();
         if (this.activityTimer) clearInterval(this.activityTimer);
         if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
+        if (this.comodinBannerTimeout) clearTimeout(this.comodinBannerTimeout);
         if (this.phaseBannerTimeout) clearTimeout(this.phaseBannerTimeout);
         if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
         this.cancelResultCount?.();
@@ -466,6 +477,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     private showTurnBanner(retrasoMs = 0, label = 'Turno de:', texto?: string, variant: TurnBannerVariant = 'turn'): void {
         if (this.bannerTimeout) clearTimeout(this.bannerTimeout);
         this.turnBanner.set(null);
+        // Que no se pise con el aviso de comodín (p.ej. el "¡Cambiando pregunta!" que llega justo después)
+        retrasoMs = Math.max(retrasoMs, this.comodinBannerEndsAt - performance.now());
         this.bannerTimeout = setTimeout(() => {
             this.turnBannerLabel.set(label);
             this.turnBannerVariant.set(variant);
@@ -1389,6 +1402,32 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (toMe) navigator.vibrate?.([120, 60, 120]);
     }
 
+    /** Aviso grande de comodín: franja con el jugador, "HA USADO …", las "!!" y un GIF al azar del comodín. */
+    private showComodinBanner(data: ComodinUsedDto): void {
+        const card = COMODIN_CARDS[data.tipo];
+        const id = ++this.comodinBannerSeq;
+        if (this.comodinBannerTimeout) clearTimeout(this.comodinBannerTimeout);
+        this.comodinBanner.set({ id, nombre: data.username, comodin: card.name, icon: card.icon, detalle: this.comodinDetalle(data), gif: null });
+        this.comodinBannerEndsAt = performance.now() + GameRoomComponent.COMODIN_BANNER_MS;
+        this.comodinBannerTimeout = setTimeout(() => this.comodinBanner.set(null), GameRoomComponent.COMODIN_BANNER_MS);
+        // Los GIFs ya se contaron al entrar: normalmente llega en el mismo instante
+        this.comodinGifService.randomGif(data.tipo).then(gif =>
+            this.comodinBanner.update(b => b && b.id === id ? { ...b, gif } : b));
+    }
+
+    /** Lo que antes contaba el toast y no cabe en "HA USADO …": contra quién va o qué se apuesta. */
+    private comodinDetalle(data: ComodinUsedDto): string | null {
+        switch (data.tipo) {
+            case 'Robo': return `Le roba la pregunta a ${this.playerName(data.stolenFromPlayerId)}`;
+            case 'OcultarTexto': return `Contra ${this.playerName(data.targetPlayerId)}`;
+            case 'CambiarPreguntaRival': return `Contra ${this.playerName(data.targetPlayerId)}`;
+            case 'Apuesta': return `Apuesta a que ${this.playerName(this.turnOwnerId())} ${data.predictsCorrect ? 'acierta' : 'falla'}`;
+            case 'DobleONada': return 'Acierto +200 · Fallo −100';
+            case 'CincuentaCincuenta': return `Fuera ${data.eliminatedAnswerIndexes?.length ?? 0} incorrectas`;
+            default: return null;
+        }
+    }
+
     private onComodinUsed(data: ComodinUsedDto): void {
         this.players.update(list => list.map(p =>
             p.userId === data.userId ? { ...p, availableComodines: data.availableComodines, remainingUses: data.remainingUses } : p));
@@ -1396,7 +1435,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
         if (data.tipo !== 'Robo') this.comodinUsedOnQuestion.set(true);
 
-        const nombre = data.username;
+        this.showComodinBanner(data);
         switch (data.tipo) {
             case 'Llamada':
                 this.callActive.set(true);
@@ -1408,7 +1447,6 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             case 'OcultarTexto':
                 this.audioService.playZap();
                 this.textHiddenForId.set(data.targetPlayerId ?? null);
-                this.showToast(`${nombre} oculta el texto de las respuestas de ${this.playerName(data.targetPlayerId)}`, 'info');
                 break;
             case 'CambiarPregunta':
             case 'CambiarPreguntaRival':
@@ -1417,24 +1455,20 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             case 'CincuentaCincuenta':
                 this.audioService.playZap();
                 this.eliminatedAnswers.update(prev => [...new Set([...prev, ...(data.eliminatedAnswerIndexes ?? [])])]);
-                this.showToast(`${nombre}: ¡50/50! Se eliminan ${data.eliminatedAnswerIndexes?.length ?? 0} respuestas incorrectas`, 'info');
                 break;
             case 'DobleONada':
                 this.doubleOrNothingPlayers.update(ids => [...ids, data.userId]);
                 this.audioService.playDrumroll(700);
                 this.audioService.playImpact(0.9, 0.7);
-                this.showToast(`${nombre}: ¡Doble o nada! (+200 / −100)`, 'info');
                 break;
             case 'Robo':
                 this.stolenById.set(data.userId);
                 this.audioService.playWhoosh();
                 this.audioService.playImpact(0.7, 0.25);
-                this.showToast(`${nombre} roba la pregunta a ${this.playerName(data.stolenFromPlayerId)}`, 'info');
                 break;
             case 'Apuesta':
                 this.bets.update(b => [...b, { userId: data.userId, predictsCorrect: !!data.predictsCorrect }]);
                 this.audioService.playMoney();
-                this.showToast(`${nombre} apuesta a que ${this.playerName(this.turnOwnerId())} ${data.predictsCorrect ? 'acierta' : 'falla'}`, 'info');
                 break;
         }
     }

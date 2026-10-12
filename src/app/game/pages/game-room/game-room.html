@@ -604,6 +604,33 @@
             <span class="turn-banner-label">{{ turnBannerLabel() }}</span>
             <span class="turn-banner-name" [class.long]="turnBanner()!.length > 14">{{ turnBanner() }}</span>
         </div>
+        @if (turnBannerVariant() === 'turn') {
+            <svg class="turn-banner-arrow" viewBox="0 0 120 64" aria-hidden="true">
+                <path d="M6 20 H66 V6 L114 32 L66 58 V44 H6 Z" />
+            </svg>
+        }
+    </div>
+}
+
+@if (comodinBanner(); as cb) {
+    <div class="comodin-banner" aria-live="assertive">
+        <div class="comodin-banner-text">
+            <div class="comodin-banner-strip" aria-hidden="true"></div>
+            <span class="comodin-banner-name" [class.long]="cb.nombre.length > 12">{{ cb.nombre }}</span>
+            <span class="comodin-banner-sub">Ha usado <strong>{{ cb.icon }} {{ cb.comodin }}</strong></span>
+            @if (cb.detalle) {
+                <span class="comodin-banner-detail">{{ cb.detalle }}</span>
+            }
+            <svg class="comodin-banner-bang" viewBox="0 0 80 110" aria-hidden="true">
+                <path d="M10 6 L34 10 L26 70 L10 68 Z" />
+                <path d="M8 78 L24 80 L22 98 L6 96 Z" />
+                <path d="M46 10 L72 14 L60 74 L44 70 Z" />
+                <path d="M42 80 L58 84 L54 102 L38 98 Z" />
+            </svg>
+        </div>
+        @if (cb.gif) {
+            <img class="comodin-banner-gif" [src]="cb.gif" alt="" />
+        }
     </div>
 }
 
