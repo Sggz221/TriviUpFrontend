@@ -74,6 +74,11 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     revealSuspense = signal<number | null>(null);
     private suspenseTimeout: ReturnType<typeof setTimeout> | null = null;
     private static readonly REVEAL_SUSPENSE_MS = 2500;
+    /** Robo fallido (presencial): tras el suspense, cuánto se ve el fallo antes de volver al jugador original. */
+    private static readonly FAILED_STEAL_HOLD_MS = 1800;
+    /** Hasta cuándo se retiene el siguiente TurnStarted (el del robo fallido) y su temporizador. */
+    private turnStartHoldUntil = 0;
+    private heldTurnStartTimeout: ReturnType<typeof setTimeout> | null = null;
     /** Puntos del cartel de resultado: cuentan desde 0 hasta los ganados (o perdidos). */
     resultPoints = signal(0);
     private cancelResultCount: (() => void) | null = null;
@@ -485,6 +490,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.comodinBannerTimeout) clearTimeout(this.comodinBannerTimeout);
         if (this.phaseBannerTimeout) clearTimeout(this.phaseBannerTimeout);
         if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
+        if (this.heldTurnStartTimeout) clearTimeout(this.heldTurnStartTimeout);
         this.cancelResultCount?.();
         if (this.colorResultTimeout) clearTimeout(this.colorResultTimeout);
         this.cancelSuspense();
@@ -514,6 +520,73 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
             this.timerInterval = null;
+        }
+    }
+
+    /** Nuevo turno: pregunta, quién responde, banner y tiempo. */
+    private handleTurnStarted(data: TurnStartedDto): void {
+        this.cancelSuspense();
+        this.currentQuestion.set(data.question);
+        this.currentTurnPlayerId.set(data.currentPlayerId);
+        const isMyTurn = data.currentPlayerId === this.myUserId();
+        this.isMyTurn.set(isMyTurn);
+        this.gameState.set('playing');
+        this.isPaused.set(false);
+        // Presencial: la marca del anfitrión (p. ej. al reconectar); en modo normal siempre null.
+        this.selectedAnswer.set(data.markedAnswerIndex ?? null);
+        this.showTurnResult.set(false);
+        this.hideResultOverlay();
+        this.isConfirming.set(false);
+        this.isAdvancing.set(false);
+        this.turnTimeLimit.set(data.timeLimit);
+        this.phaseBreak.set(null);
+        this.isContinuing.set(false);
+        this.sawTurn = true;
+        const fase: PhaseInfo | null = data.totalFases && data.totalFases > 1 && !data.penalty
+            ? { numero: data.faseNumero ?? 1, nombre: data.faseNombre ?? null, total: data.totalFases, color: colorDeFase(data.faseNumero, data.faseColor) }
+            : null;
+        this.phase.set(fase);
+        // Si cambia el turno con la ruleta aún en pantalla (p. ej. un robo), quitarla ya
+        if (this.ruletaSpin()) this.cancelRuleta();
+        this.applyTurnState(data);
+        const pending = this.pendingBanner;
+        this.pendingBanner = null;
+        if (data.penalty) {
+            this.announcePenaltyKick(data.penalty, data.currentPlayerId);
+        } else if (pending) {
+            this.showTurnBanner(0, pending.label, this.playerName(data.currentPlayerId), pending.variant);
+        } else if (data.isSteal) {
+            this.showTurnBanner(0, `¡Pregunta robada a ${this.playerName(data.turnOwnerId)}!`, this.playerName(data.currentPlayerId), 'steal');
+        } else if (data.isOcarina && !data.ocarinaOpen) {
+            this.showTurnBanner(0, '¡Melodía tocada!', this.playerName(data.currentPlayerId));
+        } else if (data.ocarinaOpen) {
+            this.showTurnBanner(this.mostrarBannerFase(fase), '¡Ocarina!', 'Escucha y toca la melodía');
+        } else if (data.isColor && !data.colorOpen) {
+            // El banner del ganador lo deja ver el resultado de la prueba (que llega justo antes).
+            this.showTurnBanner(this.colorResult() ? GameRoomComponent.COLOR_RESULT_MS : 0, '¡Mejor color!', this.playerName(data.currentPlayerId));
+        } else if (data.isDynamic && !data.buzzerOpen && !data.colorOpen) {
+            this.showTurnBanner(0, '¡Primero en pulsar!', this.playerName(data.currentPlayerId));
+        } else if (data.buzzerOpen) {
+            // Pulsador abierto: aún no responde nadie, así que no se nombra a ningún jugador.
+            this.showTurnBanner(this.mostrarBannerFase(fase), '¡Pulsador!', 'El primero en pulsar responde');
+        } else if (data.colorOpen) {
+            this.showTurnBanner(this.mostrarBannerFase(fase), '¡Colores!', 'Quien mejor imite el color responde');
+        } else {
+            this.showTurnBanner(this.mostrarBannerFase(fase));
+        }
+        if (isMyTurn) {
+            this.audioService.playTurnStart();
+            // Con respuestas por mostrar el tiempo aún no corre: empieza cuando se ven todas
+            if (this.answersPending()) this.clearTimerInterval();
+            else this.startLocalTimer(data.timeLimit);
+        } else if (data.buzzerOpen) {
+            // Pulsador: todos ven la cuenta atrás y después corre el tiempo para pulsar.
+            this.startBuzzerFromTurn(data, data.timeLimit);
+        } else if (data.colorOpen) {
+            // Prueba de colores abierta: todos ven correr el tiempo.
+            this.startLocalTimer(data.timeLimit);
+        } else {
+            this.clearTimerInterval();
         }
     }
 
@@ -970,69 +1043,18 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         // Turn started
         this.gameSignalrService.onTurnStarted.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             console.log('[GameRoom] Turn started:', data);
-            this.cancelSuspense();
-            this.currentQuestion.set(data.question);
-            this.currentTurnPlayerId.set(data.currentPlayerId);
-            const isMyTurn = data.currentPlayerId === this.myUserId();
-            this.isMyTurn.set(isMyTurn);
-            this.gameState.set('playing');
-            this.isPaused.set(false);
-            // Presencial: la marca del anfitrión (p. ej. al reconectar); en modo normal siempre null.
-            this.selectedAnswer.set(data.markedAnswerIndex ?? null);
-            this.showTurnResult.set(false);
-            this.hideResultOverlay();
-            this.isConfirming.set(false);
-            this.isAdvancing.set(false);
-            this.turnTimeLimit.set(data.timeLimit);
-            this.phaseBreak.set(null);
-            this.isContinuing.set(false);
-            this.sawTurn = true;
-            const fase: PhaseInfo | null = data.totalFases && data.totalFases > 1 && !data.penalty
-                ? { numero: data.faseNumero ?? 1, nombre: data.faseNombre ?? null, total: data.totalFases, color: colorDeFase(data.faseNumero, data.faseColor) }
-                : null;
-            this.phase.set(fase);
-            // Si cambia el turno con la ruleta aún en pantalla (p. ej. un robo), quitarla ya
-            if (this.ruletaSpin()) this.cancelRuleta();
-            this.applyTurnState(data);
-            const pending = this.pendingBanner;
-            this.pendingBanner = null;
-            if (data.penalty) {
-                this.announcePenaltyKick(data.penalty, data.currentPlayerId);
-            } else if (pending) {
-                this.showTurnBanner(0, pending.label, this.playerName(data.currentPlayerId), pending.variant);
-            } else if (data.isSteal) {
-                this.showTurnBanner(0, `¡Pregunta robada a ${this.playerName(data.turnOwnerId)}!`, this.playerName(data.currentPlayerId), 'steal');
-            } else if (data.isOcarina && !data.ocarinaOpen) {
-                this.showTurnBanner(0, '¡Melodía tocada!', this.playerName(data.currentPlayerId));
-            } else if (data.ocarinaOpen) {
-                this.showTurnBanner(this.mostrarBannerFase(fase), '¡Ocarina!', 'Escucha y toca la melodía');
-            } else if (data.isColor && !data.colorOpen) {
-                // El banner del ganador lo deja ver el resultado de la prueba (que llega justo antes).
-                this.showTurnBanner(this.colorResult() ? GameRoomComponent.COLOR_RESULT_MS : 0, '¡Mejor color!', this.playerName(data.currentPlayerId));
-            } else if (data.isDynamic && !data.buzzerOpen && !data.colorOpen) {
-                this.showTurnBanner(0, '¡Primero en pulsar!', this.playerName(data.currentPlayerId));
-            } else if (data.buzzerOpen) {
-                // Pulsador abierto: aún no responde nadie, así que no se nombra a ningún jugador.
-                this.showTurnBanner(this.mostrarBannerFase(fase), '¡Pulsador!', 'El primero en pulsar responde');
-            } else if (data.colorOpen) {
-                this.showTurnBanner(this.mostrarBannerFase(fase), '¡Colores!', 'Quien mejor imite el color responde');
-            } else {
-                this.showTurnBanner(this.mostrarBannerFase(fase));
+            // Robo fallido en presencial: el turno del original espera a que acabe el suspense y se vea el fallo
+            const wait = this.turnStartHoldUntil - performance.now();
+            if (wait > 0) {
+                if (this.heldTurnStartTimeout) clearTimeout(this.heldTurnStartTimeout);
+                const timeLimit = data.timeLimit > 0 ? Math.max(1, data.timeLimit - Math.ceil(wait / 1000)) : data.timeLimit;
+                this.heldTurnStartTimeout = setTimeout(() => {
+                    this.heldTurnStartTimeout = null;
+                    this.handleTurnStarted({ ...data, timeLimit });
+                }, wait);
+                return;
             }
-            if (isMyTurn) {
-                this.audioService.playTurnStart();
-                // Con respuestas por mostrar el tiempo aún no corre: empieza cuando se ven todas
-                if (this.answersPending()) this.clearTimerInterval();
-                else this.startLocalTimer(data.timeLimit);
-            } else if (data.buzzerOpen) {
-                // Pulsador: todos ven la cuenta atrás y después corre el tiempo para pulsar.
-                this.startBuzzerFromTurn(data, data.timeLimit);
-            } else if (data.colorOpen) {
-                // Prueba de colores abierta: todos ven correr el tiempo.
-                this.startLocalTimer(data.timeLimit);
-            } else {
-                this.clearTimerInterval();
-            }
+            this.handleTurnStarted(data);
         });
 
         // Intermedio entre fases
@@ -1058,10 +1080,15 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         // Turn result
         this.gameSignalrService.onTurnResult.pipe(takeUntil(this.destroy$)).subscribe((result) => {
             console.log('[GameRoom] Turn result:', result);
-            // Presencial: suspense antes de revelar (no en penaltis ni en un robo fallido, que no revela nada)
-            if (this.isPresencial() && !result.isPenalty && result.correctAnswerIndex >= 0) {
+            // Presencial: suspense antes de revelar (no en penaltis). En un robo fallido no se revela la
+            // correcta, pero también hay drama: se ve el fallo y luego vuelve el turno al original.
+            const failedSteal = result.isSteal && result.correctAnswerIndex < 0;
+            if (this.isPresencial() && !result.isPenalty && (result.correctAnswerIndex >= 0 || failedSteal)) {
                 this.cancelSuspense();
                 this.clearTimerInterval();
+                if (failedSteal) {
+                    this.turnStartHoldUntil = performance.now() + GameRoomComponent.REVEAL_SUSPENSE_MS + GameRoomComponent.FAILED_STEAL_HOLD_MS;
+                }
                 this.revealSuspense.set(this.selectedAnswer() ?? -1);
                 this.audioService.playSuspense(GameRoomComponent.REVEAL_SUSPENSE_MS);
                 this.suspenseTimeout = setTimeout(() => {
