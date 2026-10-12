@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, CallDismissedDto, BuzzerCountdownDto, PenaltyState, HostQuestionInfoDto, ColorHsb, ColorSubmittedDto, ColorChallengeResultDto, OcarinaWonDto } from '../models/game.models';
+import { GameStateDto, Player, Question, TurnResult, GameResult, TurnStartedDto, GameLobbyState, PhaseCompletedDto, PhaseInfo, ComodinTipo, ComodinUsedDto, GameMode, AnswerMarkedDto, CallDismissedDto, BuzzerCountdownDto, AnswersRevealedDto, PenaltyState, HostQuestionInfoDto, ColorHsb, ColorSubmittedDto, ColorChallengeResultDto, OcarinaWonDto } from '../models/game.models';
 import { getApiBaseUrl } from '../../shared/utils/api-url.utils';
 import { colorDeFase } from '../../cuestionarios/models/fase-color';
 import { AuthService } from '../../auth/auth.service';
@@ -70,6 +70,7 @@ export class GameSignalrService {
     private answerMarked$ = new Subject<AnswerMarkedDto>();
     private callDismissed$ = new Subject<CallDismissedDto>();
     private buzzerCountdown$ = new Subject<BuzzerCountdownDto>();
+    private answersRevealed$ = new Subject<AnswersRevealedDto>();
     private penaltyFinished$ = new Subject<PenaltyState>();
     private colorSubmitted$ = new Subject<ColorSubmittedDto>();
     private colorChallengeResult$ = new Subject<ColorChallengeResultDto>();
@@ -132,6 +133,7 @@ export class GameSignalrService {
     onAnswerMarked = this.answerMarked$.asObservable();
     onCallDismissed = this.callDismissed$.asObservable();
     onBuzzerCountdown = this.buzzerCountdown$.asObservable();
+    onAnswersRevealed = this.answersRevealed$.asObservable();
     /** Pitido final de la tanda de penaltis, justo antes de GameFinished. */
     onPenaltyFinished = this.penaltyFinished$.asObservable();
     /** Último TurnStarted recibido (para recuperar robo/comodines si el componente se suscribe tarde). */
@@ -369,6 +371,14 @@ export class GameSignalrService {
             this.buzzerCountdown$.next(data);
         });
 
+        this.hubConnection.on('AnswersRevealed', (data: AnswersRevealedDto) => {
+            console.log('[GameSignalr] Event: AnswersRevealed', data);
+            // Para que una sala que se vuelve a montar (navegación) siga viendo las mismas respuestas
+            const last = this.lastTurnStarted();
+            if (last?.question.id === data.questionId) this.lastTurnStarted.set({ ...last, revealedAnswers: data.revealedAnswers });
+            this.answersRevealed$.next(data);
+        });
+
         this.hubConnection.on('CallDismissed', (data: CallDismissedDto) => {
             console.log('[GameSignalr] Event: CallDismissed', data);
             this.lastTurnStarted.update(t => t && t.question.id === data.questionId ? { ...t, callActive: false } : t);
@@ -601,6 +611,12 @@ export class GameSignalrService {
     async startBuzzerCountdown(roomCode: string, questionId: number, fake: boolean): Promise<void> {
         if (!this.hubConnection) throw new Error('Hub not connected');
         return this.hubConnection.invoke('StartBuzzerCountdown', roomCode, questionId, fake);
+    }
+
+    /** Presencial: el anfitrión muestra la siguiente respuesta (o todas). */
+    async revealAnswers(roomCode: string, questionId: number, all: boolean): Promise<void> {
+        if (!this.hubConnection) throw new Error('Hub not connected');
+        return this.hubConnection.invoke('RevealAnswers', roomCode, questionId, all);
     }
 
     async dismissCall(roomCode: string, questionId: number): Promise<void> {

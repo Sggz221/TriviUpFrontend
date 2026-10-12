@@ -156,6 +156,8 @@ export interface TurnStartedDto {
     buzzerWaitingForHost?: boolean;
     /** Tiro de la tanda de penaltis: estado de la tanda. */
     penalty?: PenaltyState | null;
+    /** Presencial: respuestas que ya ha mostrado el anfitrión (null = todas). */
+    revealedAnswers?: number | null;
 }
 
 /** Figura musical de una nota (se dibuja así y marca su duración al sonar). */
@@ -218,6 +220,13 @@ export interface CallDismissedDto {
 }
 
 /** Pulsador: el anfitrión lanzó la cuenta atrás (de broma acaba en "¡Ah, no!" y no abre el pulsador). */
+/** Presencial: el anfitrión mostró respuestas (revealedAnswers null = ya se ven todas y corre el tiempo). */
+export interface AnswersRevealedDto {
+    questionId: number;
+    revealedAnswers: number | null;
+    timeLimit: number;
+}
+
 export interface BuzzerCountdownDto {
     questionId: number;
     fake: boolean;

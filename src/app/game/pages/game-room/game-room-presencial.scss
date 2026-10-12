@@ -1,4 +1,5 @@
 // Modo presencial: estilos del anfitrión que marca y confirma las respuestas.
+@use '../../styles/game-fx' as fx;
 
 .answer-options .answer-btn {
     // Presencial: solo el anfitrión ve cuál es la correcta
@@ -309,6 +310,74 @@
     50% { filter: brightness(1.15); }
 }
 
+// Respuestas que el anfitrión aún no ha mostrado: hueco con "?" (el anfitrión ve el texto atenuado)
+.answer-options .answer-btn {
+    // Recién mostrada: el contenido entra de golpe (en el contenido, para no pisar las animaciones del botón)
+    &.answer-shown > * { animation: answer-show 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+
+    &.answer-hidden {
+        justify-content: center;
+        background: color-mix(in oklab, var(--base-300) 70%, transparent) !important;
+        border: 3px dashed color-mix(in oklab, var(--base-content) 30%, transparent) !important;
+        box-shadow: none !important;
+        opacity: 1 !important;
+        overflow: hidden;
+
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            @include fx.halftone(color-mix(in oklab, var(--base-content) 12%, transparent), center, 12px);
+            --dot: 2.5px;
+            --reach: 140%;
+            pointer-events: none;
+        }
+    }
+
+    &.answer-hidden-host {
+        justify-content: flex-start;
+
+        app-answer-shape, .answer-text { opacity: 0.45; }
+    }
+}
+
+.answer-mystery {
+    position: relative;
+    @include fx.display-title(var(--fx-gradient), 0.06em);
+    font-size: 2rem;
+    animation: mystery-bob 1.6s ease-in-out infinite;
+}
+
+.answer-hidden-badge {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.5rem;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.reveal-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+@keyframes answer-show {
+    0% { transform: scale(0.6) rotate(-3deg); opacity: 0; }
+    60% { transform: scale(1.05) rotate(1deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0); }
+}
+
+@keyframes mystery-bob {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50% { transform: translateY(-3px) rotate(4deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .buzzer-btn { animation: none; }
+    .answer-options .answer-btn.answer-shown > *, .answer-mystery { animation: none; }
 }

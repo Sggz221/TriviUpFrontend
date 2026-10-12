@@ -121,6 +121,19 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Pulsador esperando a que el anfitrión lance la cuenta atrás de verdad. */
     buzzerWaiting = signal<boolean>(false);
     isStartingCountdown = signal<boolean>(false);
+
+    // ---- Presencial: sale primero la pregunta y el anfitrión va mostrando las respuestas ----
+    /** Respuestas ya mostradas (null = se ven todas). */
+    revealedAnswers = signal<number | null>(null);
+    /** Quedan respuestas por mostrar en la pregunta actual. */
+    answersPending = computed(() => {
+        const revealed = this.revealedAnswers();
+        return revealed !== null && revealed < (this.currentQuestion()?.options.length ?? 0);
+    });
+    isRevealing = signal<boolean>(false);
+    /** Respuestas recién mostradas (entran con un golpe). */
+    justShownAnswers = signal<number[]>([]);
+    private justShownTimeout: ReturnType<typeof setTimeout> | null = null;
     /** Lo que se ve de la cuenta atrás en pantalla (5…1, ¡YA!, o la broma). */
     buzzerCountdown = signal<string | null>(null);
     static readonly BUZZER_TROLL = 'troll';
@@ -448,6 +461,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.cancelResultCount?.();
         if (this.colorResultTimeout) clearTimeout(this.colorResultTimeout);
         this.cancelSuspense();
+        if (this.justShownTimeout) clearTimeout(this.justShownTimeout);
         if (this.callTimer) clearInterval(this.callTimer);
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
         this.ruletaTimeouts.forEach(t => clearTimeout(t));
@@ -568,6 +582,26 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         } finally {
             this.isStartingCountdown.set(false);
         }
+    }
+
+    /** Presencial: el anfitrión muestra la siguiente respuesta (o todas a la vez). */
+    async revealAnswers(all: boolean): Promise<void> {
+        const question = this.currentQuestion();
+        if (!question || this.isRevealing() || !this.answersPending()) return;
+        this.isRevealing.set(true);
+        try {
+            await this.gameSignalrService.revealAnswers(this.roomCode(), question.id, all);
+        } catch (error) {
+            this.showToast(this.hubErrorMessage(error, 'No se pudo mostrar la respuesta'), 'error');
+        } finally {
+            this.isRevealing.set(false);
+        }
+    }
+
+    /** La respuesta aún no la ha mostrado el anfitrión. */
+    isAnswerHidden(index: number): boolean {
+        const revealed = this.revealedAnswers();
+        return revealed !== null && index >= revealed;
     }
 
     /** Estado del pulsador al empezar la pregunta (o al reconectar): esperando, en cuenta atrás o ya abierto. */
@@ -710,7 +744,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
                     }
                     if (this.buzzerOpen() && !this.isPaused()) {
                         this.startBuzzerFromTurn(lastTurn, this.gameSignalrService.timeRemaining());
-                    } else if ((this.isMyTurn() || this.colorOpen()) && !this.isPaused()) {
+                    } else if ((this.isMyTurn() || this.colorOpen()) && !this.isPaused() && !this.answersPending()) {
                         this.startLocalTimer(this.gameSignalrService.timeRemaining());
                     }
                 }
@@ -959,7 +993,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             }
             if (isMyTurn) {
                 this.audioService.playTurnStart();
-                this.startLocalTimer(data.timeLimit);
+                // Con respuestas por mostrar el tiempo aún no corre: empieza cuando se ven todas
+                if (this.answersPending()) this.clearTimerInterval();
+                else this.startLocalTimer(data.timeLimit);
             } else if (data.buzzerOpen) {
                 // Pulsador: todos ven la cuenta atrás y después corre el tiempo para pulsar.
                 this.startBuzzerFromTurn(data, data.timeLimit);
@@ -1114,6 +1150,24 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         });
 
         // Pulsador: el anfitrión lanzó la cuenta atrás (de verdad o de broma)
+        // Presencial: el anfitrión muestra respuestas (una a una o todas)
+        this.gameSignalrService.onAnswersRevealed.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+            if (data.questionId !== this.currentQuestion()?.id) return;
+            const total = this.currentQuestion()!.options.length;
+            const before = this.revealedAnswers() ?? total;
+            this.revealedAnswers.set(data.revealedAnswers);
+            const after = data.revealedAnswers ?? total;
+            const nuevas = Array.from({ length: Math.max(0, after - before) }, (_, k) => before + k);
+            nuevas.forEach((_, k) => setTimeout(() => { this.audioService.playTick(1.2); this.audioService.playImpact(0.35); }, k * 110));
+            if (this.justShownTimeout) clearTimeout(this.justShownTimeout);
+            this.justShownAnswers.set(nuevas);
+            this.justShownTimeout = setTimeout(() => this.justShownAnswers.set([]), 600);
+            if (data.revealedAnswers === null && data.timeLimit > 0 && this.isMyTurn() && !this.isPaused()) {
+                this.turnTimeLimit.set(data.timeLimit);
+                this.startLocalTimer(data.timeLimit);
+            }
+        });
+
         this.gameSignalrService.onBuzzerCountdown.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             if (data.questionId !== this.currentQuestion()?.id || !this.buzzerOpen()) return;
             this.turnTimeLimit.set(data.timeLimit);
@@ -1201,7 +1255,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Presencial: el anfitrión marca la opción dicha en voz alta (otro clic en la misma la desmarca). */
     private markAnswer(answerIndex: number): void {
         const question = this.currentQuestion();
-        if (!question || this.isEliminated(answerIndex) || this.isConfirming() || this.revealSuspense() !== null) return;
+        if (!question || this.isEliminated(answerIndex) || this.isAnswerHidden(answerIndex) || this.isConfirming()
+            || this.revealSuspense() !== null) return;
         const previous = this.selectedAnswer();
         const next = previous === answerIndex ? null : answerIndex;
         this.selectedAnswer.set(next);
@@ -1325,6 +1380,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         this.clearBuzzerLock();
         this.pausedBuzzerLockMs = null;
         this.penalty.set(data.penalty ?? null);
+        this.revealedAnswers.set(data.revealedAnswers ?? null);
         this.turnOwnerId.set(data.turnOwnerId ?? data.currentPlayerId);
         this.isSteal.set(!!data.isSteal);
         this.stolenById.set(data.stolenById ?? null);

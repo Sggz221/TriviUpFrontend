@@ -362,19 +362,29 @@
                         [class.btn-success]="showTurnResult() && lastTurnResult()!.correctAnswerIndex === i"
                         [class.btn-error]="showTurnResult() && selectedAnswer() === i && lastTurnResult()!.correctAnswerIndex !== i"
                         [class.selected]="selectedAnswer() === i"
+                        [class.answer-hidden]="isAnswerHidden(i)"
+                        [class.answer-hidden-host]="isAnswerHidden(i) && isOwner()"
+                        [class.answer-shown]="justShownAnswers().includes(i)"
                         [class.suspense-pick]="revealSuspense() === i"
                         [class.eliminated]="isEliminated(i)"
                         [class.host-correct]="hostCorrectIndex() === i && !showTurnResult()"
                         [class.my-turn-active]="(isPresencial() ? isHostMarking() : isMyTurn()) && !showTurnResult() && !isPaused() && !isEliminated(i)"
-                        [disabled]="(isPresencial() ? !isHostMarking() : !isMyTurn()) || showTurnResult() || revealSuspense() !== null || isPaused() || isEliminated(i)"
+                        [disabled]="(isPresencial() ? !isHostMarking() : !isMyTurn()) || showTurnResult() || revealSuspense() !== null || isPaused() || isEliminated(i) || isAnswerHidden(i)"
                         [attr.aria-pressed]="isHostMarking() ? selectedAnswer() === i : null"
                         [attr.aria-label]="isEliminated(i) ? option + ' (eliminada por la ruleta)' : hostCorrectIndex() === i ? option + ' (respuesta correcta)' : null"
                         (click)="onAnswerClick(i)">
                         @if (hostCorrectIndex() === i && !showTurnResult()) {
                             <span class="host-correct-badge" aria-hidden="true"><app-icon name="check" [size]="14" /> Correcta</span>
                         }
-                        <app-answer-shape [shape]="getShapeType(i)" [selected]="selectedAnswer() === i" />
-                        <span class="answer-text">{{ option }}</span>
+                        @if (isAnswerHidden(i) && !isOwner()) {
+                            <span class="answer-mystery" aria-label="Respuesta aún sin mostrar">?</span>
+                        } @else {
+                            @if (isAnswerHidden(i)) {
+                                <span class="answer-hidden-badge" aria-hidden="true">Oculta</span>
+                            }
+                            <app-answer-shape [shape]="getShapeType(i)" [selected]="selectedAnswer() === i" />
+                            <span class="answer-text">{{ option }}</span>
+                        }
                     </button>
                 }
             </div>
@@ -388,7 +398,17 @@
 
             @if (isHostMarking()) {
                 <div class="host-controls">
-                    @if (showTurnResult()) {
+                    @if (answersPending()) {
+                        <div class="reveal-buttons">
+                            <button class="btn btn-success btn-lg" type="button" [disabled]="isRevealing() || isPaused()" (click)="revealAnswers(false)">
+                                Mostrar respuesta ({{ (revealedAnswers() ?? 0) + 1 }}/{{ currentQuestion()!.options.length }})
+                            </button>
+                            <button class="btn btn-outline btn-lg" type="button" [disabled]="isRevealing() || isPaused()" (click)="revealAnswers(true)">
+                                Mostrar todas
+                            </button>
+                        </div>
+                        <span class="host-controls-hint">Lee la pregunta y ve mostrando las respuestas</span>
+                    } @else if (showTurnResult()) {
                         <button class="btn btn-primary btn-lg" type="button" [disabled]="isAdvancing()" (click)="onNextQuestion()">
                             {{ isAdvancing() ? 'Pasando...' : 'Siguiente pregunta' }}
                         </button>
@@ -408,7 +428,7 @@
                 </div>
             }
 
-            @if (isOwner() && buzzerOpen() && buzzerWaiting() && !showTurnResult()) {
+            @if (isOwner() && buzzerOpen() && buzzerWaiting() && !showTurnResult() && !answersPending()) {
                 <!-- El anfitrión decide cuándo empieza la cuenta atrás; la de broma acaba en "¡Ah, no!" -->
                 <div class="host-controls buzzer-host-controls">
                     <div class="buzzer-host-buttons">
