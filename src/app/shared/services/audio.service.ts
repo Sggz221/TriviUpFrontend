@@ -272,6 +272,24 @@ export class AudioService {
         this.playTone(80, total, 'sine', 0.15, { attack: total * 0.9 });
     }
 
+    /**
+     * Suspense antes de revelar una respuesta (`ms`): latido grave (lub-dub) que se acelera, un zumbido
+     * grave que crece y un soplo agudo que sube. Suave, para que el golpe de la revelación destaque.
+     */
+    playSuspense(ms = 2500): void {
+        const total = ms / 1000;
+        let t = 0.05;
+        while (t < total - 0.2) {
+            const k = t / total;
+            this.playTone(62, 0.14, 'sine', 0.16 + k * 0.08, { at: t, slideTo: 42 });
+            this.playTone(58, 0.12, 'sine', 0.1 + k * 0.06, { at: t + 0.16, slideTo: 40 });
+            t += 0.8 - k * 0.35;
+        }
+        this.playTone(98, total, 'triangle', 0.05, { attack: total * 0.85, vibrato: 1.5, vibratoRate: 5 });
+        this.playTone(147, total, 'sine', 0.03, { attack: total * 0.9, detune: 6 });
+        this.playNoise(total, 1500, 0.035, { type: 'highpass', sweepTo: 7000, attack: total * 0.9 });
+    }
+
     /** Fanfarria de trompetas (sierras desafinadas) para el ganador. */
     playFanfare(): void {
         const chord = (freqs: number[], at: number, len: number, g = 0.07) => freqs.forEach(f => {

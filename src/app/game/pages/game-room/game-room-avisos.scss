@@ -1,4 +1,4 @@
-// Avisos de la partida: flecha del cambio de turno y aviso de comodín con su GIF.
+// Avisos de la partida: flecha del cambio de turno, aviso de comodín con su GIF y suspense antes de revelar.
 @use '../../styles/game-fx' as fx;
 
 // Flecha amarilla de cómic del "Turno de:": cruza la franja por debajo del nombre
@@ -195,11 +195,76 @@
     100% { transform: translateY(40vh) rotate(8deg); opacity: 0; }
 }
 
+// Suspense antes de revelar (presencial): viñeta que se cierra y late, el tablero se acerca
+// y la respuesta marcada late mientras el resto se apaga.
+.suspense-vignette {
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 38%, rgba(5, 5, 12, 0.55) 70%, rgba(5, 5, 12, 0.9) 100%);
+    animation: vignette-close 0.6s ease-out both, vignette-breathe 0.8s 0.6s ease-in-out infinite;
+
+    // Trama de puntos cómic que asoma desde los bordes
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        @include fx.halftone(rgba(0, 0, 0, 0.45), center, 14px);
+        --dot: 5px;
+        -webkit-mask-image: radial-gradient(ellipse at center, transparent 55%, #000 100%);
+        mask-image: radial-gradient(ellipse at center, transparent 55%, #000 100%);
+    }
+}
+
+.game-board.suspense > :not(.turn-result-overlay):not(app-comodin-hand) {
+    animation: suspense-zoom 2.5s cubic-bezier(0.4, 0, 0.6, 1) both;
+}
+
+.game-board.suspense .answer-options .answer-btn:not(.suspense-pick) {
+    opacity: 0.4;
+    filter: saturate(0.5);
+    transition: opacity 0.5s ease, filter 0.5s ease;
+}
+
+.game-board.suspense .answer-options .answer-btn.suspense-pick {
+    z-index: 1;
+    opacity: 1;
+    box-shadow: 0 0 0 4px #facc15, 0 0 28px 6px rgba(250, 204, 21, 0.55);
+    animation: suspense-heartbeat 0.8s ease-in-out infinite;
+}
+
+@keyframes vignette-close {
+    from { opacity: 0; transform: scale(1.25); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes vignette-breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(0.96); }
+}
+
+@keyframes suspense-zoom {
+    from { transform: scale(1); }
+    to { transform: scale(1.035); }
+}
+
+// Doble golpe de latido (lub-dub)
+@keyframes suspense-heartbeat {
+    0%, 100% { transform: scale(1.03); }
+    12% { transform: scale(1.08); }
+    24% { transform: scale(1.03); }
+    36% { transform: scale(1.06); }
+    50% { transform: scale(1.03); }
+}
+
 @keyframes speed-lines {
     to { background-position: -140px 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .turn-banner-arrow, .comodin-banner-strip, .comodin-banner-strip::after, .comodin-banner-name,
-    .comodin-banner-sub, .comodin-banner-detail, .comodin-banner-bang, .comodin-banner-gif { animation: none; }
+    .comodin-banner-sub, .comodin-banner-detail, .comodin-banner-bang, .comodin-banner-gif,
+    .suspense-vignette, .game-board.suspense > *,
+    .game-board.suspense .answer-options .answer-btn.suspense-pick { animation: none; }
 }

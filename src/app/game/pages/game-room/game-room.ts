@@ -67,6 +67,13 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     showResultOverlay = signal<boolean>(false);
     private resultOverlayTimeout: ReturnType<typeof setTimeout> | null = null;
     private static readonly PRESENCIAL_OVERLAY_MS = 2500;
+    /**
+     * Presencial: segundos de suspense entre que el anfitrión confirma y se revela el resultado (viñeta, zoom,
+     * latido y música tapada). Lo llevan todas las pantallas a la vez porque el TurnResult les llega a la vez.
+     */
+    revealSuspense = signal<number | null>(null);
+    private suspenseTimeout: ReturnType<typeof setTimeout> | null = null;
+    private static readonly REVEAL_SUSPENSE_MS = 2500;
     /** Puntos del cartel de resultado: cuentan desde 0 hasta los ganados (o perdidos). */
     resultPoints = signal(0);
     private cancelResultCount: (() => void) | null = null;
@@ -390,7 +397,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
         // Con un comodín bloqueante (ruleta girando o llamada en pantalla) la música se baja y se "tapa"
         effect(() => {
-            this.audioService.setMusicMuffled(!!this.ruletaSpin() || (this.callActive() && !this.showTurnResult()));
+            this.audioService.setMusicMuffled(!!this.ruletaSpin() || (this.callActive() && !this.showTurnResult())
+                || this.revealSuspense() !== null);
         });
     }
 
@@ -439,6 +447,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
         this.cancelResultCount?.();
         if (this.colorResultTimeout) clearTimeout(this.colorResultTimeout);
+        this.cancelSuspense();
         if (this.callTimer) clearInterval(this.callTimer);
         if (this.ruletaFrame !== null) cancelAnimationFrame(this.ruletaFrame);
         this.ruletaTimeouts.forEach(t => clearTimeout(t));
@@ -899,6 +908,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         // Turn started
         this.gameSignalrService.onTurnStarted.pipe(takeUntil(this.destroy$)).subscribe((data) => {
             console.log('[GameRoom] Turn started:', data);
+            this.cancelSuspense();
             this.currentQuestion.set(data.question);
             this.currentTurnPlayerId.set(data.currentPlayerId);
             const isMyTurn = data.currentPlayerId === this.myUserId();
@@ -963,6 +973,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
         // Intermedio entre fases
         this.gameSignalrService.onPhaseCompleted.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+            this.cancelSuspense();
             console.log('[GameRoom] Phase completed:', data);
             this.clearTimerInterval();
             this.gameState.set('playing');
@@ -982,26 +993,20 @@ export class GameRoomComponent implements OnInit, OnDestroy {
         // Turn result
         this.gameSignalrService.onTurnResult.pipe(takeUntil(this.destroy$)).subscribe((result) => {
             console.log('[GameRoom] Turn result:', result);
-            this.lastTurnResult.set(result);
-            this.showTurnResult.set(true);
-            this.showResultOverlay.set(true);
-            if (this.isPresencial()) {
-                // El resultado sigue en el tablero (correcta en verde) hasta que el anfitrión pasa de pregunta.
-                if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
-                this.resultOverlayTimeout = setTimeout(() => this.showResultOverlay.set(false), GameRoomComponent.PRESENCIAL_OVERLAY_MS);
-            }
-            this.clearTimerInterval();
-            this.cancelResultCount?.();
-            this.resultPoints.set(0);
-            this.cancelResultCount = countUp(600, p => this.resultPoints.set(Math.round(result.pointsEarned * p)), 350);
-            if (result.isPenalty) {
-                this.playPenaltyOutcome(result);
-            } else if (result.isCorrect) {
-                this.audioService.playCorrect();
+            // Presencial: suspense antes de revelar (no en penaltis ni en un robo fallido, que no revela nada)
+            if (this.isPresencial() && !result.isPenalty && result.correctAnswerIndex >= 0) {
+                this.cancelSuspense();
+                this.clearTimerInterval();
+                this.revealSuspense.set(this.selectedAnswer() ?? -1);
+                this.audioService.playSuspense(GameRoomComponent.REVEAL_SUSPENSE_MS);
+                this.suspenseTimeout = setTimeout(() => {
+                    this.suspenseTimeout = null;
+                    this.revealSuspense.set(null);
+                    this.revealTurnResult(result);
+                }, GameRoomComponent.REVEAL_SUSPENSE_MS);
             } else {
-                this.audioService.playWrong();
+                this.revealTurnResult(result);
             }
-            this.applyTurnOutcome(result, false);
         });
 
         // Turn timeout
@@ -1047,6 +1052,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
         // Game finished
         this.gameSignalrService.onGameFinished.pipe(takeUntil(this.destroy$)).subscribe((results) => {
+            this.cancelSuspense();
             console.log('[GameRoom] Game finished:', results);
             if (this.penalty()) {
                 // Acaba de terminar la tanda: primero se ve el último tiro y suena el pitido final
@@ -1195,7 +1201,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     /** Presencial: el anfitrión marca la opción dicha en voz alta (otro clic en la misma la desmarca). */
     private markAnswer(answerIndex: number): void {
         const question = this.currentQuestion();
-        if (!question || this.isEliminated(answerIndex) || this.isConfirming()) return;
+        if (!question || this.isEliminated(answerIndex) || this.isConfirming() || this.revealSuspense() !== null) return;
         const previous = this.selectedAnswer();
         const next = previous === answerIndex ? null : answerIndex;
         this.selectedAnswer.set(next);
@@ -1208,7 +1214,7 @@ export class GameRoomComponent implements OnInit, OnDestroy {
 
     onConfirmAnswer(): void {
         const question = this.currentQuestion();
-        if (!question || this.selectedAnswer() === null || this.isConfirming()) return;
+        if (!question || this.selectedAnswer() === null || this.isConfirming() || this.revealSuspense() !== null) return;
         this.isConfirming.set(true);
         this.gameSignalrService.confirmAnswer(this.roomCode(), question.id)
             .catch((error) => {
@@ -1226,6 +1232,37 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             this.showToast(this.hubErrorMessage(error, 'No se pudo pasar a la siguiente pregunta'), 'error');
             this.isAdvancing.set(false);
         });
+    }
+
+    /** Revela el resultado del turno: cartel de acierto/fallo, sonido, puntos y respuesta correcta en el tablero. */
+    private revealTurnResult(result: TurnResult): void {
+        this.lastTurnResult.set(result);
+        this.showTurnResult.set(true);
+        this.showResultOverlay.set(true);
+        if (this.isPresencial()) {
+            // El resultado sigue en el tablero (correcta en verde) hasta que el anfitrión pasa de pregunta.
+            if (this.resultOverlayTimeout) clearTimeout(this.resultOverlayTimeout);
+            this.resultOverlayTimeout = setTimeout(() => this.showResultOverlay.set(false), GameRoomComponent.PRESENCIAL_OVERLAY_MS);
+        }
+        this.clearTimerInterval();
+        this.cancelResultCount?.();
+        this.resultPoints.set(0);
+        this.cancelResultCount = countUp(600, p => this.resultPoints.set(Math.round(result.pointsEarned * p)), 350);
+        if (result.isPenalty) {
+            this.playPenaltyOutcome(result);
+        } else if (result.isCorrect) {
+            this.audioService.playCorrect();
+        } else {
+            this.audioService.playWrong();
+        }
+        this.applyTurnOutcome(result, false);
+    }
+
+    /** Corta el suspense en curso (sin revelar): lo sustituye otro evento de la partida. */
+    private cancelSuspense(): void {
+        if (this.suspenseTimeout) clearTimeout(this.suspenseTimeout);
+        this.suspenseTimeout = null;
+        this.revealSuspense.set(null);
     }
 
     private hideResultOverlay(): void {
