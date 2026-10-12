@@ -27,6 +27,7 @@ export class BancoPreguntasService {
             params = params.set('categoriaId', filtros.categoriaId);
         }
         if (filtros.dificultad) params = params.set('dificultad', filtros.dificultad);
+        if (filtros.tipo) params = params.set('tipo', filtros.tipo);
         params = params.set('page', filtros.page ?? 1).set('pageSize', filtros.pageSize ?? 20);
         return this.http.get<BancoPreguntaLista>(this.API_URL, { headers: this.getHeaders(), params });
     }

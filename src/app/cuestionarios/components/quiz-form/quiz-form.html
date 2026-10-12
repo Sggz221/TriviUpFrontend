@@ -178,6 +178,15 @@
                                                     <span>Ocarina <small class="block opacity-70">Responde el primero que toque la melodía</small></span>
                                                 </button>
                                             </li>
+                                            <li class="menu-title">Especial desde mi banco</li>
+                                            @for (t of tiposEspeciales; track t.valor) {
+                                                <li>
+                                                    <button type="button" (click)="abrirBanco(f, 'preguntas', t.valor)">
+                                                        <span aria-hidden="true">{{ t.icono }}</span>
+                                                        <span>{{ t.etiqueta }} del banco</span>
+                                                    </button>
+                                                </li>
+                                            }
                                         </ul>
                                     </div>
                                     }
@@ -251,6 +260,22 @@
                                     preguntas al azar
                                 </label>
 
+                                <div class="pool-especiales" role="group" aria-label="Preguntas especiales del pool">
+                                    <span class="text-xs opacity-70">De ellas, especiales (salen de tu banco entre las de ese tipo):</span>
+                                    <div class="pool-especiales-campos">
+                                        @for (t of tiposEspeciales; track t.valor) {
+                                            <label class="pool-especial" [title]="t.descripcion">
+                                                <span>{{ t.icono }} {{ t.etiqueta }}</span>
+                                                <input type="number" min="0" [max]="pool.cantidad" class="pool-cantidad-input"
+                                                       [value]="pool[t.valor] ?? 0"
+                                                       [attr.aria-label]="'Preguntas de ' + t.etiqueta + ' que salen en cada partida'"
+                                                       (change)="cambiarEspecialPool(fase, t.valor, $any($event.target).value)">
+                                            </label>
+                                        }
+                                        <span class="pool-especiales-normales">= {{ normalesPool(pool) }} normal{{ normalesPool(pool) === 1 ? '' : 'es' }}</span>
+                                    </div>
+                                </div>
+
                                 <div class="pool-origen" role="radiogroup" aria-label="De dónde salen las preguntas">
                                     <button type="button" role="radio" class="pool-origen-btn"
                                             [class.pool-origen-activo]="pool.origen === 'filtros'"
@@ -287,17 +312,9 @@
                                     </div>
 
                                     @if (disponiblesPool(fase); as disponibles) {
-                                        <p class="pool-aviso" [class.pool-aviso-warn]="disponibles < pool.cantidad">
-                                            @if (disponibles < pool.cantidad) {
-                                                Ahora hay {{ disponibles }} pregunta(s) en tu banco con estos filtros: la fase se jugará con {{ disponibles }} en vez de {{ pool.cantidad }}.
-                                            } @else {
-                                                Hay {{ disponibles }} preguntas en tu banco con estos filtros.
-                                            }
-                                        </p>
-                                    } @else if (disponiblesPool(fase) === 0) {
-                                        <p class="pool-aviso pool-aviso-warn">
-                                            Ahora mismo no hay preguntas en tu banco con estos filtros: si sigue así, esta fase no se jugará.
-                                        </p>
+                                        @for (aviso of avisosFiltros(pool, disponibles); track aviso.texto) {
+                                            <p class="pool-aviso" [class.pool-aviso-warn]="aviso.warn">{{ aviso.texto }}</p>
+                                        }
                                     } @else if (disponiblesPool(fase) === null) {
                                         <p class="pool-aviso">Contando preguntas de tu banco...</p>
                                     }
@@ -316,6 +333,9 @@
                                                 @for (p of pool.preguntas; track p.id) {
                                                     <li>
                                                         <span class="pool-lista-texto">{{ p.enunciado }}</span>
+                                                        @if (tipoEspecial(p.tipo); as t) {
+                                                            <span class="badge badge-sm shrink-0" [ngClass]="t.badge" [title]="t.descripcion">{{ t.icono }} {{ t.etiqueta }}</span>
+                                                        }
                                                         <button type="button" class="pool-lista-x" aria-label="Quitar del pool"
                                                                 (click)="quitarDelPool(fase, p.id)">✕</button>
                                                     </li>
@@ -325,6 +345,10 @@
                                                 <p class="pool-aviso pool-aviso-warn">
                                                     Salen {{ pool.cantidad }} pero solo hay {{ pool.preguntas.length }} elegidas: elige más o baja la cantidad.
                                                 </p>
+                                            } @else {
+                                                @for (aviso of avisosManual(pool); track aviso.texto) {
+                                                    <p class="pool-aviso pool-aviso-warn">{{ aviso.texto }}: elige más o cambia el reparto.</p>
+                                                }
                                             }
                                         }
                                     </div>
@@ -520,7 +544,8 @@
 
                             @if (bancoAbiertoEn(fase); as modo) {
                                 <div class="px-3 pb-3 sm:px-4 sm:pb-4">
-                                    <app-banco-picker [modo]="modo" (agregar)="agregarDesdeBanco($event)" (cerrar)="cerrarBanco()" />
+                                    <app-banco-picker [modo]="modo" [tipoInicial]="bancoDestino()?.tipo ?? null"
+                                                      (agregar)="agregarDesdeBanco($event)" (cerrar)="cerrarBanco()" />
                                 </div>
                             }
                         </section>

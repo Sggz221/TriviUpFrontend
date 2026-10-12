@@ -5,7 +5,8 @@ import { RouterLink } from '@angular/router';
 import { BancoPreguntasService } from '../../services/banco-preguntas.service';
 import { BancoCategoriasService } from '../../services/banco-categorias.service';
 import {
-    BancoCategoria, BancoPregunta, DIFICULTADES, Dificultad, colorDificultad, etiquetaDificultad
+    BancoCategoria, BancoPregunta, DIFICULTADES, Dificultad, TIPOS_ESPECIALES, TipoPregunta, colorDificultad,
+    etiquetaDificultad, tipoEspecial
 } from '../../models/cuestionario.model';
 
 /** Filtro de categoría del selector: todas, una concreta o solo las que no tienen. */
@@ -46,6 +47,19 @@ type FiltroCategoria = { tipo: 'todas' } | { tipo: 'sin' } | { tipo: 'categoria'
                 }
             </div>
 
+            <div class="flex flex-wrap items-center gap-1 mb-2" role="group" aria-label="Filtrar por tipo">
+                <span class="text-xs opacity-70 mr-1">Tipo:</span>
+                <button type="button" class="badge cursor-pointer"
+                        [class.badge-neutral]="tipoActivo() === 'normal'" [class.badge-outline]="tipoActivo() !== 'normal'"
+                        (click)="elegirTipo('normal')">Normal</button>
+                @for (t of tiposEspeciales; track t.valor) {
+                    <button type="button" class="badge cursor-pointer"
+                            [ngClass]="tipoActivo() === t.valor ? t.badge : 'badge-outline'"
+                            [title]="t.descripcion"
+                            (click)="elegirTipo(t.valor)">{{ t.icono }} {{ t.etiqueta }}</button>
+                }
+            </div>
+
             <div class="flex flex-wrap items-center gap-1 mb-3" role="group" aria-label="Filtrar por dificultad">
                 <span class="text-xs opacity-70 mr-1">Dificultad:</span>
                 @for (d of dificultades; track d.valor) {
@@ -82,6 +96,9 @@ type FiltroCategoria = { tipo: 'todas' } | { tipo: 'sin' } | { tipo: 'categoria'
                                     <span class="block text-sm font-medium break-words">{{ p.enunciado }}</span>
                                     <span class="flex flex-wrap items-center gap-1 mt-1">
                                         <span class="text-xs opacity-70">{{ p.respuestas.length }} respuestas</span>
+                                        @if (tipoEspecial(p.tipo); as t) {
+                                            <span class="badge badge-sm" [ngClass]="t.badge" [title]="t.descripcion">{{ t.icono }} {{ t.etiqueta }}</span>
+                                        }
                                         @if (p.categoriaNombre) {
                                             <span class="badge badge-sm badge-info">{{ p.categoriaNombre }}</span>
                                         } @else {
@@ -111,7 +128,7 @@ type FiltroCategoria = { tipo: 'todas' } | { tipo: 'sin' } | { tipo: 'categoria'
                     @if (modo() === 'pool') {
                         Quedan enlazadas a tu banco: en cada partida se usa su versión actual.
                     } @else {
-                        Se copian al cuestionario, con su dificultad: editarlas aquí no cambia tu banco.
+                        Se copian al cuestionario, con su dificultad y su tipo: editarlas aquí no cambia tu banco.
                     }
                 </span>
                 <button type="button" class="btn btn-sm btn-primary"
@@ -129,12 +146,15 @@ export class BancoPickerComponent implements OnInit {
 
     /** 'preguntas': se copian al cuestionario; 'pool': se eligen (enlazadas) para el pool de una fase. */
     modo = input<'preguntas' | 'pool'>('preguntas');
+    /** Tipo con el que se abre filtrado (p. ej. al buscar una pregunta de pulsador); null = todos. */
+    tipoInicial = input<TipoPregunta | null>(null);
     agregar = output<BancoPregunta[]>();
     cerrar = output<void>();
 
     busqueda = signal('');
     filtro = signal<FiltroCategoria>({ tipo: 'todas' });
     dificultadActiva = signal<Dificultad | null>(null);
+    tipoActivo = signal<TipoPregunta | null>(null);
     categorias = signal<BancoCategoria[]>([]);
     sinCategoria = signal(0);
     preguntas = signal<BancoPregunta[]>([]);
@@ -145,10 +165,13 @@ export class BancoPickerComponent implements OnInit {
     readonly dificultades = DIFICULTADES;
     readonly etiquetaDificultad = etiquetaDificultad;
     readonly colorDificultad = colorDificultad;
+    readonly tiposEspeciales = TIPOS_ESPECIALES;
+    readonly tipoEspecial = tipoEspecial;
 
     private temporizador: ReturnType<typeof setTimeout> | null = null;
 
     ngOnInit(): void {
+        this.tipoActivo.set(this.tipoInicial());
         this.categoriasService.listar().subscribe({
             next: (r) => {
                 this.categorias.set(r.categorias);
@@ -165,7 +188,7 @@ export class BancoPickerComponent implements OnInit {
     }
 
     hayFiltros(): boolean {
-        return !!this.busqueda().trim() || !!this.dificultadActiva() || !this.esFiltro('todas');
+        return !!this.busqueda().trim() || !!this.dificultadActiva() || !!this.tipoActivo() || !this.esFiltro('todas');
     }
 
     onBusqueda(valor: string): void {
@@ -184,6 +207,11 @@ export class BancoPickerComponent implements OnInit {
         this.cargar();
     }
 
+    elegirTipo(t: TipoPregunta): void {
+        this.tipoActivo.set(this.tipoActivo() === t ? null : t);
+        this.cargar();
+    }
+
     private cargar(): void {
         this.cargando.set(true);
         this.error.set(null);
@@ -193,6 +221,7 @@ export class BancoPickerComponent implements OnInit {
             categoriaId: f.tipo === 'categoria' ? f.id : null,
             sinCategoria: f.tipo === 'sin',
             dificultad: this.dificultadActiva(),
+            tipo: this.tipoActivo(),
             pageSize: 50
         }).subscribe({
             next: (lista) => {

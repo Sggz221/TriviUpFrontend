@@ -2,7 +2,9 @@ import { Component, OnInit, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CuestionarioService } from '../../services/cuestionario.service';
-import { Cuestionario, FasePool, Pregunta, Respuesta, colorDificultad, etiquetaDificultad } from '../../models/cuestionario.model';
+import {
+    Cuestionario, FasePool, Pregunta, Respuesta, colorDificultad, etiquetaDificultad, resumenTiposPool, tipoEspecial
+} from '../../models/cuestionario.model';
 import { colorDeFase } from '../../models/fase-color';
 import { GameSignalrService } from '../../../game/services/game-signalr.service';
 import { ComodinTipo, GameMode } from '../../../game/models/game.models';
@@ -30,6 +32,7 @@ interface FaseDetalle {
 export class QuizDetailComponent implements OnInit {
     readonly colorDificultad = colorDificultad;
     readonly etiquetaDificultad = etiquetaDificultad;
+    readonly tipoEspecial = tipoEspecial;
 
     private route = inject(ActivatedRoute);
     private router = inject(Router);
@@ -158,7 +161,8 @@ export class QuizDetailComponent implements OnInit {
 
     /** Descripción de un pool: cuántas salen y de dónde. */
     descripcionPool(pool: FasePool): string {
-        const salen = `Salen ${pool.cantidad} pregunta(s) al azar`;
+        const tipos = resumenTiposPool(pool);
+        const salen = `Salen ${pool.cantidad} pregunta(s) al azar${tipos ? ` (${tipos})` : ''}`;
         if (pool.origen === 'manual') {
             return `${salen} entre ${pool.preguntas.length} elegida(s) a mano del banco`;
         }

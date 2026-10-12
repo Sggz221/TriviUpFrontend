@@ -6,7 +6,8 @@ import { BancoPreguntasService } from '../../services/banco-preguntas.service';
 import { BancoCategoriasService } from '../../services/banco-categorias.service';
 import { CuestionarioService } from '../../services/cuestionario.service';
 import {
-    BancoCategoria, BancoPregunta, DIFICULTADES, Dificultad, colorDificultad, etiquetaDificultad
+    BancoCategoria, BancoPregunta, DIFICULTADES, Dificultad, TIPOS_ESPECIALES, TipoPregunta, colorDificultad,
+    etiquetaDificultad, tipoEspecial
 } from '../../models/cuestionario.model';
 import { imageUrl } from '../../../shared/utils/image-url.utils';
 import { CategoriaElegida, CategoriaSelectorComponent } from '../../../shared/components/categoria-selector/categoria-selector';
@@ -22,6 +23,8 @@ interface Editor {
     /** Nombre de una categoría nueva (se crea al guardar). */
     categoriaNombre: string | null;
     dificultad: Dificultad | null;
+    /** Tipo con el que se juega (también al sacarla en un pool). */
+    tipo: TipoPregunta;
     imagenUrl: string | null;
     curiosidad: string;
     subiendoImagen: boolean;
@@ -49,6 +52,7 @@ export class BancoPreguntasPage implements OnInit {
     sinCategoria = signal(0);
     filtro = signal<FiltroCategoria>({ tipo: 'todas' });
     dificultadActiva = signal<Dificultad | null>(null);
+    tipoActivo = signal<TipoPregunta | null>(null);
     pagina = signal(1);
     busqueda = signal('');
     cargando = signal(false);
@@ -75,6 +79,8 @@ export class BancoPreguntasPage implements OnInit {
     readonly dificultades = DIFICULTADES;
     readonly etiquetaDificultad = etiquetaDificultad;
     readonly colorDificultad = colorDificultad;
+    readonly tiposEspeciales = TIPOS_ESPECIALES;
+    readonly tipoEspecial = tipoEspecial;
 
     /** Categoría seleccionada en el filtro (null si es "Todas" o "Sin categoría"). */
     categoriaActiva = computed<BancoCategoria | null>(() => {
@@ -103,6 +109,7 @@ export class BancoPreguntasPage implements OnInit {
             categoriaId: f.tipo === 'categoria' ? f.id : null,
             sinCategoria: f.tipo === 'sin',
             dificultad: this.dificultadActiva(),
+            tipo: this.tipoActivo(),
             page: this.pagina(),
             pageSize: BancoPreguntasPage.PAGE_SIZE
         }).subscribe({
@@ -165,6 +172,12 @@ export class BancoPreguntasPage implements OnInit {
 
     elegirDificultad(d: Dificultad | null): void {
         this.dificultadActiva.set(this.dificultadActiva() === d ? null : d);
+        this.pagina.set(1);
+        this.cargar();
+    }
+
+    elegirTipo(t: TipoPregunta): void {
+        this.tipoActivo.set(this.tipoActivo() === t ? null : t);
         this.pagina.set(1);
         this.cargar();
     }
@@ -307,6 +320,7 @@ export class BancoPreguntasPage implements OnInit {
             categoriaId: this.categoriaActiva()?.id ?? null,
             categoriaNombre: null,
             dificultad: this.dificultadActiva(),
+            tipo: this.tipoActivo() ?? 'normal',
             imagenUrl: null,
             curiosidad: '',
             subiendoImagen: false
@@ -322,6 +336,7 @@ export class BancoPreguntasPage implements OnInit {
             categoriaId: pregunta.categoriaId ?? null,
             categoriaNombre: null,
             dificultad: pregunta.dificultad ?? null,
+            tipo: pregunta.tipo ?? 'normal',
             imagenUrl: pregunta.imagenUrl ?? null,
             curiosidad: pregunta.curiosidad ?? '',
             subiendoImagen: false
@@ -412,6 +427,7 @@ export class BancoPreguntasPage implements OnInit {
             curiosidad: editor.curiosidad.trim() || null,
             respuestas: editor.respuestas.map(r => ({ texto: r.texto.trim(), esCorrecta: r.esCorrecta })),
             dificultad: editor.dificultad,
+            tipo: editor.tipo,
             categoriaId: editor.categoriaId,
             categoriaNombre: editor.categoriaId ? null : (editor.categoriaNombre?.trim() || null)
         };

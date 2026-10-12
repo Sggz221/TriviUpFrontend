@@ -183,14 +183,8 @@
                                 <p class="text-lg font-medium flex-1" style="color: var(--base-content);">
                                     {{ pregunta.enunciado }}
                                 </p>
-                                @if (pregunta.tipo === 'pulsador') {
-                                    <span class="badge badge-error shrink-0" title="Responde el primer equipo en pulsar desde su móvil">🔔 Pulsador</span>
-                                }
-                                @if (pregunta.tipo === 'colores') {
-                                    <span class="badge badge-secondary shrink-0" title="Responde quien mejor imite un color al azar">🎨 Colores</span>
-                                }
-                                @if (pregunta.tipo === 'ocarina') {
-                                    <span class="badge badge-info shrink-0" title="Responde el primero que toque la melodía">🎵 Ocarina</span>
+                                @if (tipoEspecial(pregunta.tipo); as t) {
+                                    <span class="badge shrink-0" [ngClass]="t.badge" [title]="t.descripcion">{{ t.icono }} {{ t.etiqueta }}</span>
                                 }
                                 @if (pregunta.dificultad) {
                                     <span class="badge shrink-0" style="color: var(--base-100);"

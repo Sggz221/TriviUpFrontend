@@ -29,6 +29,20 @@ export interface Respuesta {
  */
 export type TipoPregunta = 'normal' | 'pulsador' | 'colores' | 'ocarina';
 
+/** Tipos de pregunta especial (sin turno): se los lleva quien gana la prueba. */
+export type TipoEspecial = Exclude<TipoPregunta, 'normal'>;
+
+export const TIPOS_ESPECIALES: { valor: TipoEspecial; etiqueta: string; icono: string; badge: string; descripcion: string }[] = [
+    { valor: 'pulsador', etiqueta: 'Pulsador', icono: '🔔', badge: 'badge-error', descripcion: 'Responde el primer equipo en pulsar desde su móvil' },
+    { valor: 'colores', etiqueta: 'Colores', icono: '🎨', badge: 'badge-secondary', descripcion: 'Responde quien mejor imite un color al azar' },
+    { valor: 'ocarina', etiqueta: 'Ocarina', icono: '🎵', badge: 'badge-info', descripcion: 'Responde el primero que toque la melodía' }
+];
+
+/** Datos para mostrar un tipo especial (null si es normal o no se indica). */
+export function tipoEspecial(valor: string | null | undefined) {
+    return TIPOS_ESPECIALES.find(t => t.valor === valor) ?? null;
+}
+
 export interface Pregunta {
     id: number;
     quizId: number;
@@ -90,10 +104,11 @@ export interface CreateQuizRequest {
 /** De dónde salen las preguntas de un pool: elegidas a mano del banco o por filtros. */
 export type OrigenPool = 'manual' | 'filtros';
 
-/** Pregunta del banco elegida a mano para un pool (el enunciado es solo para mostrarlo). */
+/** Pregunta del banco elegida a mano para un pool (enunciado y tipo son solo para mostrarlos). */
 export interface FasePoolPregunta {
     id: number;
     enunciado: string;
+    tipo?: TipoPregunta | null;
 }
 
 /**
@@ -113,6 +128,29 @@ export interface FasePool {
     categoriaNombre?: string | null;
     /** Origen por filtros: dificultad (null = cualquiera). */
     dificultad?: Dificultad | null;
+    /**
+     * De las `cantidad` preguntas, cuántas son de cada tipo especial (salen del banco entre las de ese tipo);
+     * el resto son normales.
+     */
+    pulsador?: number;
+    colores?: number;
+    ocarina?: number;
+}
+
+/** Preguntas normales (con turno) que saca un pool. */
+export function normalesPool(pool: Pick<FasePool, 'cantidad' | TipoEspecial>): number {
+    return Math.max(pool.cantidad - (pool.pulsador ?? 0) - (pool.colores ?? 0) - (pool.ocarina ?? 0), 0);
+}
+
+/** Reparto por tipos de un pool con especiales (p. ej. "3 normales, 1 🔔 Pulsador"); null si todas son normales. */
+export function resumenTiposPool(pool: Pick<FasePool, 'cantidad' | TipoEspecial>): string | null {
+    const especiales = TIPOS_ESPECIALES.filter(t => (pool[t.valor] ?? 0) > 0);
+    if (especiales.length === 0) return null;
+    const normales = normalesPool(pool);
+    return [
+        ...(normales > 0 ? [`${normales} normal${normales === 1 ? '' : 'es'}`] : []),
+        ...especiales.map(t => `${pool[t.valor]} ${t.icono} ${t.etiqueta}`)
+    ].join(', ');
 }
 
 export type UpdateQuizRequest = CreateQuizRequest;
@@ -138,6 +176,8 @@ export interface BancoPregunta {
     curiosidad?: string | null;
     respuestas: BancoRespuesta[];
     dificultad?: Dificultad | null;
+    /** Tipo con el que se juega, también al sacarla en un pool; ausente = normal. */
+    tipo?: TipoPregunta;
     categoriaId?: number | null;
     categoriaNombre?: string | null;
     fechaCreacion: string;
@@ -151,6 +191,7 @@ export interface BancoPreguntaRequest {
     curiosidad?: string | null;
     respuestas: BancoRespuesta[];
     dificultad?: Dificultad | null;
+    tipo?: TipoPregunta;
     categoriaId?: number | null;
     categoriaNombre?: string | null;
 }
@@ -165,6 +206,7 @@ export interface BancoFiltros {
     categoriaId?: number | null;
     sinCategoria?: boolean;
     dificultad?: Dificultad | null;
+    tipo?: TipoPregunta | null;
     page?: number;
     pageSize?: number;
 }

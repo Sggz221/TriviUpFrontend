@@ -441,6 +441,36 @@
   text-align: center;
 }
 
+.pool-especiales {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pool-especiales-campos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.pool-especial {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.pool-especial .pool-cantidad-input {
+  width: 3.5rem;
+}
+
+.pool-especiales-normales {
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
 .pool-origen {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

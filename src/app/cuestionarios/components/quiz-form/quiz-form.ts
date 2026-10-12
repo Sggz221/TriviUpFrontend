@@ -2,11 +2,12 @@ import { Component, signal, inject, computed, DestroyRef } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators, AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { forkJoin } from 'rxjs';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDragPlaceholder, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { CuestionarioService } from '../../services/cuestionario.service';
 import {
     Cuestionario, CreateQuizRequest, QuizVersion, BancoPregunta, BancoCategoria, Dificultad, Pregunta, TipoPregunta,
-    FasePool
+    FasePool, TIPOS_ESPECIALES, TipoEspecial, normalesPool, tipoEspecial
 } from '../../models/cuestionario.model';
 import { BancoPreguntasService } from '../../services/banco-preguntas.service';
 import { BancoCategoriasService } from '../../services/banco-categorias.service';
@@ -52,6 +53,17 @@ interface FaseFormValue {
 interface DestinoBanco {
     fase: AbstractControl;
     modo: 'preguntas' | 'pool';
+    /** Tipo con el que se abre filtrado el banco (null = todos). */
+    tipo?: TipoPregunta | null;
+}
+
+/** Preguntas del banco disponibles para un pool por filtros, por tipo (solo los tipos que pide). */
+type DisponiblesPorTipo = Partial<Record<TipoPregunta, number>>;
+
+/** Aviso del pool sobre cuántas preguntas hay para lo que pide. */
+interface AvisoPool {
+    texto: string;
+    warn: boolean;
 }
 
 type ImagenPregunta = { uploading: boolean; url: string | null; preview: string | null };
@@ -117,8 +129,12 @@ export class QuizFormComponent {
     static readonly POOL_MAXIMO = 50;
     readonly poolMaximo = QuizFormComponent.POOL_MAXIMO;
 
-    /** Pools por filtros: preguntas del banco que cumplen sus filtros ahora mismo (null = consultando). */
-    poolDisponibles = signal<Map<AbstractControl, number | null>>(new Map());
+    /** Pools por filtros: preguntas del banco de cada tipo que cumplen sus filtros ahora mismo (null = consultando). */
+    poolDisponibles = signal<Map<AbstractControl, DisponiblesPorTipo | null>>(new Map());
+
+    readonly tiposEspeciales = TIPOS_ESPECIALES;
+    readonly tipoEspecial = tipoEspecial;
+    readonly normalesPool = normalesPool;
 
     /** Diálogo "Al banco": pregunta que se guarda y categoría elegida (existente o nueva). */
     dialogoBanco = signal<{
@@ -449,7 +465,12 @@ export class QuizFormComponent {
 
         const fase = this.fasesArray.at(faseIndex);
         if (this.bancoDestino()?.fase === fase) this.bancoDestino.set(null);
-        fase.patchValue({ pool: { cantidad: 5, origen: 'filtros', preguntas: [], categoriaId: null, categoriaNombre: null, dificultad: null } });
+        fase.patchValue({
+            pool: {
+                cantidad: 5, origen: 'filtros', preguntas: [], categoriaId: null, categoriaNombre: null, dificultad: null,
+                pulsador: 0, colores: 0, ocarina: 0
+            }
+        });
         this.quizForm.markAsDirty();
         this.cargarCategoriasBanco();
         this.consultarDisponibles(fase);
@@ -470,15 +491,45 @@ export class QuizFormComponent {
         if (!actual) return;
         fase.patchValue({ pool: { ...actual, ...cambios } });
         this.quizForm.markAsDirty();
-        if ('origen' in cambios || 'categoriaId' in cambios || 'dificultad' in cambios) {
+        const cambiaLoQuePide = TIPOS_ESPECIALES.some(t => t.valor in cambios) || 'cantidad' in cambios;
+        if ('origen' in cambios || 'categoriaId' in cambios || 'dificultad' in cambios || cambiaLoQuePide) {
             this.consultarDisponibles(fase);
         }
     }
 
+    /** Cambia el total del pool; si baja de las especiales pedidas, se recortan (primero ocarina, luego colores...). */
     cambiarCantidadPool(fase: AbstractControl, valor: string | number): void {
+        const pool = this.poolDe(fase);
         const cantidad = Math.trunc(Number(valor));
-        if (!Number.isFinite(cantidad)) return;
-        this.actualizarPool(fase, { cantidad: Math.min(Math.max(cantidad, 1), this.poolMaximo) });
+        if (!pool || !Number.isFinite(cantidad)) return;
+        const total = Math.min(Math.max(cantidad, 1), this.poolMaximo);
+        const pulsador = Math.min(pool.pulsador ?? 0, total);
+        const colores = Math.min(pool.colores ?? 0, total - pulsador);
+        const ocarina = Math.min(pool.ocarina ?? 0, total - pulsador - colores);
+        this.actualizarPool(fase, { cantidad: total, pulsador, colores, ocarina });
+    }
+
+    /** Cuántas de las preguntas del pool son del tipo especial `tipo` (hasta las que no pidan los otros tipos). */
+    cambiarEspecialPool(fase: AbstractControl, tipo: TipoEspecial, valor: string | number): void {
+        const pool = this.poolDe(fase);
+        const numero = Math.trunc(Number(valor));
+        if (!pool || !Number.isFinite(numero)) return;
+        const otras = TIPOS_ESPECIALES.filter(t => t.valor !== tipo).reduce((s, t) => s + (pool[t.valor] ?? 0), 0);
+        this.actualizarPool(fase, { [tipo]: Math.min(Math.max(numero, 0), pool.cantidad - otras) });
+    }
+
+    /** Tipos que pide el pool y cuántas de cada uno (solo los que piden alguna). */
+    pedidasPorTipo(pool: PoolConfig): { tipo: TipoPregunta; pedidas: number }[] {
+        return [
+            { tipo: 'normal' as TipoPregunta, pedidas: normalesPool(pool) },
+            ...TIPOS_ESPECIALES.map(t => ({ tipo: t.valor as TipoPregunta, pedidas: pool[t.valor] ?? 0 }))
+        ].filter(t => t.pedidas > 0);
+    }
+
+    private etiquetaTipo(tipo: TipoPregunta, plural = true): string {
+        const especial = tipoEspecial(tipo);
+        if (especial) return `${especial.icono} ${especial.etiqueta}`;
+        return plural ? 'normales' : 'normal';
     }
 
     cambiarCategoriaPool(fase: AbstractControl, valor: string): void {
@@ -493,27 +544,63 @@ export class QuizFormComponent {
         this.actualizarPool(fase, { preguntas: pool.preguntas.filter(p => p.id !== id) });
     }
 
-    /** Pool por filtros: cuántas preguntas del banco los cumplen ahora mismo (solo informativo). */
+    /**
+     * Pool por filtros: cuántas preguntas del banco de cada tipo que pide cumplen los filtros ahora mismo
+     * (solo informativo).
+     */
     private consultarDisponibles(fase: AbstractControl): void {
         const pool = this.poolDe(fase);
         if (!pool || pool.origen !== 'filtros') return;
 
+        const tipos = this.pedidasPorTipo(pool).map(t => t.tipo);
         this.poolDisponibles.update(m => new Map(m).set(fase, null));
-        this.bancoService.listar({ categoriaId: pool.categoriaId ?? null, dificultad: pool.dificultad ?? null, pageSize: 1 })
-            .subscribe({
-                next: (lista) => {
-                    // Solo si los filtros no han cambiado mientras tanto
-                    const ahora = this.poolDe(fase);
-                    if (ahora?.categoriaId === pool.categoriaId && ahora?.dificultad === pool.dificultad) {
-                        this.poolDisponibles.update(m => new Map(m).set(fase, lista.totalCount));
-                    }
-                },
-                error: () => this.poolDisponibles.update(m => { const n = new Map(m); n.delete(fase); return n; })
-            });
+        forkJoin(tipos.map(tipo => this.bancoService.listar({
+            categoriaId: pool.categoriaId ?? null, dificultad: pool.dificultad ?? null, tipo, pageSize: 1
+        }))).subscribe({
+            next: (listas) => {
+                // Solo si el pool no ha cambiado mientras tanto
+                if (this.poolDe(fase) !== pool) return;
+                const disponibles: DisponiblesPorTipo = {};
+                tipos.forEach((tipo, i) => disponibles[tipo] = listas[i].totalCount);
+                this.poolDisponibles.update(m => new Map(m).set(fase, disponibles));
+            },
+            error: () => this.poolDisponibles.update(m => { const n = new Map(m); n.delete(fase); return n; })
+        });
     }
 
-    disponiblesPool(fase: AbstractControl): number | null | undefined {
+    disponiblesPool(fase: AbstractControl): DisponiblesPorTipo | null | undefined {
         return this.poolDisponibles().get(fase);
+    }
+
+    /** Avisos de un pool por filtros: si el banco tiene, de cada tipo que pide, las que salen. */
+    avisosFiltros(pool: PoolConfig, disponibles: DisponiblesPorTipo): AvisoPool[] {
+        const pedidas = this.pedidasPorTipo(pool);
+        if (pedidas.length === 1 && pedidas[0].tipo === 'normal') {
+            const hay = disponibles.normal ?? 0;
+            if (hay === 0) {
+                return [{ texto: 'Ahora mismo no hay preguntas en tu banco con estos filtros: si sigue así, esta fase no se jugará.', warn: true }];
+            }
+            return [hay < pool.cantidad
+                ? { texto: `Ahora hay ${hay} pregunta(s) en tu banco con estos filtros: la fase se jugará con ${hay} en vez de ${pool.cantidad}.`, warn: true }
+                : { texto: `Hay ${hay} preguntas en tu banco con estos filtros.`, warn: false }];
+        }
+        return pedidas.map(({ tipo, pedidas: n }) => {
+            const hay = disponibles[tipo] ?? 0;
+            const etiqueta = tipo === 'normal' ? 'Normales' : this.etiquetaTipo(tipo);
+            return hay < n
+                ? { texto: `${etiqueta}: salen ${n} pero ahora solo hay ${hay} en tu banco con estos filtros, así que saldrán ${hay}.`, warn: true }
+                : { texto: `${etiqueta}: hay ${hay} en tu banco con estos filtros (salen ${n}).`, warn: false };
+        });
+    }
+
+    /** Avisos de un pool manual: de cada tipo que pide, cuántas hay elegidas de ese tipo. */
+    avisosManual(pool: PoolConfig): AvisoPool[] {
+        return this.pedidasPorTipo(pool).flatMap(({ tipo, pedidas }) => {
+            const elegidas = pool.preguntas.filter(p => (p.tipo ?? 'normal') === tipo).length;
+            return elegidas < pedidas
+                ? [{ texto: `Salen ${pedidas} de tipo ${this.etiquetaTipo(tipo, false)} pero solo hay ${elegidas} elegidas de ese tipo.`, warn: true }]
+                : [];
+        });
     }
 
     private cargarCategoriasBanco(): void {
@@ -647,9 +734,9 @@ export class QuizFormComponent {
     // ===== Banco de preguntas =====
 
     /** Abre el banco para copiar preguntas a la fase (`modo: 'preguntas'`) o elegirlas para su pool. */
-    abrirBanco(faseIndex: number, modo: DestinoBanco['modo'] = 'preguntas'): void {
+    abrirBanco(faseIndex: number, modo: DestinoBanco['modo'] = 'preguntas', tipo: TipoPregunta | null = null): void {
         this.cerrarMenu();
-        this.bancoDestino.set({ fase: this.fasesArray.at(faseIndex), modo });
+        this.bancoDestino.set({ fase: this.fasesArray.at(faseIndex), modo, tipo });
     }
 
     cerrarBanco(): void {
@@ -674,7 +761,8 @@ export class QuizFormComponent {
             const pool = this.poolDe(fase);
             if (!pool) return;
             const ya = new Set(pool.preguntas.map(p => p.id));
-            const nuevas = preguntas.filter(p => !ya.has(p.id)).map(p => ({ id: p.id, enunciado: p.enunciado }));
+            const nuevas = preguntas.filter(p => !ya.has(p.id))
+                .map(p => ({ id: p.id, enunciado: p.enunciado, tipo: p.tipo ?? 'normal' }));
             this.actualizarPool(fase, { preguntas: [...pool.preguntas, ...nuevas] });
             this.bancoDestino.set(null);
             this.successMessage.set(`${nuevas.length} pregunta(s) añadida(s) al pool.`);
@@ -697,7 +785,8 @@ export class QuizFormComponent {
                 respuestas: p.respuestas,
                 imagenUrl: p.imagenUrl ?? null,
                 dificultad: p.dificultad ?? null,
-                curiosidad: p.curiosidad ?? null
+                curiosidad: p.curiosidad ?? null,
+                tipo: p.tipo ?? 'normal'
             });
             destino.push(grupo);
             if (p.imagenUrl) {
@@ -762,6 +851,7 @@ export class QuizFormComponent {
             curiosidad: control.get('curiosidad')?.value?.trim() || null,
             respuestas: respuestas.map(r => ({ texto: r.texto.trim(), esCorrecta: !!r.esCorrecta })),
             dificultad: control.get('dificultad')?.value ?? null,
+            tipo: control.get('tipo')?.value ?? 'normal',
             categoriaId: dialogo.categoriaId,
             categoriaNombre: nombreNuevo
         }).subscribe({
@@ -928,6 +1018,11 @@ export class QuizFormComponent {
                 }
                 if (pool.origen === 'manual' && pool.cantidad > pool.preguntas.length) {
                     this.errorMessage.set(`El pool de «${this.nombreFase(f)}» saca ${pool.cantidad} preguntas pero solo tiene ${pool.preguntas.length} elegidas.`);
+                    return false;
+                }
+                const faltan = pool.origen === 'manual' ? this.avisosManual(pool)[0] : null;
+                if (faltan) {
+                    this.errorMessage.set(`El pool de «${this.nombreFase(f)}»: ${faltan.texto}`);
                     return false;
                 }
                 continue;

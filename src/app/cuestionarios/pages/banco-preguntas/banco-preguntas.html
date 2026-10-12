@@ -7,7 +7,7 @@
             <div>
                 <h1 class="text-2xl sm:text-3xl font-bold tracking-tight" style="color: var(--secondary);">Banco de preguntas</h1>
                 <p class="text-sm opacity-70" style="color: var(--base-content);">
-                    Tus preguntas sin cuestionario, por categoría y dificultad. Añádelas a cualquier cuestionario desde el editor.
+                    Tus preguntas sin cuestionario, por categoría, dificultad y tipo (también las especiales: pulsador, colores y ocarina). Añádelas a cualquier cuestionario desde el editor.
                 </p>
             </div>
             <div class="flex gap-2">
@@ -117,6 +117,23 @@
                     <label class="block text-sm mb-1" style="color: var(--base-content);">Dificultad</label>
                     <app-dificultad-selector [valor]="editor!.dificultad" (cambio)="editor!.dificultad = $event" />
                 </div>
+                <div>
+                    <label class="block text-sm mb-1" style="color: var(--base-content);">Tipo</label>
+                    <div class="flex flex-wrap gap-1" role="radiogroup" aria-label="Tipo de pregunta">
+                        <button type="button" role="radio" class="badge badge-lg cursor-pointer"
+                                [class.badge-neutral]="editor!.tipo === 'normal'" [class.badge-outline]="editor!.tipo !== 'normal'"
+                                [attr.aria-checked]="editor!.tipo === 'normal'"
+                                title="Responde el jugador al que le toca"
+                                (click)="editor!.tipo = 'normal'">Normal</button>
+                        @for (t of tiposEspeciales; track t.valor) {
+                            <button type="button" role="radio" class="badge badge-lg cursor-pointer"
+                                    [ngClass]="editor!.tipo === t.valor ? t.badge : 'badge-outline'"
+                                    [attr.aria-checked]="editor!.tipo === t.valor"
+                                    [title]="t.descripcion"
+                                    (click)="editor!.tipo = t.valor">{{ t.icono }} {{ t.etiqueta }}</button>
+                        }
+                    </div>
+                </div>
             </div>
 
             <div class="flex justify-end gap-2 mt-5">
@@ -193,7 +210,7 @@
             }
         </div>
 
-        <!-- Búsqueda, dificultad y selección -->
+        <!-- Búsqueda, dificultad, tipo y selección -->
         <div class="flex flex-wrap items-center gap-2 mb-3">
             <input type="search" class="input input-bordered input-sm flex-1 min-w-[12rem]"
                    placeholder="Buscar por texto o categoría..."
@@ -205,6 +222,17 @@
                             [style.color]="dificultadActiva() === d.valor ? 'var(--base-100)' : d.color"
                             [style.border]="'1px solid ' + d.color"
                             (click)="elegirDificultad(d.valor)">{{ d.etiqueta }}</button>
+                }
+            </div>
+            <div class="flex flex-wrap items-center gap-1" role="group" aria-label="Filtrar por tipo">
+                <button type="button" class="badge badge-lg cursor-pointer"
+                        [class.badge-neutral]="tipoActivo() === 'normal'" [class.badge-outline]="tipoActivo() !== 'normal'"
+                        (click)="elegirTipo('normal')">Normal</button>
+                @for (t of tiposEspeciales; track t.valor) {
+                    <button type="button" class="badge badge-lg cursor-pointer"
+                            [ngClass]="tipoActivo() === t.valor ? t.badge : 'badge-outline'"
+                            [title]="t.descripcion"
+                            (click)="elegirTipo(t.valor)">{{ t.icono }} {{ t.etiqueta }}</button>
                 }
             </div>
             <button type="button" class="btn btn-sm" [class.btn-primary]="seleccionando()" (click)="alternarSeleccion()">
@@ -232,7 +260,7 @@
         } @else if (preguntas().length === 0) {
             <div class="text-center py-10 rounded-xl" style="background-color: var(--base-200);">
                 <p class="opacity-70 mb-3" style="color: var(--base-content);">
-                    @if (busqueda() || dificultadActiva() || !esFiltro('todas')) {
+                    @if (busqueda() || dificultadActiva() || tipoActivo() || !esFiltro('todas')) {
                         No hay preguntas que coincidan con los filtros.
                     } @else {
                         Tu banco está vacío. Crea tu primera pregunta o guarda una desde el editor de cuestionarios.
@@ -267,6 +295,9 @@
                                         <span class="badge badge-sm"
                                               [style.background-color]="colorDificultad(p.dificultad)"
                                               style="color: var(--base-100);">{{ etiquetaDificultad(p.dificultad) }}</span>
+                                    }
+                                    @if (tipoEspecial(p.tipo); as t) {
+                                        <span class="badge badge-sm" [ngClass]="t.badge" [title]="t.descripcion">{{ t.icono }} {{ t.etiqueta }}</span>
                                     }
                                 </div>
                                 <p class="font-medium break-words" style="color: var(--base-content);">{{ p.enunciado }}</p>
