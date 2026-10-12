@@ -188,6 +188,16 @@ $new-gradient: linear-gradient(135deg, rgba(42, 114, 155, 1) 0%, rgba(199, 87, 1
     word-break: break-word;
 }
 
+// "Pregunta X/N" de la fase, separada del nombre por una barra fina
+.phase-badge-pregunta {
+    font-size: clamp(0.85rem, 2.8vw, 1rem);
+    line-height: 1.1;
+    padding-left: 0.6rem;
+    border-left: 2px solid currentColor;
+
+    small { font-size: 0.75em; opacity: 0.75; }
+}
+
 // ============ Intermedio entre fases ============
 .phase-break {
     width: 100%;

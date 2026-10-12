@@ -158,6 +158,10 @@ export interface TurnStartedDto {
     penalty?: PenaltyState | null;
     /** Presencial: respuestas que ya ha mostrado el anfitrión (null = todas). */
     revealedAnswers?: number | null;
+    /** Número de la pregunta dentro de su fase, desde 1 (0 en los penaltis). */
+    preguntaEnFase?: number;
+    /** Preguntas que tiene la fase en curso (0 en los penaltis). */
+    preguntasEnFase?: number;
 }
 
 /** Figura musical de una nota (se dibuja así y marca su duración al sonar). */

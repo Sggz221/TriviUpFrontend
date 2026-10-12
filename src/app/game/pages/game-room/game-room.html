@@ -238,6 +238,13 @@
                      [style.color]="textoSobreColor(phase()!.color)">
                     <span class="phase-badge-numero">Fase {{ phase()!.numero }}<small>/{{ phase()!.total }}</small></span>
                     @if (phase()!.nombre) { <span class="phase-badge-nombre">{{ phase()!.nombre }}</span> }
+                    @if (questionProgress(); as qp) {
+                        <span class="phase-badge-pregunta">Pregunta {{ qp.numero }}<small>/{{ qp.total }}</small></span>
+                    }
+                </div>
+            } @else if (questionProgress(); as qp) {
+                <div class="phase-badge" aria-label="Pregunta actual">
+                    <span class="phase-badge-numero">Pregunta {{ qp.numero }}<small>/{{ qp.total }}</small></span>
                 </div>
             }
 

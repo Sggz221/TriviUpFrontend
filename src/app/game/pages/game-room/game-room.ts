@@ -342,6 +342,8 @@ export class GameRoomComponent implements OnInit, OnDestroy {
     });
     /** Fase en curso (null si la partida no tiene varias fases). */
     phase = signal<PhaseInfo | null>(null);
+    /** "Pregunta X / N" de la fase en curso (null en los penaltis o si el servidor no lo manda). */
+    questionProgress = signal<{ numero: number; total: number } | null>(null);
     /** Intermedio entre fases: marcador a la espera de que el anfitrión continúe. */
     phaseBreak = signal<PhaseCompletedDto | null>(null);
     isContinuing = signal<boolean>(false);
@@ -546,6 +548,9 @@ export class GameRoomComponent implements OnInit, OnDestroy {
             ? { numero: data.faseNumero ?? 1, nombre: data.faseNombre ?? null, total: data.totalFases, color: colorDeFase(data.faseNumero, data.faseColor) }
             : null;
         this.phase.set(fase);
+        this.questionProgress.set(!data.penalty && data.preguntasEnFase
+            ? { numero: data.preguntaEnFase ?? 1, total: data.preguntasEnFase }
+            : null);
         // Si cambia el turno con la ruleta aún en pantalla (p. ej. un robo), quitarla ya
         if (this.ruletaSpin()) this.cancelRuleta();
         this.applyTurnState(data);
